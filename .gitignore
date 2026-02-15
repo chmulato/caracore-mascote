@@ -14,9 +14,11 @@ build/
 *.dist-info/
 
 # PyInstaller
-*.spec
 *.manifest
 *.exe
+# Specs do projeto (mantidos no repo)
+!mascote.spec
+!mascote_blackbox.spec
 *.bat
 
 

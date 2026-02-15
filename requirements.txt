@@ -17,7 +17,9 @@ PyInstaller>=6.0.0
 # - tkinter: Incluído com Python 3.x (não precisa instalar)
 # - Pillow: Para carregar e exibir o GIF animado do mascote
 # - pyautogui: Para controlar mouse e teclado automaticamente
-# - PyInstaller: Para compilar o executável mascote.exe
+# - PyInstaller: Para compilar mascote.exe e mascote_blackbox.exe
 #
-# Instalação:
-# pip install -r requirements.txt
+# Instalacao:
+#   pip install -r requirements.txt
+#   Se pip nao for reconhecido: python -m pip install -r requirements.txt
+#   Ou execute instalar_dependencias.bat (veja PIP_CONFIGURACAO.txt)
