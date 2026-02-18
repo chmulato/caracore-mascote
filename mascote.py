@@ -28,6 +28,7 @@ import datetime
 import os
 import random
 from PIL import Image, ImageTk
+import psutil
 
 class MascoteApp:
     def __init__(self, root):
@@ -74,8 +75,36 @@ class MascoteApp:
         self.chk_som_var = tk.BooleanVar()
         self.chk_som = tk.Checkbutton(root, text="Som", variable=self.chk_som_var, command=self.on_toggle_sound)
         self.chk_som.pack()
+        self.chk_telemetria_var = tk.BooleanVar(value=True)
+        self.chk_telemetria = tk.Checkbutton(root, text="Telemetria", variable=self.chk_telemetria_var, command=self.on_toggle_telemetria)
+        self.chk_telemetria.pack()
+        self.chk_sistema_var = tk.BooleanVar(value=False)
+        self.chk_sistema = tk.Checkbutton(root, text="Telemetria do Sistema", variable=self.chk_sistema_var, command=self.on_toggle_sistema)
+        self.chk_sistema.pack()
         self.btn_desativar = tk.Button(root, text="Ativar", command=self.toggle)
         self.btn_desativar.pack()
+
+        # Área de log em tempo real (footer) - split horizontal
+        self.log_frame = tk.Frame(root)
+        self.log_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Log da aplicação
+        self.app_log_label = tk.Label(self.log_frame, text="Log da Aplicação:")
+        self.app_log_label.pack(side=tk.TOP, anchor=tk.W)
+        self.app_log_text = tk.Text(self.log_frame, height=8, wrap=tk.WORD, state=tk.DISABLED)
+        self.app_scrollbar = tk.Scrollbar(self.log_frame, command=self.app_log_text.yview)
+        self.app_log_text.config(yscrollcommand=self.app_scrollbar.set)
+        self.app_log_text.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.app_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Log do sistema
+        self.system_log_label = tk.Label(self.log_frame, text="Log do Sistema:")
+        self.system_log_label.pack(side=tk.TOP, anchor=tk.W)
+        self.system_log_text = tk.Text(self.log_frame, height=8, wrap=tk.WORD, state=tk.DISABLED)
+        self.system_scrollbar = tk.Scrollbar(self.log_frame, command=self.system_log_text.yview)
+        self.system_log_text.config(yscrollcommand=self.system_scrollbar.set)
+        self.system_log_text.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.system_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.timer_thread = None
 
@@ -83,9 +112,37 @@ class MascoteApp:
         self.log_event("Aplicação iniciada.")
 
     def log_event(self, mensagem):
-        log_line = f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} - EVENTO: {mensagem}"
-        with open("cycle_log.txt", "a", encoding="utf-8") as f:
-            f.write(log_line + "\n")
+        if self.chk_telemetria_var.get():
+            log_line = f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} - EVENTO: {mensagem}"
+            with open("cycle_log.txt", "a", encoding="utf-8") as f:
+                f.write(log_line + "\n")
+            self.root.after(0, lambda: self.append_app_log(log_line))
+
+    def append_app_log(self, message):
+        self.app_log_text.config(state=tk.NORMAL)
+        self.app_log_text.insert(tk.END, message + '\n')
+        self.app_log_text.config(state=tk.DISABLED)
+        self.app_log_text.see(tk.END)
+
+    def append_system_log(self, message):
+        self.system_log_text.config(state=tk.NORMAL)
+        self.system_log_text.insert(tk.END, message + '\n')
+        self.system_log_text.config(state=tk.DISABLED)
+        self.system_log_text.see(tk.END)
+
+    def log_system_telemetry(self):
+        if self.chk_sistema_var.get():
+            try:
+                cpu = psutil.cpu_percent(interval=1)
+                memory = psutil.virtual_memory().percent
+                disk = psutil.disk_usage('/').percent
+                log_line = f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} - SISTEMA: CPU {cpu}%, Memória {memory}%, Disco {disk}%"
+                with open("cycle_log.txt", "a", encoding="utf-8") as f:
+                    f.write(log_line + "\n")
+                self.root.after(0, lambda: self.append_system_log(log_line))
+            except Exception as e:
+                if self.chk_telemetria_var.get():
+                    self.log_event(f"Erro ao obter telemetria do sistema: {e}")
 
     def animate_gif(self):
         if self.frames:
@@ -118,6 +175,20 @@ class MascoteApp:
             self.log_event("Som ativado pelo usuário.")
         else:
             self.log_event("Som desativado pelo usuário.")
+
+    def on_toggle_telemetria(self):
+        status = "ativada" if self.chk_telemetria_var.get() else "desativada"
+        log_line = f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} - EVENTO: Telemetria {status} pelo usuário."
+        with open("cycle_log.txt", "a", encoding="utf-8") as f:
+            f.write(log_line + "\n")
+        self.root.after(0, lambda: self.append_app_log(log_line))
+
+    def on_toggle_sistema(self):
+        status = "ativada" if self.chk_sistema_var.get() else "desativada"
+        log_line = f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} - EVENTO: Telemetria do Sistema {status} pelo usuário."
+        with open("cycle_log.txt", "a", encoding="utf-8") as f:
+            f.write(log_line + "\n")
+        self.root.after(0, lambda: self.append_system_log(log_line))
 
     def start_timer(self):
         def run():
@@ -179,6 +250,8 @@ class MascoteApp:
                         self.log_event(f"Ciclo automático #{self.cycle_count} executado com sucesso ({success_count}/2 operações essenciais).")
                     else:
                         self.log_event(f"Ciclo automático #{self.cycle_count} executado com falhas ({success_count}/2 operações essenciais).")
+                    
+                    self.log_system_telemetry()
                     
                     self.remaining = self.interval
                 else:
@@ -319,14 +392,16 @@ class MascoteApp:
                 self.log_event("Todas as estratégias de ativação falharam, mas simulação continua.")
 
     def log_cycle_count(self):
-        log_line = f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} - Total de ciclos: {self.cycle_count}"
-        with open("cycle_log.txt", "a", encoding="utf-8") as f:
-            f.write(log_line + "\n")
+        if self.chk_telemetria_var.get():
+            log_line = f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} - Total de ciclos: {self.cycle_count}"
+            with open("cycle_log.txt", "a", encoding="utf-8") as f:
+                f.write(log_line + "\n")
+            self.root.after(0, lambda: self.append_app_log(log_line))
 
 if __name__ == "__main__":
     # Constantes de layout para facilitar futuros ajustes
     WINDOW_WIDTH = 400
-    WINDOW_HEIGHT = 520
+    WINDOW_HEIGHT = 800
 
     root = tk.Tk()
     root.iconbitmap("mascote.ico")
