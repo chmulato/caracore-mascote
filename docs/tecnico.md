@@ -3,7 +3,7 @@
 Documentação para quem mantém, compila ou audita o Gaspar. O guia do usuário está no [README](../README.md).
 
 - Branch oficial: **master**
-- Versão: **1.6.0**
+- Versão: **1.7.0**
 - Licença: **MIT**
 - Plataformas: **Windows 10/11** e **Linux (X11/XWayland)**
 
@@ -198,7 +198,7 @@ Saídas:
 
 - `dist/windows/gaspar/gaspar.exe`
 - `dist/windows/gaspar_blackbox/gaspar_blackbox.exe`
-- `dist/installer/GasparSetup-1.6.0.exe` (quando o Inno Setup está instalado)
+- `dist/installer/GasparSetup-1.7.0.exe` (quando o Inno Setup está instalado)
 
 O instalador:
 
@@ -250,13 +250,13 @@ Saídas:
 
 - `dist/linux/gaspar/gaspar`
 - `dist/linux/gaspar_blackbox/gaspar_blackbox`
-- `dist/linux/gaspar_1.6.0_<arch>.deb`
-- `dist/linux/Gaspar-1.6.0-<arch>.AppImage`
+- `dist/linux/gaspar_1.7.0_<arch>.deb`
+- `dist/linux/Gaspar-1.7.0-<arch>.AppImage`
 
 Instalação do `.deb`:
 
 ```bash
-sudo apt install ./dist/linux/gaspar_1.6.0_amd64.deb
+sudo apt install ./dist/linux/gaspar_1.7.0_amd64.deb
 gaspar
 gaspar-blackbox
 ```
@@ -514,14 +514,11 @@ O script remove o magenta, recorta o mascote, suaviza a borda, desconta a franja
 
 ## Estado de validação desta versão
 
-- Testes de fumaça: aprovados no Windows, com pasta de dados temporária.
-- Ponte de SMS: 20 testes unitários aprovados; janela **Celular / SMS** validada no teste de fumaça com a ponte desligada.
+- Testes automáticos: **26 testes** da ponte de SMS e do painel, aprovados na árvore local e na esteira (Linux e Windows) da etiqueta `gaspar-v1.7.0`.
+- Janela **Celular / SMS**: validada no teste de fumaça com a ponte desligada; o pareamento real depende de um celular Android.
 - Botão **Tirar o Gaspar da tela**: validado no teste de fumaça; o mascote some, o botão vira **Trazer o Gaspar de volta** e a simulação e a ponte continuam ativas.
 - Envio real de SMS: **não executado** nesta máquina, porque depende de um celular Android pareado e de um chip com crédito. O protocolo foi validado contra o código do app Android em teste automatizado (mesma derivação de chave e mesmo formato de cifra).
-- Build Windows com PyInstaller: aprovado para `gaspar.exe` e `gaspar_blackbox.exe` **antes** da ponte de SMS; `gaspar.exe --version` respondeu `Gaspar 1.6.0`.
-- Execução do `.exe` empacotado: validada em pasta de dados temporária.
-- Instalador Inno Setup: `GasparSetup-1.6.0.exe` gerado (63 MB); a compilação exige o Inno Setup 6 instalado na máquina de build.
-- Pacote `.deb`: instalado em Debian 12; `gaspar --version` respondeu `Gaspar 1.6.0` e as entradas de menu foram criadas.
-- AppImage: executado com extração temporária; `gaspar --version` respondeu `Gaspar 1.6.0`.
-- Os três instaladores e o `SHA256SUMS.txt` estão publicados na [Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0), mas **não incluem** a ponte de SMS; um novo build é necessário para empacotá-la.
-- Aplicativo Android: código-fonte versionado; o APK/AAB é gerado na máquina de build com JDK 11+, Android SDK e `adb`. Nenhum APK, keystore ou senha é versionado.
+- Pacotes 1.7.0: gerados pela esteira nos dois sistemas, com `SHA256SUMS.txt` conferido e publicado na [Release 1.7.0](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.0) — instalador 31 MB, `.deb` 41 MB e AppImage 30 MB.
+- O `.exe`, o `.deb` e o AppImage **desta versão** não foram reinstalados nesta máquina; a instalação em Debian 12, a execução do `.exe` empacotado e a do AppImage validadas são as da 1.6.0, com a mesma receita de build (Inno Setup 6 na máquina de build).
+- Aplicativo Android 1.2: APK e AAB **assinados** gerados pela esteira e publicados na [Release Android 1.2](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2); o APK não foi instalado em celular nesta máquina.
+- Nenhum APK, keystore ou senha é versionado.

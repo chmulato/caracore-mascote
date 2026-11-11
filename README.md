@@ -7,8 +7,8 @@ O mascote oficial da **Cara Core Informática**: um fantasminha verde-limão que
 |  |  |
 | --- | --- |
 | Branch oficial | **master** |
-| Versão atual | **1.6.0** |
-| Download | [Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0) |
+| Versão atual | **1.7.0** |
+| Download | [Release 1.7.0](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.0) |
 | Licença | **MIT** |
 | Plataformas | **Windows 10/11** e **Linux (X11/XWayland)** |
 | Empresa | **Cara Core Informática** |
@@ -24,15 +24,18 @@ Escolha o arquivo do sistema que você usa. O download começa ao clicar no link
 
 | Seu sistema | Arquivo | Baixar |
 | --- | --- | --- |
-| Windows 10 ou 11 | `GasparSetup-1.6.0.exe` (63 MB) | [Baixar para Windows](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/GasparSetup-1.6.0.exe) |
-| Debian, Ubuntu, Mint e derivados | `gaspar_1.6.0_amd64.deb` (33 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/gaspar_1.6.0_amd64.deb) |
-| Outras distribuições Linux | `Gaspar-1.6.0-amd64.AppImage` (24 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/Gaspar-1.6.0-amd64.AppImage) |
+| Windows 10 ou 11 | `GasparSetup-1.7.0.exe` (31 MB) | [Baixar para Windows](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/GasparSetup-1.7.0.exe) |
+| Debian, Ubuntu, Mint e derivados | `gaspar_1.7.0_amd64.deb` (41 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/gaspar_1.7.0_amd64.deb) |
+| Outras distribuições Linux | `Gaspar-1.7.0-amd64.AppImage` (30 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/Gaspar-1.7.0-amd64.AppImage) |
 
-Todos os arquivos ficam na página da [Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0). O arquivo [SHA256SUMS.txt](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/SHA256SUMS.txt) serve para conferir se o download chegou completo; se você não sabe o que fazer com ele, pode ignorar.
+Para o **celular**, baixe o aplicativo `pdv-sms-enviar-1.2-release.apk` (694 KB) na
+[Release do aplicativo Android 1.2](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2).
+
+Todos os arquivos ficam na página da [Release 1.7.0](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.0). O arquivo [SHA256SUMS.txt](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/SHA256SUMS.txt) serve para conferir se o download chegou completo; se você não sabe o que fazer com ele, pode ignorar.
 
 ### Windows
 
-1. Baixe o arquivo `GasparSetup-1.6.0.exe` no link acima.
+1. Baixe o arquivo `GasparSetup-1.7.0.exe` no link acima.
 2. Dê dois cliques e siga o assistente: **Avançar**, **Instalar**, **Concluir**.
 3. Abra o Gaspar pelo atalho da Área de Trabalho ou pelo menu Iniciar.
 4. Na primeira vez, o painel de configuração abre junto. Ajuste o que quiser e clique em **Ocultar** para deixar só o mascote na tela.
@@ -42,11 +45,11 @@ Se o Windows exibir o aviso azul do SmartScreen, clique em **Mais informações*
 
 ### Linux - Debian, Ubuntu, Mint e derivados
 
-1. Baixe o arquivo `gaspar_1.6.0_amd64.deb` no link acima.
+1. Baixe o arquivo `gaspar_1.7.0_amd64.deb` no link acima.
 2. Dê dois cliques e instale pelo aplicativo de pacotes, ou use o terminal:
 
    ```bash
-   sudo apt install ./gaspar_1.6.0_amd64.deb
+   sudo apt install ./gaspar_1.7.0_amd64.deb
    ```
 
 3. Abra **Gaspar** pelo menu de aplicativos, ou digite `gaspar` no terminal.
@@ -54,7 +57,7 @@ Se o Windows exibir o aviso azul do SmartScreen, clique em **Mais informações*
 
 ### Linux - qualquer distribuição, sem instalar
 
-1. Baixe o arquivo `Gaspar-1.6.0-amd64.AppImage` no link acima.
+1. Baixe o arquivo `Gaspar-1.7.0-amd64.AppImage` no link acima.
 2. Clique com o botão direito, abra **Propriedades**, vá em **Permissões** e marque **Permitir executar**.
 3. Dê dois cliques no arquivo.
 
@@ -105,17 +108,18 @@ marca de **enviado** (o chip aceitou) e **entregue** (a operadora confirmou).
 Para usar, você precisa de três coisas:
 
 1. **O Gaspar instalado** no computador (passos acima).
-2. **O aplicativo do celular instalado** (APK 1.2 compilado a partir da pasta
-   `android/`; o guia de instalação mostra como obter). No primeiro uso, toque
-   em **Liberar o app da economia de bateria**.
+2. **O aplicativo do celular instalado** (APK `pdv-sms-enviar-1.2-release.apk`,
+   publicado na [Release do aplicativo](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2);
+   o guia de instalação mostra o passo a passo). No primeiro uso, toque em
+   **Liberar o app da economia de bateria**.
 3. **Celular e computador na mesma Wi-Fi**, com o Gaspar aberto.
 
 Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
 **Parear celular** e leia o QR com o aplicativo do celular.
 
-> Este recurso está incluído no Gaspar **1.7.0** e no aplicativo Android **1.2**.
-> Instaladores 1.6.0 publicados antes disso não têm a ponte; atualize os dois
-> lados.
+> Este recurso está incluído no Gaspar **1.7.0** e no aplicativo Android **1.2**,
+> ambos publicados em [Releases](https://github.com/chmulato/caracore-mascote/releases).
+> Instaladores 1.6.0 não têm a ponte; atualize os dois lados.
 
 O passo a passo completo dos dois lados, com a lista de arquivos de instalação,
 está em [docs/instalacao.md](docs/instalacao.md). O uso no dia a dia e os

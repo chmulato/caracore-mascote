@@ -4,18 +4,9 @@ Este guia leva você do zero até o primeiro SMS de teste. Ele foi escrito para
 quem instala o sistema na loja, sem detalhes de programação. Os detalhes
 técnicos ficam em [tecnico.md](tecnico.md).
 
-> **Antes de tudo:** a ponte de SMS está no código-fonte e entra nos
-> instaladores a partir do Gaspar 1.7.0. Os instaladores 1.6.0 já publicados
-> **não** a incluem. Para usar o SMS hoje, você tem dois caminhos:
->
-> 1. **Rodar o Gaspar a partir do código**, que já tem a ponte
->    ([guia técnico](tecnico.md#rodar-a-partir-do-código)); ou
-> 2. **Gerar um instalador novo** na máquina de build
->    ([guia técnico](tecnico.md#build-no-windows)).
->
-> A Parte 1 abaixo instala o mascote com o instalador 1.6.0. Ela serve para
-> quem vai usar só o mascote ou como referência do assistente; para o SMS, use
-> um dos dois caminhos acima.
+> **Antes de tudo:** o SMS funciona com o **Gaspar 1.7.0** (ou mais novo) e o
+> **aplicativo Android 1.2**, os dois já publicados. Os instaladores 1.6.0 não
+> têm a ponte de SMS; se você já usa o mascote, atualize os dois lados.
 
 ## Antes de começar
 
@@ -31,21 +22,21 @@ Confira se você tem:
 
 | Arquivo | Para que serve | Como obter |
 | --- | --- | --- |
-| `GasparSetup-1.6.0.exe` | Instalar o Gaspar no Windows | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/GasparSetup-1.6.0.exe) |
-| `gaspar_1.6.0_amd64.deb` | Instalar o Gaspar em Debian, Ubuntu, Mint e derivados | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/gaspar_1.6.0_amd64.deb) |
-| `Gaspar-1.6.0-amd64.AppImage` | Usar o Gaspar em outras distribuições Linux, sem instalar | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/Gaspar-1.6.0-amd64.AppImage) |
-| `SHA256SUMS.txt` | Conferir se o download chegou completo (opcional) | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/SHA256SUMS.txt) |
-| `pdv-sms-enviar-1.0.apk` (teste) ou `pdv-sms-enviar-1.0-release.apk` (assinado) | Instalar o aplicativo que envia os SMS no celular | Não está no repositório. É gerado a partir da pasta `android/`; veja [android/README-PDV-SMS.md](../android/README-PDV-SMS.md). Se a Cara Core entregar o APK pronto, use esse arquivo. |
+| `GasparSetup-1.7.0.exe` | Instalar o Gaspar no Windows (31 MB) | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/GasparSetup-1.7.0.exe) |
+| `gaspar_1.7.0_amd64.deb` | Instalar o Gaspar em Debian, Ubuntu, Mint e derivados (41 MB) | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/gaspar_1.7.0_amd64.deb) |
+| `Gaspar-1.7.0-amd64.AppImage` | Usar o Gaspar em outras distribuições Linux, sem instalar (30 MB) | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/Gaspar-1.7.0-amd64.AppImage) |
+| `SHA256SUMS.txt` | Conferir se o download chegou completo (opcional) | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/SHA256SUMS.txt) |
+| `pdv-sms-enviar-1.2-release.apk` | Instalar o aplicativo que envia os SMS no celular (694 KB) | [Baixar](https://github.com/chmulato/caracore-mascote/releases/download/android-v1.2/pdv-sms-enviar-1.2-release.apk). Para gerar a partir do código, veja [android/README-PDV-SMS.md](../android/README-PDV-SMS.md). |
 | `keystore.properties` + arquivo `.keystore` | Assinar uma versão nova do aplicativo do celular | Criados na máquina de build com `criar-keystore.bat`. **Nunca** compartilhe nem publique esses arquivos. |
 
-Todos os downloads do Gaspar ficam na página da
-[Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0).
+Os arquivos do computador ficam na [Release 1.7.0](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.0)
+e o do celular, na [Release do aplicativo Android 1.2](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2).
 
 ## Parte 1 - Instalar o Gaspar no computador
 
 ### Windows 10 ou 11
 
-1. Baixe `GasparSetup-1.6.0.exe`.
+1. Baixe `GasparSetup-1.7.0.exe`.
 2. Dê dois cliques e siga o assistente: **Avançar**, **Instalar**, **Concluir**.
 3. Abra o Gaspar pelo atalho da Área de Trabalho ou pelo menu Iniciar.
 4. Na primeira vez, o painel de configuração abre junto. Ajuste o que quiser e
@@ -59,11 +50,11 @@ isso é esperado em programas distribuídos diretamente pela Cara Core.
 
 ### Linux - Debian, Ubuntu, Mint e derivados
 
-1. Baixe `gaspar_1.6.0_amd64.deb`.
+1. Baixe `gaspar_1.7.0_amd64.deb`.
 2. Dê dois cliques e instale pelo aplicativo de pacotes, ou use o terminal:
 
    ```bash
-   sudo apt install ./gaspar_1.6.0_amd64.deb
+   sudo apt install ./gaspar_1.7.0_amd64.deb
    ```
 
 3. Abra **Gaspar** pelo menu de aplicativos, ou digite `gaspar` no terminal.
@@ -71,7 +62,7 @@ isso é esperado em programas distribuídos diretamente pela Cara Core.
 
 ### Linux - qualquer distribuição, sem instalar
 
-1. Baixe `Gaspar-1.6.0-amd64.AppImage`.
+1. Baixe `Gaspar-1.7.0-amd64.AppImage`.
 2. Clique com o botão direito, abra **Propriedades**, vá em **Permissões** e
    marque **Permitir executar**.
 3. Dê dois cliques no arquivo.
@@ -90,9 +81,8 @@ deste guia.
 O aplicativo é o que dispara o SMS pelo chip. Ele não precisa de internet; usa
 a Wi-Fi da loja para conversar com o Gaspar.
 
-1. **Obtenha o APK** (`pdv-sms-enviar-1.0.apk` ou
-   `pdv-sms-enviar-1.0-release.apk`):
-   - se a Cara Core entregou o arquivo, use-o;
+1. **Obtenha o APK** (`pdv-sms-enviar-1.2-release.apk`):
+   - baixe na [Release do aplicativo Android 1.2](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2); ou
    - para gerar a partir do código, siga
      [android/README-PDV-SMS.md](../android/README-PDV-SMS.md). É preciso um
      computador com JDK 11 ou superior e o Android SDK instalado.
@@ -158,7 +148,7 @@ comportamento do dia a dia está em [sms.md](sms.md).
   preferências são mantidas.
 - **Gaspar no Linux:** instale o `.deb` novo com `sudo apt install ./arquivo.deb`
   ou substitua o AppImage.
-- **Aplicativo do celular:** instale o APK novo por cima do antigo. O pareamento
+- **Aplicativo do celular:** instale o APK 1.2 por cima do antigo. O pareamento
   é mantido; se o QR mudar, refaça o pareamento.
 
 ## Desinstalar

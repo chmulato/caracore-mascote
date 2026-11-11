@@ -4,9 +4,9 @@ Este guia explica como o Gaspar entrega ao celular os SMS pedidos pelo PDV.
 Ele foi escrito para quem usa o sistema no dia a dia; os detalhes de
 programação ficam no fim.
 
-> **Estado atual:** a ponte está incluída a partir do Gaspar **1.7.0** e do
-> aplicativo Android **1.2**. Os instaladores 1.6.0 publicados antes disso não
-> têm a janela **Celular / SMS**; atualize os dois lados para usar o recurso.
+> **Estado atual:** a ponte está no Gaspar **1.7.0** e no aplicativo Android
+> **1.2**, ambos publicados. Instaladores 1.6.0 não têm a janela **Celular /
+> SMS**; atualize os dois lados para usar o recurso.
 
 ## Em uma frase
 

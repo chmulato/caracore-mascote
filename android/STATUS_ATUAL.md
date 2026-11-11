@@ -39,7 +39,7 @@ App Android mínimo que envia SMS acionado por intent (ADB ou outro app). É o c
 ## Build e implantação
 
 - Desenvolvimento: `build.bat` (debug), `build.bat release` (com keystore.properties). `build.bat bundle` ou `build.bat aab` (AAB para Play Store). `build.bat clean` para limpar e evitar AccessDenied em .dex. Combinações: `build.bat clean release`, `build.bat clean bundle`.
-- APK debug: `build\outputs\apk\debug\pdv-sms-enviar-1.0.apk`. APK release: `build\outputs\apk\release\pdv-sms-enviar-1.0-release.apk`. AAB: `build\outputs\bundle\release\pdv-sms-enviar-release.aab`.
+- APK debug: `build\outputs\apk\debug\pdv-sms-enviar-1.2-debug.apk`. APK release: `build\outputs\apk\release\pdv-sms-enviar-1.2-release.apk`. AAB: `build\outputs\bundle\release\pdv-sms-enviar-release.aab`.
 - Instalação em dispositivo: `publicar-celular.bat`. Requer ANDROID_HOME, adb, dispositivo em state=device, API >= 24.
 - Assinatura release e AAB: `criar-keystore.bat` gera `pdv-sms-release.keystore` e alias `pdv-sms`. `keystore.properties` (storeFile, storePassword, keyAlias, keyPassword). `verificar-keystore.bat` valida a senha com keytool -list. `recriar-keystore.bat` renomeia o keystore antigo para .bak e chama `criar-keystore.bat`; usar apenas para app novo, não para atualização na loja.
 
