@@ -155,6 +155,37 @@ def _win32_overlay_checks(app) -> None:
     overlay.set_panel_visible(True)
 
 
+def _x11_is_above(window_a, window_b) -> bool:
+    """Consulta a ordem real de empilhamento no X11 (independe de -topmost)."""
+    display = None
+    try:
+        from Xlib import display as xdisplay
+
+        display = xdisplay.Display()
+        screen_root = display.screen().root
+
+        def top_level(window_id: int):
+            window = display.create_resource_object("window", window_id)
+            parent = window.query_tree().parent
+            while parent and parent.id != screen_root.id:
+                window = parent
+                parent = window.query_tree().parent
+            return window.id
+
+        order = [child.id for child in screen_root.query_tree().children]
+        return order.index(top_level(window_a.winfo_id())) > order.index(
+            top_level(window_b.winfo_id())
+        )
+    except Exception:
+        return False
+    finally:
+        if display is not None:
+            try:
+                display.close()
+            except Exception:
+                pass
+
+
 def test_gui() -> None:
     if sys.platform.startswith("linux") and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
         print("[SKIP] GUI sem servidor grafico")
@@ -187,7 +218,6 @@ def test_gui() -> None:
     root = tk.Tk()
     app = GasparApp(root)
     initial = (app.overlay.win.winfo_rootx(), app.overlay.win.winfo_rooty())
-    results: dict[str, object] = {}
 
     def first_check() -> None:
         check(root.winfo_exists() == 1, "app: painel criado")
@@ -237,22 +267,59 @@ def test_gui() -> None:
 
         app.hide_window()
         root.update_idletasks()
-        check(
-            not app._panel_visible and bool(int(overlay.win.attributes("-topmost"))),
-            "app: mascote assume o topo ao esconder o painel",
-        )
+        if sys.platform == "win32":
+            check(
+                not app._panel_visible and bool(int(overlay.win.attributes("-topmost"))),
+                "app: mascote assume o topo ao esconder o painel",
+            )
+        else:
+            # No X11 o mascote e override-redirect e fica acima das janelas
+            # gerenciadas pelo WM; o Tk 8.6 ignora -topmost.
+            rival = tk.Toplevel(root)
+            rival.geometry("220x160+40+40")
+            rival.update()
+            rival.focus_force()
+            root.update_idletasks()
+            acima_rival = _x11_is_above(overlay.win, rival)
+            check(
+                not app._panel_visible
+                and not overlay._panel_visible
+                and overlay._visible
+                and overlay.win.winfo_ismapped() == 1
+                and root.winfo_ismapped() == 0
+                and acima_rival,
+                "app: mascote fica visivel e acima de outra janela ao esconder o painel "
+                f"(painel={app._panel_visible}, overlay_painel={overlay._panel_visible}, "
+                f"visivel={overlay._visible}, mapeado={overlay.win.winfo_ismapped()}, "
+                f"painel_mapeado={root.winfo_ismapped()}, acima={acima_rival})",
+            )
+            rival.destroy()
         app.show_panel()
         root.update_idletasks()
-        topmost = overlay.win.attributes("-topmost")
+        if sys.platform == "win32":
+            topmost = overlay.win.attributes("-topmost")
+            atras = not bool(int(topmost))
+            detalhe = f"topo={topmost}"
+        else:
+            # No X11 provamos a ordem real de empilhamento, nao -topmost.
+            atras = _x11_is_above(root, overlay.win)
+            detalhe = f"painel_acima={atras}"
         check(
-            app._panel_visible and not bool(int(topmost)),
-            f"app: mascote volta para tras do painel aberto (painel={app._panel_visible}, topo={topmost})",
+            app._panel_visible and atras,
+            "app: mascote volta para tras do painel aberto "
+            f"(painel={app._panel_visible}, overlay_painel={overlay._panel_visible}, "
+            f"visivel={overlay._visible}, auto={overlay._auto_hidden}, {detalhe})",
         )
 
-    def second_check() -> None:
+    def second_check(attempt: int = 0) -> None:
         current = (app.overlay.win.winfo_rootx(), app.overlay.win.winfo_rooty())
-        results["moved"] = current != initial
-        check(bool(results["moved"]), "overlay: flutuou para outro ponto")
+        if current != initial:
+            check(True, "overlay: flutuou para outro ponto")
+        elif attempt < 20:
+            root.after(250, lambda: second_check(attempt + 1))
+            return
+        else:
+            check(False, "overlay: flutuou para outro ponto")
         app.quit()
 
     root.after(1200, first_check)

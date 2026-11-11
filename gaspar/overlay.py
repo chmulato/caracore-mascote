@@ -75,6 +75,7 @@ class GasparOverlay:
         self._dimmed = False
         self._pause_fullscreen = pause_fullscreen
         self._x11 = None
+        self._xdisplay = None
         self._opacity = max(0.40, min(1.0, opacity))
 
         self._load_frames()
@@ -272,6 +273,12 @@ class GasparOverlay:
             except Exception:
                 pass
             self._x11 = None
+        if self._xdisplay is not None:
+            try:
+                self._xdisplay.close()
+            except Exception:
+                pass
+            self._xdisplay = None
         try:
             self.win.destroy()
         except tk.TclError:
@@ -436,10 +443,49 @@ class GasparOverlay:
             except Exception:
                 pass
             return
+        if self._restack_x11():
+            return
         try:
             self.win.lower(self.root)
         except tk.TclError:
             pass
+
+    def _restack_x11(self) -> bool:
+        """Reempilha o mascote abaixo do painel no X11.
+
+        O mascote e override-redirect: o Tk ignora 'lower' com janela irma nesse
+        caso e ele ficaria sempre por cima do painel. O empilhamento real e feito
+        entre os quadros (frames) que o gerenciador de janelas cria.
+        """
+        if not sys.platform.startswith("linux"):
+            return False
+        try:
+            from Xlib import X
+            from Xlib import display as xdisplay
+
+            if self._xdisplay is None:
+                self._xdisplay = xdisplay.Display()
+            display = self._xdisplay
+            screen_root = display.screen().root
+
+            def top_level(window_id: int):
+                window = display.create_resource_object("window", window_id)
+                parent = window.query_tree().parent
+                while parent and parent.id != screen_root.id:
+                    window = parent
+                    parent = window.query_tree().parent
+                return window
+
+            mascot = top_level(self.win.winfo_id())
+            panel = top_level(self.root.winfo_id())
+            if mascot.id == panel.id:
+                return False
+            mascot.configure(sibling=panel, stack_mode=X.Below)
+            display.sync()
+            return True
+        except Exception as exc:
+            self.log(f"Empilhamento X11 indisponivel: {exc}")
+            return False
 
     def _hwnd(self):
         import ctypes

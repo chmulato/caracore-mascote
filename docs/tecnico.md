@@ -166,11 +166,13 @@ O BlackBox pede elevação: UAC no Windows, `pkexec` no Linux. Sem privilégios 
 
 ### Linux
 
-1. A janela continua sem bordas e sempre visível.
+1. A janela continua sem bordas.
 2. Cada quadro do GIF gera uma máscara 1-bit com a silhueta do Gaspar.
 3. A extensão Shape do X11 (`XShapeCombineMask`) recorta o retângulo de fundo.
 4. `XShapeCombineRectangles` com região vazia faz os cliques atravessarem o mascote.
 5. A opacidade é aplicada com `-alpha` do Tk.
+6. O Tk 8.6 ignora `-topmost` no X11. O mascote é override-redirect e fica acima das janelas gerenciadas pelo gerenciador de janelas; com o painel aberto ele é reempilhado logo abaixo do quadro do painel via Xlib.
+7. Ao consultar a janela ativa, o Xlib encerraria o processo se ela já tivesse fechado (`BadWindow`); essas leituras de tela cheia ignoram o erro e seguem sem o dado.
 
 Em Wayland puro, o recorte e o click-through do X11 não se aplicam; rode a sessão com XWayland ou use X11. A detecção de ausência e de tela cheia também depende de APIs do Windows ou do X11; quando indisponível, o app registra um aviso e usa apenas o intervalo configurado.
 

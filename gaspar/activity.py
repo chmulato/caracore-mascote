@@ -6,6 +6,21 @@ import ctypes
 import os
 import sys
 
+# O Xlib encerra o processo quando uma janela informada pelo gerenciador ja nao
+# existe (BadWindow). Nas leituras best-effort abaixo o erro e esperado.
+_XErrorHandler = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+_IGNORE_X_ERRORS = _XErrorHandler(lambda _display, _event: 0)
+
+
+def _ignore_x_errors(x11):
+    x11.XSetErrorHandler.argtypes = [_XErrorHandler]
+    x11.XSetErrorHandler.restype = ctypes.c_void_p
+    return x11.XSetErrorHandler(_IGNORE_X_ERRORS)
+
+
+def _restore_x_errors(x11, previous) -> None:
+    x11.XSetErrorHandler(previous)
+
 
 def idle_seconds() -> float | None:
     """Segundos desde o ultimo mouse/teclado. None quando nao ha deteccao."""
@@ -199,19 +214,23 @@ def _linux_fullscreen() -> bool:
         if not display:
             return False
         root = x11.XDefaultRootWindow(display)
-        active = _x11_property_ulong(x11, display, root, "_NET_ACTIVE_WINDOW", 33, 1)
-        if not active:
-            return False
-        states = _x11_property_ulong(
-            x11,
-            display,
-            active[0],
-            "_NET_WM_STATE",
-            4,
-            64,
-        )
-        fullscreen_atom = x11.XInternAtom(display, b"_NET_WM_STATE_FULLSCREEN", 0)
-        return bool(states) and fullscreen_atom in states
+        previous = _ignore_x_errors(x11)
+        try:
+            active = _x11_property_ulong(x11, display, root, "_NET_ACTIVE_WINDOW", 33, 1)
+            if not active:
+                return False
+            states = _x11_property_ulong(
+                x11,
+                display,
+                active[0],
+                "_NET_WM_STATE",
+                4,
+                64,
+            )
+            fullscreen_atom = x11.XInternAtom(display, b"_NET_WM_STATE_FULLSCREEN", 0)
+            return bool(states) and fullscreen_atom in states
+        finally:
+            _restore_x_errors(x11, previous)
     except Exception:
         return False
     finally:
