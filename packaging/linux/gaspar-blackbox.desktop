@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Gaspar BlackBox
+Comment=Bloqueio de telemetria da Cara Core no arquivo hosts
+Exec=gaspar-blackbox
+Icon=gaspar
+Terminal=false
+Categories=Utility;Security;
+Keywords=telemetria;hosts;privacidade;bloqueio;
+StartupNotify=false

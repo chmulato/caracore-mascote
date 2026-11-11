@@ -1,25 +1,5 @@
-# ================================================
-# Requirements para MascoteApp - Projeto Python
-# ================================================
-
-# Manipulação de imagens (para GIF do mascote)
+# Gaspar - Mascote Cara Core (runtime)
 Pillow>=10.0.0
-
-# Automação de mouse e teclado
 pyautogui>=0.9.54
-
-# Compilação para executável
-PyInstaller>=6.0.0
-
-# ================================================
-# Observações:
-# ================================================
-# - tkinter: Incluído com Python 3.x (não precisa instalar)
-# - Pillow: Para carregar e exibir o GIF animado do mascote
-# - pyautogui: Para controlar mouse e teclado automaticamente
-# - PyInstaller: Para compilar mascote.exe e mascote_blackbox.exe
-#
-# Instalacao:
-#   pip install -r requirements.txt
-#   Se pip nao for reconhecido: python -m pip install -r requirements.txt
-#   Ou execute instalar_dependencias.bat (veja PIP_CONFIGURACAO.txt)
+psutil>=5.9.0
+pystray>=0.19.0

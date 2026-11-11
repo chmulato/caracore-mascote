@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Gaspar - Mascote Cara Core
+Comment=Mascote flutuante e simulador de presenca da Cara Core
+Exec=gaspar
+Icon=gaspar
+Terminal=false
+Categories=Utility;Accessibility;
+Keywords=mascote;presenca;teams;slack;
+StartupNotify=false

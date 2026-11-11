@@ -1,21 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec para Mascote BlackBox (bloqueio de telemetria).
-# Gera executável que solicita execução como Administrador (UAC).
-# Build: pyinstaller mascote_blackbox.spec
+# PyInstaller spec do Gaspar BlackBox (Linux, onedir).
+# Build: bash packaging/linux/build_linux.sh
 
-import sys
 from pathlib import Path
 
-script_dir = Path(sys.argv[0]).resolve().parent
+ROOT = Path(SPECPATH).resolve().parents[1]
+ASSETS = ROOT / "assets"
 
 a = Analysis(
-    [str(script_dir / "mascote_blackbox.py")],
-    pathex=[],
+    [str(ROOT / "run_blackbox.py")],
+    pathex=[str(ROOT)],
     binaries=[],
-    datas=[
-        (str(script_dir / "mascote.ico"), "."),
-    ],
-    hiddenimports=[],
+    datas=[(str(ASSETS), "assets")],
+    hiddenimports=["PIL.Image", "PIL.ImageTk"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -28,14 +25,13 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
-    name="mascote_blackbox",
+    exclude_binaries=True,
+    name="gaspar_blackbox",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
@@ -44,6 +40,14 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon="mascote.ico",
-    uac_admin=True,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name="gaspar_blackbox",
 )

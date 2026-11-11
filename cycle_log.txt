@@ -1,7 +1,0 @@
-2025-06-09 10:59:51 - EVENTO: Aplicação iniciada.
-2025-06-09 10:59:55 - EVENTO: Som ativado pelo usuário.
-2025-06-09 10:59:56 - EVENTO: Ciclo ativado pelo usuário. Intervalo: 5 segundos.
-2025-06-09 11:00:01 - Total de ciclos: 1
-2025-06-09 11:00:01 - EVENTO: Ciclo automático executado.
-2025-06-09 11:00:07 - EVENTO: Ciclo desativado pelo usuário.
-2025-06-09 11:00:08 - EVENTO: Som desativado pelo usuário.

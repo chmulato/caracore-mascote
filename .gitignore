@@ -1,97 +1,162 @@
-# ================================================
-# .gitignore para MascoteApp - Projeto Python
-# ================================================
+# ============================================================
+# Gaspar - Mascote Cara Core
+# Regras para Python, PyInstaller, Inno Setup, Debian/AppImage,
+# ambientes virtuais, editores, testes e arquivos do sistema.
+# ============================================================
 
-# Arquivos de compilação Python
+# ------------------------------------------------------------
+# Python
+# ------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-*.egg
-*.egg-info/
-dist/
+*.pyd
+.Python
 build/
-*.dist-info/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# PyInstaller
-*.manifest
-*.exe
-# Specs do projeto (mantidos no repo)
-!mascote.spec
-!mascote_blackbox.spec
-*.bat
-
-
-# Arquivos de log do mascote
-cycle_log.txt
-*.log
-
-# Ambientes virtuais Python
+# ------------------------------------------------------------
+# Ambientes virtuais e configuracoes locais
+# ------------------------------------------------------------
+.venv/
 venv/
 env/
 ENV/
-.venv/
-.env/
+.env
+.env.*
+!.env.example
 
-# IDEs e editores
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
+config.local.*
+settings.local.*
+cycle_log.txt.*
 
-# Arquivos temporários do Windows
-desktop.ini
-$RECYCLE.BIN/
-*.tmp
-*.temp
-
-# Arquivos de backup
-*.bak
-*.backup
-*.old
-*~
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pytest
+# ------------------------------------------------------------
+# Testes, cobertura e ferramentas de analise
+# ------------------------------------------------------------
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
-
-# mypy
+.tox/
+.nox/
+.hypothesis/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+.ruff_cache/
+.pyre/
 
-# Outros arquivos Python
-*.pyo
-*.pyd
-*.db
-*.sqlite3
+# ------------------------------------------------------------
+# Artefatos de build e empacotamento
+# ------------------------------------------------------------
+# PyInstaller (os arquivos .spec sao codigo-fonte e continuam versionados)
+*.manifest
 
-# Arquivos de configuração local
-config.local.*
-settings.local.*
+# Executaveis e instaladores gerados
+*.exe
+*.msi
+*.msix
+*.appx
+*.appxbundle
 
-# Arquivos sensíveis (se houver)
+# Inno Setup
+Output/
+*.iss.bak
+
+# Pacotes Debian
+*.deb
+*.ddeb
+*.changes
+*.buildinfo
+*.dsc
+
+# AppImage
+*.AppImage
+*.AppImage.zsync
+AppDir/
+squashfs-root/
+
+# ------------------------------------------------------------
+# Logs e dados de execucao
+# ------------------------------------------------------------
+*.log
+cycle_log.txt
+
+# ------------------------------------------------------------
+# Segredos e credenciais
+# ------------------------------------------------------------
 secrets/
 credentials/
 *.key
 *.pem
+*.p12
+*.pfx
+*.secret
 
-# ================================================
-# Arquivos específicos do MascoteApp
-# ================================================
+# ------------------------------------------------------------
+# Editores e IDEs
+# ------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
 
-# Manter apenas os arquivos essenciais no repositório
-# Os executáveis e builds devem ser ignorados
+# ------------------------------------------------------------
+# Sistema operacional e arquivos temporarios
+# ------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
 
-# Comentários:
-# - cycle_log.txt é gerado em runtime
-# - dist/ contém os executáveis compilados
-# - build/ contém arquivos temporários do PyInstaller
-# - *.spec é gerado automaticamente pelo PyInstaller
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# ------------------------------------------------------------
+# Notebooks e bancos locais
+# ------------------------------------------------------------
+.ipynb_checkpoints/
+*.db
+*.sqlite
+*.sqlite3
+
+# ------------------------------------------------------------
+# Artefatos de ferramentas de imagem
+# ------------------------------------------------------------
+vibe_images/
