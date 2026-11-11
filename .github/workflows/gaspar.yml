@@ -1,0 +1,304 @@
+name: Gaspar
+
+# Esteira do Gaspar (desktop): testa, empacota Windows e Linux,
+# publica os arquivos com impressão digital e prepara um rascunho de release.
+#
+# Etiquetas de release: gaspar-v1.6.0 (precisa bater com gaspar/__init__.py).
+
+on:
+  push:
+    branches: [master]
+    tags: ['gaspar-v*']
+    paths:
+      - 'gaspar/**'
+      - 'tests/**'
+      - 'packaging/**'
+      - 'assets/**'
+      - 'requirements.txt'
+      - 'requirements-dev.txt'
+      - 'run.py'
+      - 'run_blackbox.py'
+      - 'limpar_dist.py'
+      - '.github/workflows/gaspar.yml'
+  pull_request:
+    paths:
+      - 'gaspar/**'
+      - 'tests/**'
+      - 'packaging/**'
+      - 'assets/**'
+      - 'requirements.txt'
+      - 'requirements-dev.txt'
+      - 'run.py'
+      - 'run_blackbox.py'
+      - 'limpar_dist.py'
+      - '.github/workflows/gaspar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gaspar-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  test:
+    name: Testes (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Preparar Python (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3 python3-venv python3-tk \
+            xvfb libx11-6 libxext6 libxtst6 libxss1
+          python3 -m venv .venv --system-site-packages
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python -c "import tkinter, PyInstaller; print('Python pronto')"
+
+      - name: Preparar Python (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Instalar dependências (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python -c "import tkinter, PyInstaller; print('Python pronto')"
+
+      - name: Testes automáticos
+        shell: bash
+        run: |
+          if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi
+          python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Teste de fumaça com tela virtual (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          . .venv/bin/activate
+          xvfb-run -a -s "-screen 0 1280x800x24" python tests/smoke_test.py
+
+      - name: Teste de fumaça (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        timeout-minutes: 10
+        run: python tests/smoke_test.py
+
+  linux:
+    name: Pacote Linux
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Conferir etiqueta x versão
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/gaspar-v* ]]; then
+            tag="${GITHUB_REF_NAME#gaspar-v}"
+            code="$(python3 -c 'import gaspar; print(gaspar.__version__)')"
+            echo "etiqueta=$tag código=$code"
+            if [ "$tag" != "$code" ]; then
+              echo "::error::A etiqueta $GITHUB_REF_NAME não confere com gaspar/__init__.py ($code)."
+              exit 1
+            fi
+          fi
+
+      - name: Preparar Python e dependências
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3 python3-venv python3-tk dpkg-dev \
+            libx11-6 libxext6 libxtst6 libxss1
+          python3 -m venv .venv --system-site-packages
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python -c "import tkinter, PyInstaller; print('Python pronto')"
+
+      - name: Baixar appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            -o /tmp/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+          /tmp/appimagetool --version || true
+
+      - name: Empacotar .deb e AppImage
+        shell: bash
+        run: |
+          . .venv/bin/activate
+          APPIMAGETOOL=/tmp/appimagetool bash packaging/linux/build_linux.sh
+
+      - name: Gerar impressões digitais
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist/linux
+          sha256sum *.deb *.AppImage | sort -k2 > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Guardar pacotes Linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: gaspar-linux
+          path: dist/linux
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Pacote Windows
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Instalar dependências
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python -c "import tkinter, PyInstaller; print('Python pronto')"
+
+      - name: Conferir etiqueta x versão
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/gaspar-v* ]]; then
+            tag="${GITHUB_REF_NAME#gaspar-v}"
+            code="$(python -c 'import gaspar; print(gaspar.__version__)')"
+            echo "etiqueta=$tag código=$code"
+            if [ "$tag" != "$code" ]; then
+              echo "::error::A etiqueta $GITHUB_REF_NAME não confere com gaspar/__init__.py ($code)."
+              exit 1
+            fi
+          fi
+
+      - name: Garantir Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup não encontrado em $iscc"
+          }
+
+      - name: Empacotar executáveis e instalador
+        shell: bash
+        run: python packaging/windows/build_windows.py
+
+      - name: Gerar impressões digitais
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path dist/installer -Filter *.exe
+          if (-not $files) { throw "Nenhum instalador gerado em dist/installer" }
+          $lines = foreach ($f in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 -Path $f.FullName).Hash.ToLower()
+            "$hash *$($f.Name)"
+          }
+          $lines | Set-Content -Encoding ascii dist/installer/SHA256SUMS.txt
+          Get-Content dist/installer/SHA256SUMS.txt
+
+      - name: Guardar pacotes Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: gaspar-windows
+          path: dist/installer
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Rascunho de release
+    if: startsWith(github.ref, 'refs/tags/gaspar-v')
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - name: Baixar pacotes Linux
+        uses: actions/download-artifact@v4
+        with:
+          name: gaspar-linux
+          path: dist/linux
+
+      - name: Baixar pacotes Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: gaspar-windows
+          path: dist/installer
+
+      - name: Juntar impressões digitais
+        shell: bash
+        run: |
+          set -euo pipefail
+          ( cd dist/linux && sha256sum *.deb *.AppImage ) > dist/SHA256SUMS.txt
+          ( cd dist/installer && sha256sum *.exe ) >> dist/SHA256SUMS.txt
+          cat dist/SHA256SUMS.txt
+
+      - name: Preparar rascunho (você publica)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          ASSETS=(dist/installer/*.exe dist/linux/*.deb dist/linux/*.AppImage dist/SHA256SUMS.txt)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ "$(gh release view "$TAG" --json isDraft -q .isDraft)" = "true" ]; then
+              gh release upload "$TAG" "${ASSETS[@]}" --clobber
+            else
+              echo "::error::A release $TAG já está publicada. Nada foi alterado."
+              exit 1
+            fi
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --draft \
+              --generate-notes \
+              --title "Gaspar ${TAG#gaspar-v}"
+          fi

@@ -1,0 +1,260 @@
+name: App Android
+
+# Esteira do app Android: análise, testes, APK debug em toda mudança,
+# APK/AAB assinados por etiqueta e rascunho de release.
+#
+# Etiquetas de release: android-v1.1 (precisa bater com versionName no build.gradle).
+# Segredos necessários só para assinar:
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+#   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+
+on:
+  push:
+    branches: [master]
+    tags: ['android-v*']
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+    inputs:
+      assinar:
+        description: 'Gerar APK/AAB assinados (exige os segredos do keystore)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  build:
+    name: Analisar, testar e empacotar
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Preparar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar componentes do Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK" ]; then
+            echo "::error::SDK Android não encontrado no runner."
+            exit 1
+          fi
+          SDKMANAGER="$(find "$SDK/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::sdkmanager não encontrado em $SDK."
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-33" "build-tools;33.0.1" "build-tools;33.0.2"
+
+      - name: Guardar cache do Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/**/*.gradle', 'android/gradle.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Ler versão e conferir etiqueta
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" android/build.gradle | head -1)"
+          if [ -z "$VERSION" ]; then
+            echo "::error::versionName não encontrado em android/build.gradle."
+            exit 1
+          fi
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Versão do app: $VERSION"
+          if [[ "${GITHUB_REF}" == refs/tags/android-v* ]]; then
+            TAG_VERSION="${GITHUB_REF_NAME#android-v}"
+            echo "Etiqueta: $TAG_VERSION"
+            if [ "$TAG_VERSION" != "$VERSION" ]; then
+              echo "::error::A etiqueta $GITHUB_REF_NAME não confere com versionName $VERSION."
+              exit 1
+            fi
+          fi
+
+      - name: Conferir que segredo não foi versionado
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -Ei '(^|/)(keystore\.properties|.*\.(keystore|jks|apk|aab))$'; then
+            echo "::error::Arquivo sensível está versionado no repositório."
+            exit 1
+          fi
+
+      - name: Analisar e compilar debug
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace --console=plain \
+            lintDebug testDebugUnitTest assembleDebug
+          cd ..
+          mkdir -p dist/android
+          cp "$(find android/build/outputs/apk/debug -name '*.apk' | head -1)" \
+            "dist/android/pdv-sms-enviar-${APP_VERSION}-debug.apk"
+
+      - name: Gerar APK e AAB assinados
+        if: startsWith(github.ref, 'refs/tags/android-v') || inputs.assinar
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Segredo $name não configurado."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/ci-release.keystore
+          chmod 600 android/ci-release.keystore
+          {
+            printf 'storeFile=ci-release.keystore\n'
+            printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEY_ALIAS"
+            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
+          } > android/keystore.properties
+          chmod 600 android/keystore.properties
+
+          ( cd android && ./gradlew --no-daemon --stacktrace --console=plain assembleRelease bundleRelease )
+
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          APKSIGNER="$(find "$SDK/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::apksigner não encontrado."
+            exit 1
+          fi
+          APK="$(find android/build/outputs/apk/release -name '*.apk' -not -name '*unsigned*' | head -1)"
+          if [ -z "$APK" ]; then
+            echo "::error::APK de release não encontrado."
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+
+          AAB="$(find android/build/outputs/bundle/release -name '*.aab' | head -1)"
+          if [ -z "$AAB" ]; then
+            echo "::error::AAB de release não encontrado."
+            exit 1
+          fi
+          cp "$APK" "dist/android/pdv-sms-enviar-${APP_VERSION}-release.apk"
+          cp "$AAB" "dist/android/pdv-sms-enviar-${APP_VERSION}-release.aab"
+
+      - name: Remover segredos temporários
+        if: always()
+        shell: bash
+        run: rm -f android/ci-release.keystore android/keystore.properties
+
+      - name: Gerar impressões digitais
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -d dist/android ]; then
+            echo "::error::Nenhum app foi gerado."
+            exit 1
+          fi
+          cd dist/android
+          shopt -s nullglob
+          files=(*.apk *.aab)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::Nenhum APK/AAB encontrado."
+            exit 1
+          fi
+          sha256sum "${files[@]}" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Guardar app
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-app
+          path: dist/android
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Rascunho de release
+    if: startsWith(github.ref, 'refs/tags/android-v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - name: Baixar app
+        uses: actions/download-artifact@v4
+        with:
+          name: android-app
+          path: dist/android
+
+      - name: Separar arquivos de release
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p release
+          files=(dist/android/*-release.apk dist/android/*-release.aab)
+          if [ ${#files[@]} -lt 2 ]; then
+            echo "::error::APK e AAB de release ausentes no artefato."
+            exit 1
+          fi
+          cp "${files[@]}" release/
+          cd release
+          sha256sum *.apk *.aab | sort -k2 > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Preparar rascunho (você publica)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          ASSETS=(release/*.apk release/*.aab release/SHA256SUMS.txt)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ "$(gh release view "$TAG" --json isDraft -q .isDraft)" = "true" ]; then
+              gh release upload "$TAG" "${ASSETS[@]}" --clobber
+            else
+              echo "::error::A release $TAG já está publicada. Nada foi alterado."
+              exit 1
+            fi
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --draft \
+              --generate-notes \
+              --title "App Android ${TAG#android-v}"
+          fi
