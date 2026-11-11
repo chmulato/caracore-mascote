@@ -243,9 +243,10 @@ def test_gui() -> None:
         )
         app.show_panel()
         root.update_idletasks()
+        topmost = overlay.win.attributes("-topmost")
         check(
-            app._panel_visible and not bool(int(overlay.win.attributes("-topmost"))),
-            "app: mascote volta para tras do painel aberto",
+            app._panel_visible and not bool(int(topmost)),
+            f"app: mascote volta para tras do painel aberto (painel={app._panel_visible}, topo={topmost})",
         )
 
     def second_check() -> None:
