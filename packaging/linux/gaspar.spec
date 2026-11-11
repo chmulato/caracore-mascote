@@ -26,6 +26,21 @@ for module in ("pystray", "Xlib"):
     except Exception:
         pass
 
+# Lista fixa: a ponte de SMS e importada em tempo de execucao pelo Gaspar.
+hiddenimports += [
+    "gaspar.sms",
+    "gaspar.sms.bridge",
+    "gaspar.sms.client",
+    "gaspar.sms.config",
+    "gaspar.sms.crypto",
+    "gaspar.sms.discovery",
+    "gaspar.sms.network",
+    "gaspar.sms.protocol",
+    "gaspar.sms.qr",
+    "gaspar.sms.server",
+    "gaspar.sms.store",
+]
+
 a = Analysis(
     [str(ROOT / "run.py")],
     pathex=[str(ROOT)],

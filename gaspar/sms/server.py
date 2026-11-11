@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import secrets
 import threading
@@ -10,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 from .bridge import BridgeError, InvalidMessage, QueueFull, RateLimited
+from .crypto import decrypt, key_from_base64
 
 
 class SmsHttpServer:
@@ -165,6 +167,39 @@ class _Handler(BaseHTTPRequestHandler):
                         "confirmed": job.confirmed,
                     },
                 )
+            return
+
+        if path == "/api/mobile/receipt":
+            body = self._read_json()
+            if body is None:
+                self._send(400, {"ok": False, "error": "corpo invalido"})
+                return
+            blob = body.get("blob")
+            if not isinstance(blob, str) or not blob.strip():
+                self._send(400, {"ok": False, "error": "recibo ausente"})
+                return
+            try:
+                raw = base64.b64decode(blob.strip(), validate=True)
+                receipt = json.loads(
+                    decrypt(key_from_base64(self.app.config.shared_secret_b64), raw).decode("utf-8")
+                )
+            except Exception:
+                self._send(400, {"ok": False, "error": "recibo invalido"})
+                return
+            if not isinstance(receipt, dict):
+                self._send(400, {"ok": False, "error": "recibo invalido"})
+                return
+            job_id = str(receipt.get("id") or "").strip()
+            event = str(receipt.get("status") or "").strip()
+            detail = str(receipt.get("detail") or "")
+            if not job_id or event not in ("sent", "delivered", "failed"):
+                self._send(400, {"ok": False, "error": "recibo invalido"})
+                return
+            job = self.app.bridge.apply_receipt(job_id, event, detail)
+            if job is None:
+                self._send(404, {"ok": False, "error": "pedido nao encontrado"})
+            else:
+                self._send(202, {"ok": True, "status": job.status})
             return
 
         if path == "/api/mobile/diagnostic":

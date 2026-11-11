@@ -409,7 +409,7 @@ class GasparApp:
         ttk.Button(token_row, text="Copiar", command=self._on_copy_token).grid(row=0, column=1, padx=(6, 0))
         ttk.Button(token_row, text="Gerar novo", command=self._on_rotate_token).grid(row=0, column=2, padx=(6, 0))
 
-        recent = ttk.LabelFrame(outer, text="Ultimos envios", padding=8)
+        recent = ttk.LabelFrame(outer, text="Ultimos envios  |  ok entregue  + aceito pelo celular  ! falha", padding=8)
         recent.grid(row=4, column=0, sticky=tk.NSEW, pady=(10, 0))
         recent.columnconfigure(0, weight=1)
         recent.rowconfigure(0, weight=1)
@@ -479,6 +479,7 @@ class GasparApp:
                 self.log_system(f"Nao foi possivel abrir a porta {self.sms_config.http_port}: {exc}")
             else:
                 self.sms_server = server
+                self.sms_bridge.base_url = f"http://{lan_ip() or '127.0.0.1'}:{server.port}"
                 self.log_event(f"Servidor local de SMS ativo na porta {server.port}.")
         self._update_sms_api()
 
@@ -490,6 +491,7 @@ class GasparApp:
             except Exception:
                 pass
         if self.sms_bridge is not None:
+            self.sms_bridge.base_url = ""
             try:
                 self.sms_bridge.stop()
             except Exception:
@@ -691,6 +693,7 @@ class GasparApp:
         details = [
             f"fila {counts.get('fila', 0)}",
             f"enviados {counts.get('enviado', 0)}",
+            f"entregues {counts.get('entregue', 0)}",
             f"falhas {counts.get('falhou', 0)}",
         ]
         if self.sms_config.last_diagnostic_at:
@@ -707,7 +710,14 @@ class GasparApp:
             lines = []
             for job in recent:
                 when = datetime.fromtimestamp(job.updated_at).strftime("%d/%m %H:%M")
-                mark = "ok" if job.confirmed else ("!" if job.status == "falhou" else " ")
+                if job.status == "entregue":
+                    mark = "ok"
+                elif job.status == "falhou":
+                    mark = "!"
+                elif job.confirmed:
+                    mark = "+"
+                else:
+                    mark = " "
                 lines.append(f"{when} {job.status:<9}{mark} {mask_number(job.number):<16} {job.message[:40]}")
             self._set_sms_text(lines)
 

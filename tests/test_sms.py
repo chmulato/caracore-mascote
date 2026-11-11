@@ -25,7 +25,15 @@ from gaspar.sms.config import load_config
 from gaspar.sms.crypto import decrypt, encrypt, key_from_base64
 from gaspar.sms.protocol import build_command, frame, parse_discovery
 from gaspar.sms.server import SmsHttpServer
-from gaspar.sms.store import SmsJob, SmsStore, STATUS_FAILED, STATUS_QUEUED, STATUS_SENT, mask_number
+from gaspar.sms.store import (
+    SmsJob,
+    SmsStore,
+    STATUS_DELIVERED,
+    STATUS_FAILED,
+    STATUS_QUEUED,
+    STATUS_SENT,
+    mask_number,
+)
 
 
 def make_config(tmp: str):
@@ -45,7 +53,7 @@ class FakeClient:
         self._outcomes = list(outcomes)
         self._calls = calls
 
-    def send(self, number, message, msg_id="", timestamp=None):
+    def send(self, number, message, msg_id="", timestamp=None, base_url=""):
         self._calls.append((number, message, msg_id))
         outcome = self._outcomes.pop(0) if self._outcomes else SendResult(acknowledged=False)
         if isinstance(outcome, Exception):
@@ -175,6 +183,69 @@ class BridgeTests(unittest.TestCase):
                 self.assertEqual(len(calls), 1)
             finally:
                 bridge.stop()
+
+    def test_rejects_when_cell_answers_not_ok(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = make_config(tmp)
+            store = make_store(tmp)
+            calls = []
+            bridge = SmsBridge(
+                config,
+                store,
+                client_factory=factory([SendResult(True, {"ok": False, "error": "app inativo"})], calls),
+                retry_delay=0.01,
+            )
+            bridge.start()
+            try:
+                job = bridge.enqueue("5511999999999", "ola")
+                done = wait_for(store, job.id, {STATUS_FAILED})
+                self.assertEqual(done.status, STATUS_FAILED)
+                self.assertIn("app inativo", done.error)
+            finally:
+                bridge.stop()
+
+    def test_receipt_marks_delivered_and_is_final(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = make_config(tmp)
+            store = make_store(tmp)
+            bridge = SmsBridge(
+                config,
+                store,
+                client_factory=factory([SendResult(True, {"ok": True})], []),
+                retry_delay=0.01,
+            )
+            bridge.start()
+            try:
+                job = bridge.enqueue("5511999999999", "ola")
+                wait_for(store, job.id, {STATUS_SENT})
+            finally:
+                bridge.stop()
+            delivered = bridge.apply_receipt(job.id, "delivered", "entregue")
+            self.assertEqual(delivered.status, STATUS_DELIVERED)
+            self.assertTrue(delivered.confirmed)
+            self.assertGreater(delivered.delivered_at, 0)
+            bridge.apply_receipt(job.id, "sent", "aceito")
+            self.assertEqual(store.get(job.id).status, STATUS_DELIVERED)
+            bridge.apply_receipt(job.id, "failed", "falha")
+            self.assertEqual(store.get(job.id).status, STATUS_DELIVERED)
+            self.assertEqual(store.counts()[STATUS_DELIVERED], 1)
+
+    def test_receipt_failure_after_sent_marks_failed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = make_config(tmp)
+            store = make_store(tmp)
+            bridge = SmsBridge(config, store, client_factory=factory([], []))
+            job = bridge.enqueue("5511999999999", "ola")
+            bridge.apply_receipt(job.id, "sent", "aceito")
+            failed = bridge.apply_receipt(job.id, "failed", "sem credito")
+            self.assertEqual(failed.status, STATUS_FAILED)
+            self.assertIn("sem credito", failed.error)
+            self.assertIsNone(bridge.apply_receipt("nao-existe", "delivered"))
+
+    def test_command_carries_gaspar_address(self):
+        payload = json.loads(build_command("5511999999999", "oi", "id-1", 10.0, "http://192.168.0.10:8766"))
+        self.assertEqual(payload["base"], "http://192.168.0.10:8766")
+        self.assertEqual(payload["id"], "id-1")
 
     def test_retries_when_phone_is_offline(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -355,6 +426,39 @@ class ServerTests(unittest.TestCase):
         )
         self.assertEqual(code, 400)
         self.assertFalse(data["ok"])
+
+    def receipt_blob(self, payload: dict) -> str:
+        key = key_from_base64(self.config.shared_secret_b64)
+        return base64.b64encode(encrypt(key, json.dumps(payload).encode("utf-8"))).decode("ascii")
+
+    def test_receipt_marks_delivered_without_api_token(self):
+        code, data = self.request(
+            "POST",
+            "/api/sms",
+            {"number": "5511999999999", "message": "oi"},
+            token="token-de-teste",
+        )
+        self.assertEqual(code, 202)
+        job_id = data["id"]
+        wait_for(self.store, job_id, {STATUS_SENT})
+        blob = self.receipt_blob({"id": job_id, "status": "delivered", "detail": "entregue"})
+        code, data = self.request("POST", "/api/mobile/receipt", {"blob": blob})
+        self.assertEqual(code, 202)
+        self.assertEqual(data["status"], STATUS_DELIVERED)
+        job = self.store.get(job_id)
+        self.assertEqual(job.status, STATUS_DELIVERED)
+        self.assertTrue(job.confirmed)
+
+    def test_receipt_rejects_tampered_or_unknown(self):
+        blob = self.receipt_blob({"id": "x", "status": "delivered"})
+        code, _ = self.request("POST", "/api/mobile/receipt", {"blob": blob[:-8] + "AAAAAAAA"})
+        self.assertEqual(code, 400)
+        blob = self.receipt_blob({"id": "nao-existe", "status": "delivered"})
+        code, _ = self.request("POST", "/api/mobile/receipt", {"blob": blob})
+        self.assertEqual(code, 404)
+        blob = self.receipt_blob({"id": "x", "status": "qualquer"})
+        code, _ = self.request("POST", "/api/mobile/receipt", {"blob": blob})
+        self.assertEqual(code, 400)
 
     def test_diagnostic_token_is_single_use(self):
         token = self.config.new_setup_token()

@@ -358,9 +358,11 @@ O app lê o QR, aplica IP, porta, chave e licença, testa permissões de SMS e o
 - Porta 49998 no celular.
 - Cada mensagem é um quadro: 4 bytes de tamanho em big-endian, seguidos do texto cifrado.
 - O texto cifrado é `IV de 12 bytes + AESGCM(...)`, com tag de 128 bits.
-- O conteúdo é o JSON `{"action":"send_sms","number":"...","message":"...","id":"...","ts":...}` em UTF-8.
+- O conteúdo é o JSON `{"action":"send_sms","number":"...","message":"...","id":"...","ts":...,"base":"http://ip:8766"}` em UTF-8. O campo `base` atualiza no celular o endereço do Gaspar para devolver o comprovante.
 - A chave é derivada do segredo do QR: decodifica o base64; se o resultado tiver menos de 32 bytes, aplica SHA-256; usa os primeiros 32 bytes. A mesma regra está em `gaspar/sms/crypto.py` e no `GatewayCrypto` do app Android.
-- Depois de enviar, o Gaspar espera um recibo do celular por até alguns segundos. Recibo ausente não invalida o envio: o pedido fica como `enviado` sem confirmação (`confirmed: false`).
+- O celular responde na mesma conexão um quadro cifrado com `{"ok":true,"id":"...","status":"aceito"}` ou `{"ok":false,"error":"..."}`. O Gaspar espera essa resposta por até 0,8 s; ausência não invalida o envio.
+- O resultado final chega depois por `POST /api/mobile/receipt`, com o corpo JSON `{"id","status","detail","ts"}` cifrado em AES-GCM e codificado em base64. `status` é `sent`, `delivered` ou `failed`; a autenticação é a própria chave do pareamento, não o token da API.
+- Estados do pedido: `fila`, `enviando`, `enviado` (chip aceitou ou pedido entregue ao celular), `entregue` (operadora confirmou) e `falhou`. O comprovante é idempotente e nunca rebaixa um pedido `entregue`.
 
 ### API para o PDV
 
@@ -373,8 +375,11 @@ Escuta em `0.0.0.0:<porta_http>` (padrão 8766). Autenticação por `X-Api-Token
 | `GET /api/sms` | Últimos 20 pedidos. |
 | `GET /api/sms/<id>` | Um pedido pelo identificador. |
 | `POST /api/mobile/diagnostic` | Recebe o diagnóstico do celular no pareamento (token de setup, não o token da API). |
+| `POST /api/mobile/receipt` | Recebe o comprovante do celular (blob AES-GCM com a chave do pareamento). |
 
 Códigos de `POST /api/sms`: `202` aceito, `400` número/mensagem inválidos ou corpo malformado, `401` token ausente ou errado, `429` limite por minuto ou por dia, `507` fila cheia.
+
+Códigos de `POST /api/mobile/receipt`: `202` comprovante aplicado, `400` blob ausente, adulterado ou com estado inválido, `404` pedido desconhecido.
 
 Exemplo de chamada do PDV:
 
@@ -406,7 +411,7 @@ O PDV deve tratar `sem resposta`, `401`, `429` e `507` como "não enviado" e ten
 | Arquivo | Conteúdo |
 | --- | --- |
 | `sms_config.json` | Estado, porta, token da API, chave compartilhada, celular pareado e limites. |
-| `sms_state.json` | Até 500 pedidos, com status e recibo. |
+| `sms_state.json` | Até 500 pedidos, com status, horários de envio/entrega e motivo de falha. |
 | `sms_log.jsonl` | Trilha de uma linha por mudança de status, com o número mascarado. |
 
 Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HOME`. O guia do usuário e o passo a passo do celular estão em [docs/sms.md](sms.md).
@@ -418,7 +423,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 python tests/smoke_test.py
 ```
 
-Os 20 testes unitários de `tests/test_sms.py` usam apenas biblioteca padrão (mais `cryptography`) e não abrem porta fixa nem acessam a internet. Eles cobrem:
+Os 26 testes unitários de `tests/test_sms.py` usam apenas biblioteca padrão (mais `cryptography`) e não abrem porta fixa nem acessam a internet. Eles cobrem:
 
 - Configuração, geração e persistência dos segredos, token de setup de uso único e validade de 15 minutos.
 - Derivação de chave quando o segredo tem menos de 32 bytes.
@@ -428,6 +433,7 @@ Os 20 testes unitários de `tests/test_sms.py` usam apenas biblioteca padrão (m
 - Persistência, deduplicação por `venda_id` e restauração da fila.
 - Envio com sucesso, repetição com celular offline, falha definitiva, limite por minuto e fila cheia.
 - API local: saúde, autenticação, aceite, consulta por id, pedido inexistente e diagnóstico de uso único.
+- Comprovante: aceite e falha pelo celular, transição `enviado` → `entregue`, comprovante adulterado, pedido desconhecido e recusa sem token da API.
 
 O teste de fumaça usa uma pasta temporária via `GASPAR_HOME`, não altera o `hosts` real e cobre:
 

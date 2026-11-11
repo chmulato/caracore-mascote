@@ -40,8 +40,15 @@ class PhoneClient:
         self.timeout = timeout
         self.ack_timeout = ack_timeout
 
-    def send(self, number: str, message: str, msg_id: str = "", timestamp: float | None = None) -> SendResult:
-        payload = build_command(number, message, msg_id, timestamp)
+    def send(
+        self,
+        number: str,
+        message: str,
+        msg_id: str = "",
+        timestamp: float | None = None,
+        base_url: str = "",
+    ) -> SendResult:
+        payload = build_command(number, message, msg_id, timestamp, base_url)
         blob = encrypt(self.key, payload)
         try:
             with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:

@@ -13,7 +13,16 @@ from .client import PhoneClient, PhoneOffline, SendResult
 from .config import SmsConfig
 from .crypto import key_from_base64
 from .discovery import discover
-from .store import SmsJob, SmsStore, STATUS_FAILED, STATUS_QUEUED, STATUS_SENDING, STATUS_SENT, mask_number
+from .store import (
+    SmsJob,
+    SmsStore,
+    STATUS_DELIVERED,
+    STATUS_FAILED,
+    STATUS_QUEUED,
+    STATUS_SENDING,
+    STATUS_SENT,
+    mask_number,
+)
 
 
 class BridgeError(Exception):
@@ -88,6 +97,7 @@ class SmsBridge:
         self._day_count = 0
         self._online = False
         self._last_seen = 0.0
+        self.base_url = ""
         self._restore_pending()
 
     def _restore_pending(self) -> None:
@@ -220,10 +230,27 @@ class SmsBridge:
             host, port = self._target()
             key = key_from_base64(self.config.shared_secret_b64)
             client = self._client_factory(host, port, key)
-            result = client.send(job.number, job.message, job.id, job.created_at)
+            result = client.send(job.number, job.message, job.id, job.created_at, base_url=self.base_url)
             if not isinstance(result, SendResult):
                 result = SendResult(acknowledged=bool(result))
-            self.store.update(job.id, status=STATUS_SENT, confirmed=result.acknowledged, error="")
+            ack = result.ack if isinstance(result.ack, dict) else None
+            if ack is not None and ack.get("ok") is False:
+                reason = str(ack.get("error") or "celular recusou o pedido")[:200]
+                self.store.update(job.id, status=STATUS_FAILED, confirmed=False, error=reason)
+                self._mark_online()
+                self._log(f"Celular recusou o SMS para {mask_number(job.number)}: {reason}.")
+                return
+            current = self.store.get(job.id)
+            if current is not None and current.status in (STATUS_DELIVERED, STATUS_FAILED):
+                self._mark_online()
+                return
+            self.store.update(
+                job.id,
+                status=STATUS_SENT,
+                confirmed=result.acknowledged,
+                sent_at=time.time(),
+                error="",
+            )
             self._mark_online()
             suffix = "com confirmacao" if result.acknowledged else "sem confirmacao do celular"
             self._log(f"SMS para {mask_number(job.number)} entregue ao celular ({suffix}).")
@@ -241,3 +268,50 @@ class SmsBridge:
         except Exception as exc:
             self.store.update(job.id, status=STATUS_FAILED, error=str(exc))
             self._log(f"Falha ao enviar para {mask_number(job.number)}: {exc}.")
+
+    def apply_receipt(self, job_id: str, event: str, detail: str = "") -> SmsJob | None:
+        """Atualiza o pedido com o comprovante vindo do celular."""
+        if event not in ("sent", "delivered", "failed"):
+            return None
+        job = self.store.get(job_id)
+        if job is None:
+            return None
+        detail = str(detail or "").strip()[:200]
+        now = time.time()
+        if event == "delivered":
+            if job.status == STATUS_FAILED:
+                return job
+            job = self.store.update(
+                job_id,
+                status=STATUS_DELIVERED,
+                delivered_at=now,
+                confirmed=True,
+                receipt_detail=detail,
+            )
+            self._log(f"Operadora confirmou a entrega para {mask_number(job.number)}.")
+            return job
+        if event == "sent":
+            if job.status in (STATUS_DELIVERED, STATUS_FAILED):
+                return job
+            job = self.store.update(
+                job_id,
+                status=STATUS_SENT,
+                confirmed=True,
+                sent_at=job.sent_at or now,
+                receipt_detail=detail,
+            )
+            self._log(f"Celular aceitou o SMS para {mask_number(job.number)}.")
+            return job
+        if job.status == STATUS_DELIVERED:
+            return job
+        job = self.store.update(
+            job_id,
+            status=STATUS_FAILED,
+            confirmed=False,
+            receipt_detail=detail,
+            error=detail or "celular nao conseguiu enviar",
+        )
+        self._log(
+            f"Celular nao conseguiu enviar para {mask_number(job.number)}: {detail or 'sem detalhe'}."
+        )
+        return job

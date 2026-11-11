@@ -3,7 +3,7 @@ name: Gaspar
 # Esteira do Gaspar (desktop): testa, empacota Windows e Linux,
 # publica os arquivos com impressão digital e prepara um rascunho de release.
 #
-# Etiquetas de release: gaspar-v1.6.0 (precisa bater com gaspar/__init__.py).
+# Etiquetas de release: gaspar-v1.7.0 (precisa bater com gaspar/__init__.py).
 
 on:
   push:

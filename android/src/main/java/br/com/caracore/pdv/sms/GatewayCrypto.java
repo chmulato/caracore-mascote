@@ -4,7 +4,7 @@ import android.util.Base64;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
-import java.util.Arrays;
+import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
@@ -56,5 +56,18 @@ public final class GatewayCrypto {
         Cipher c = Cipher.getInstance(ALG);
         c.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(GCM_TAG, iv));
         return c.doFinal(cipher);
+    }
+
+    /** Devolve IV (12 bytes) + texto cifrado + etiqueta GCM, igual ao Gaspar. */
+    public byte[] encrypt(byte[] plaintext) throws Exception {
+        byte[] iv = new byte[IV_LEN];
+        new SecureRandom().nextBytes(iv);
+        Cipher c = Cipher.getInstance(ALG);
+        c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(GCM_TAG, iv));
+        byte[] cipher = c.doFinal(plaintext);
+        ByteBuffer out = ByteBuffer.allocate(iv.length + cipher.length);
+        out.put(iv);
+        out.put(cipher);
+        return out.array();
     }
 }

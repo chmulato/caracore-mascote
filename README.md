@@ -99,20 +99,23 @@ O aplicativo também inclui o **Gaspar BlackBox**, uma ferramenta opcional para 
 O Gaspar também pode servir de ponte entre o PDV e um celular Android: o PDV
 pede o SMS, o Gaspar entrega o pedido pela rede Wi-Fi e o celular envia pelo
 chip. Na janela **Celular / SMS** você pareia o aparelho pelo QR, procura o
-celular na rede, faz um envio de teste e acompanha os últimos resultados.
+celular na rede, faz um envio de teste e acompanha os últimos resultados, com a
+marca de **enviado** (o chip aceitou) e **entregue** (a operadora confirmou).
 
 Para usar, você precisa de três coisas:
 
 1. **O Gaspar instalado** no computador (passos acima).
-2. **O aplicativo do celular instalado** (APK compilado a partir da pasta
-   `android/`; o guia de instalação mostra como obter).
+2. **O aplicativo do celular instalado** (APK 1.2 compilado a partir da pasta
+   `android/`; o guia de instalação mostra como obter). No primeiro uso, toque
+   em **Liberar o app da economia de bateria**.
 3. **Celular e computador na mesma Wi-Fi**, com o Gaspar aberto.
 
 Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
 **Parear celular** e leia o QR com o aplicativo do celular.
 
-> Este recurso está no código-fonte. Os instaladores 1.6.0 publicados ainda não
-> o incluem; é preciso recompilar para receber a ponte.
+> Este recurso está incluído no Gaspar **1.7.0** e no aplicativo Android **1.2**.
+> Instaladores 1.6.0 publicados antes disso não têm a ponte; atualize os dois
+> lados.
 
 O passo a passo completo dos dois lados, com a lista de arquivos de instalação,
 está em [docs/instalacao.md](docs/instalacao.md). O uso no dia a dia e os

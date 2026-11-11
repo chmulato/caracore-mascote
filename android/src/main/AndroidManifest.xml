@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="27" />
 
     <application
@@ -52,6 +54,23 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="br.com.caracore.pdv.sms.BACKUP_UPDATE" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".SmsStatusReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="br.com.caracore.pdv.sms.SMS_SENT" />
+                <action android:name="br.com.caracore.pdv.sms.SMS_DELIVERED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 

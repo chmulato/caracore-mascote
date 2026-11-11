@@ -82,6 +82,10 @@ public class ConfigActivity extends Activity {
             if (btnSetupQr != null) {
                 btnSetupQr.setOnClickListener(v -> startActivity(new Intent(ConfigActivity.this, ScanSetupActivity.class)));
             }
+            Button btnBateria = findViewById(R.id.btnBateria);
+            if (btnBateria != null) {
+                btnBateria.setOnClickListener(v -> pedirBateriaLivre());
+            }
 
             TextView textVersao = findViewById(R.id.textVersao);
             try {
@@ -121,9 +125,14 @@ public class ConfigActivity extends Activity {
 
     private void solicitarPermissoesSms() {
         if (Build.VERSION.SDK_INT < 23) return;
-        if (checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED
+        if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED
+                || checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED
                 || checkSelfPermission(Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS}, REQ_SMS);
+            requestPermissions(new String[]{
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.READ_SMS
+            }, REQ_SMS);
         }
     }
 
@@ -155,6 +164,21 @@ public class ConfigActivity extends Activity {
             textStatusBackupCard.setText(R.string.config_backup_status_erro);
         }
         textDataHoraBackupCard.setText(getString(R.string.config_backup_data_hora, timestamp));
+    }
+
+    private void pedirBateriaLivre() {
+        if (Build.VERSION.SDK_INT < 23 || SetupDiagnosticHelper.checkBatteryOptimizationIgnored(this)) {
+            Toast.makeText(this, R.string.config_bateria_ja, Toast.LENGTH_LONG).show();
+            return;
+        }
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    android.net.Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+            Toast.makeText(this, R.string.config_bateria_pedido, Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+        }
     }
 
     private void verificarConexaoUsb() {

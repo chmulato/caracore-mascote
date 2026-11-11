@@ -20,12 +20,20 @@ def frame(payload: bytes) -> bytes:
     return struct.pack(">I", len(payload)) + payload
 
 
-def build_command(number: str, message: str, msg_id: str = "", timestamp: float | None = None) -> bytes:
+def build_command(
+    number: str,
+    message: str,
+    msg_id: str = "",
+    timestamp: float | None = None,
+    base_url: str = "",
+) -> bytes:
     data = {"action": "send_sms", "number": number, "message": message}
     if msg_id:
         data["id"] = msg_id
     if timestamp is not None:
         data["ts"] = int(timestamp)
+    if base_url:
+        data["base"] = base_url
     return json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 

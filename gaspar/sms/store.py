@@ -14,6 +14,7 @@ from pathlib import Path
 STATUS_QUEUED = "fila"
 STATUS_SENDING = "enviando"
 STATUS_SENT = "enviado"
+STATUS_DELIVERED = "entregue"
 STATUS_FAILED = "falhou"
 
 LOG_MAX_BYTES = 1_000_000
@@ -38,6 +39,9 @@ class SmsJob:
     error: str = ""
     venda_id: str = ""
     confirmed: bool = False
+    sent_at: float = 0.0
+    delivered_at: float = 0.0
+    receipt_detail: str = ""
 
     @classmethod
     def create(cls, number: str, message: str, venda_id: str = "") -> "SmsJob":
@@ -157,7 +161,13 @@ class SmsStore:
 
     def counts(self) -> dict:
         with self._lock:
-            result = {STATUS_QUEUED: 0, STATUS_SENDING: 0, STATUS_SENT: 0, STATUS_FAILED: 0}
+            result = {
+                STATUS_QUEUED: 0,
+                STATUS_SENDING: 0,
+                STATUS_SENT: 0,
+                STATUS_DELIVERED: 0,
+                STATUS_FAILED: 0,
+            }
             for job in self._jobs.values():
                 if job.status in result:
                     result[job.status] += 1

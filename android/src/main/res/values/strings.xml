@@ -19,6 +19,9 @@
     <string name="config_switch_summary">Ligue para o PDV poder enviar; desligue para pausar.</string>
     <string name="config_app_ativo_toast_ativado">Ativado. O PDV já pode enviar mensagens.</string>
     <string name="config_app_ativo_toast_desativado">Pausado. O PDV não enviará mensagens por este celular.</string>
+    <string name="config_btn_bateria">Liberar o app da economia de bateria</string>
+    <string name="config_bateria_ja">A bateria já está liberada para este app.</string>
+    <string name="config_bateria_pedido">Confirme a liberação na tela do sistema para o app não ser encerrado.</string>
 
     <!-- Ajuda (para leigos) -->
     <string name="config_ajuda_titulo">Precisa de ajuda?</string>

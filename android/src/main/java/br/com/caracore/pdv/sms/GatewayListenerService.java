@@ -14,8 +14,11 @@ import android.util.JsonReader;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import org.json.JSONObject;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
@@ -25,6 +28,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Enumeration;
 
 /**
@@ -146,7 +150,7 @@ public class GatewayListenerService extends Service {
             if (read != len) return;
             byte[] plain = crypto.decrypt(encrypted);
             String json = new String(plain, StandardCharsets.UTF_8);
-            dispatchCommand(json);
+            writeAck(client, crypto, dispatchCommand(json));
         } catch (Exception e) {
             PdvSmsLogger.i("GatewayListener", "handleClient: " + e.getMessage());
         } finally {
@@ -164,33 +168,106 @@ public class GatewayListenerService extends Service {
         return total;
     }
 
-    private void dispatchCommand(String json) {
+    private JSONObject dispatchCommand(String json) {
+        JSONObject ack = new JSONObject();
         try {
+            ack.put("ok", false);
             JsonReader reader = new JsonReader(new InputStreamReader(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
             reader.beginObject();
             String action = null;
             String number = null;
             String message = null;
+            String id = null;
+            String base = null;
             while (reader.hasNext()) {
                 String name = reader.nextName();
                 if ("action".equals(name)) action = reader.nextString();
                 else if ("number".equals(name)) number = reader.nextString();
                 else if ("message".equals(name)) message = reader.nextString();
+                else if ("id".equals(name)) id = reader.nextString();
+                else if ("base".equals(name)) base = reader.nextString();
                 else reader.skipValue();
             }
             reader.endObject();
             reader.close();
-
-            if ("send_sms".equals(action) && number != null && !number.trim().isEmpty() && message != null) {
-                SmsPreferences prefs = new SmsPreferences(this);
-                if (!prefs.isAtivo()) return;
-                number = number.trim().replaceAll("[^+0-9]", "");
-                if (number.isEmpty()) return;
-                SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
-                PdvSmsLogger.i("GatewayListener", "SMS enviado para " + number);
+            if (id != null && !id.isEmpty()) {
+                ack.put("id", id);
             }
+            if (!"send_sms".equals(action)) {
+                ack.put("error", "acao desconhecida");
+                return ack;
+            }
+            SmsPreferences prefs = new SmsPreferences(this);
+            if (base != null && !base.isEmpty()) {
+                prefs.setPdvBaseUrl(base);
+            }
+            if (!prefs.isAtivo()) {
+                ack.put("error", "app inativo");
+                return ack;
+            }
+            if (number == null || number.trim().isEmpty() || message == null) {
+                ack.put("error", "pedido incompleto");
+                return ack;
+            }
+            number = number.trim().replaceAll("[^+0-9]", "");
+            if (number.isEmpty()) {
+                ack.put("error", "numero invalido");
+                return ack;
+            }
+            if (!SetupDiagnosticHelper.checkSmsPermissions(this)) {
+                ack.put("error", "permissao de SMS negada");
+                return ack;
+            }
+
+            SmsManager sms = SmsManager.getDefault();
+            ArrayList<String> parts = sms.divideMessage(message);
+            String jobId = id == null ? "" : id;
+            ArrayList<PendingIntent> sentIntents = new ArrayList<>();
+            ArrayList<PendingIntent> deliveredIntents = new ArrayList<>();
+            for (int i = 0; i < parts.size(); i++) {
+                sentIntents.add(statusPending(SmsStatusReceiver.ACTION_SENT, jobId, i, true));
+                deliveredIntents.add(statusPending(SmsStatusReceiver.ACTION_DELIVERED, jobId, i, false));
+            }
+            if (parts.size() == 1) {
+                sms.sendTextMessage(number, null, parts.get(0), sentIntents.get(0), deliveredIntents.get(0));
+            } else {
+                sms.sendMultipartTextMessage(number, null, parts, sentIntents, deliveredIntents);
+            }
+            ack.put("ok", true);
+            ack.put("status", "aceito");
+            PdvSmsLogger.i("GatewayListener", "Pedido entregue ao radio do celular.");
         } catch (Exception e) {
+            try {
+                ack.put("ok", false);
+                ack.put("error", "falha ao processar o pedido");
+            } catch (Exception ignored) {
+            }
             PdvSmsLogger.i("GatewayListener", "dispatchCommand: " + e.getMessage());
+        }
+        return ack;
+    }
+
+    private PendingIntent statusPending(String action, String id, int part, boolean sent) {
+        Intent intent = new Intent(this, SmsStatusReceiver.class);
+        intent.setAction(action);
+        intent.putExtra(SmsStatusReceiver.EXTRA_ID, id);
+        int request = (id.hashCode() * 31 + part) * 2 + (sent ? 0 : 1);
+        return PendingIntent.getBroadcast(
+                this,
+                request,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private void writeAck(Socket client, GatewayCrypto crypto, JSONObject ack) {
+        try {
+            byte[] blob = crypto.encrypt(ack.toString().getBytes(StandardCharsets.UTF_8));
+            OutputStream out = client.getOutputStream();
+            out.write(ByteBuffer.allocate(4).putInt(blob.length).array());
+            out.write(blob);
+            out.flush();
+        } catch (Exception e) {
+            PdvSmsLogger.i("GatewayListener", "ack: " + e.getMessage());
         }
     }
 

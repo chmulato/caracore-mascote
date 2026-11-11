@@ -3,7 +3,7 @@ name: App Android
 # Esteira do app Android: análise, testes, APK debug em toda mudança,
 # APK/AAB assinados por etiqueta e rascunho de release.
 #
-# Etiquetas de release: android-v1.1 (precisa bater com versionName no build.gradle).
+# Etiquetas de release: android-v1.2 (precisa bater com versionName no build.gradle).
 # Segredos necessários só para assinar:
 #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
 #   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD

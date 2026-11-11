@@ -4,8 +4,9 @@ Este guia leva você do zero até o primeiro SMS de teste. Ele foi escrito para
 quem instala o sistema na loja, sem detalhes de programação. Os detalhes
 técnicos ficam em [tecnico.md](tecnico.md).
 
-> **Antes de tudo:** a ponte de SMS está no código-fonte. Os instaladores 1.6.0
-> já publicados **não** a incluem. Para usar o SMS hoje, você tem dois caminhos:
+> **Antes de tudo:** a ponte de SMS está no código-fonte e entra nos
+> instaladores a partir do Gaspar 1.7.0. Os instaladores 1.6.0 já publicados
+> **não** a incluem. Para usar o SMS hoje, você tem dois caminhos:
 >
 > 1. **Rodar o Gaspar a partir do código**, que já tem a ponte
 >    ([guia técnico](tecnico.md#rodar-a-partir-do-código)); ou
