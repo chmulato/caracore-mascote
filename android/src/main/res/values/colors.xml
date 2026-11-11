@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Marca CaraCore PDV (alinhado ao portal) -->
+    <color name="brand_primary">#059669</color>
+    <color name="brand_primary_dark">#047857</color>
+    <color name="brand_header_text">#FFFFFF</color>
+    <color name="brand_header_subtitle">#D1FAE5</color>
+    <!-- Painel -->
+    <color name="panel_card_background">#FAFAFA</color>
+    <color name="panel_divider">#E0E0E0</color>
+    <!-- Status da licença -->
+    <color name="licenca_inativa">#C62828</color>
+    <color name="licenca_ativa">#2E7D32</color>
+</resources>

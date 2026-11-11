@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CaraCore PDV - Envio SMS</string>
+
+    <!-- Marca (header) -->
+    <string name="config_marca_titulo">CaraCore PDV</string>
+    <string name="config_marca_subtitulo">Envio SMS</string>
+    <string name="config_marca_slogan">Painel de controle</string>
+
+    <!-- O que este app faz -->
+    <string name="config_secao_o_que_faz">O que este app faz?</string>
+    <string name="config_o_que_faz_desc">Este aplicativo faz parte do sistema que mantém seu caixa em funcionamento quando a internet cai. O PDV CaraCore envia mensagens por este celular quando precisar. Mantenha o app instalado e com o interruptor ligado.</string>
+
+    <!-- Controle -->
+    <string name="config_secao_controle">Controle</string>
+    <string name="config_status_ativo">Ativo — O PDV pode enviar mensagens por este celular.</string>
+    <string name="config_status_inativo">Pausado — Nenhuma mensagem será enviada.</string>
+    <string name="config_switch_label">Permitir envio de SMS</string>
+    <string name="config_switch_summary">Ligue para o PDV poder enviar; desligue para pausar.</string>
+    <string name="config_app_ativo_toast_ativado">Ativado. O PDV já pode enviar mensagens.</string>
+    <string name="config_app_ativo_toast_desativado">Pausado. O PDV não enviará mensagens por este celular.</string>
+
+    <!-- Ajuda (para leigos) -->
+    <string name="config_ajuda_titulo">Precisa de ajuda?</string>
+    <string name="config_ajuda_desc">Mantenha o interruptor ligado e aceite a permissão de enviar SMS quando o celular pedir. O resto é automático. Este app é um complemento do PDV CaraCore.</string>
+    <string name="config_versao">Versão %1$s</string>
+
+    <!-- Licença Premium -->
+    <string name="config_secao_licenca">Status da licença</string>
+    <string name="config_licenca_inativa">Licença Gratuita / Inativa</string>
+    <string name="config_licenca_ativa">Licença Premium Ativa</string>
+
+    <!-- Backup do banco de dados -->
+    <string name="config_secao_backup">Backup do banco de dados</string>
+    <string name="config_backup_status_ok">Status: OK</string>
+    <string name="config_backup_status_erro">Status: Erro</string>
+    <string name="config_backup_status_nenhum">Nenhum backup recebido via USB</string>
+    <string name="config_backup_data_hora">Data/hora: %1$s</string>
+    <string name="config_backup_data_hora_nd">Data/hora: —</string>
+    <string name="config_btn_verificar_usb">Verificar Conexão USB</string>
+    <string name="config_usb_ativa">Depuração USB: ativa. Conexão com o PDV operacional.</string>
+    <string name="config_usb_inativa">Depuração USB: inativa. Ative em Opções do desenvolvedor.</string>
+    <string name="config_sms_permission_negada">Permissões de SMS são necessárias para receber a chave de licença.</string>
+
+    <!-- Gateway Wi‑Fi (PDV ↔ APK) -->
+    <string name="config_secao_gateway">Gateway Wi‑Fi (PDV na mesma rede)</string>
+    <string name="config_gateway_hint">Chave compartilhada (Base64) — mesma do PDV</string>
+    <string name="config_gateway_btn">Salvar e iniciar gateway</string>
+    <string name="config_setup_qr_btn">Configurar com QR Code (Premium+)</string>
+    <!-- Setup por QR -->
+    <string name="setup_scan_prompt">Aponte para o QR Code na tela do PDV</string>
+    <string name="setup_scan_cancelled">Leitura cancelada.</string>
+    <string name="setup_scan_invalid">QR Code inválido. Use o QR da tela de setup do PDV.</string>
+    <string name="setup_success">Configurado. PDV foi notificado.</string>
+    <string name="setup_report_error">Configuração salva, mas o PC não recebeu o diagnóstico: %1$s</string>
+</resources>

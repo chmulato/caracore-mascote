@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!--
+        O app é instalado direto no celular do PDV por cabo/ADB, não é publicado na
+        Play Store. A exigência de targetSdk 31+ vale apenas para a loja.
+        O aviso continua no relatório; se houver publicação na Play Store, o
+        targetSdk precisa subir e o app ser homologado em aparelho real.
+    -->
+    <issue id="ExpiredTargetSdkVersion" severity="warning" />
+</lint>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>br.com.caracore.pdv</groupId>
+  <artifactId>pdv-sms-enviar</artifactId>
+  <version>1.0</version>
+  <packaging>apk</packaging>
+  <name>PDV Enviar SMS</name>
+  <description>App Android para enviar SMS via ADB. Build com Maven (android-maven-plugin).</description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- 1.8: dx (build-tools 27) nao suporta bytecode Java 11 (version 55). -->
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <!-- Platform 27: aapt do build-tools 27.0.3 so processa android.jar da platform 27. -->
+    <android.platform>27</android.platform>
+    <!-- android.sdk.path: OBRIGATORIO via -Dandroid.sdk.path (build.bat repassa). O systemPath nao interpola ${env.X}. -->
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>google</id>
+      <url>https://maven.google.com</url>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <!-- Android API: android.jar do SDK. ANDROID_HOME e platforms/android-${android.platform} obrigatorios. -->
+    <dependency>
+      <groupId>com.google.android</groupId>
+      <artifactId>android</artifactId>
+      <version>${android.platform}</version>
+      <scope>system</scope>
+      <systemPath>${android.sdk.path}/platforms/android-${android.platform}/android.jar</systemPath>
+    </dependency>
+    <!-- Sem androidx: usamos Activity.checkSelfPermission/requestPermissions (API 23+, minSdk 24). -->
+  </dependencies>
+
+  <build>
+    <sourceDirectory>src/main/java</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>com.simpligility.maven.plugins</groupId>
+        <artifactId>android-maven-plugin</artifactId>
+        <version>4.4.1</version>
+        <extensions>true</extensions>
+        <configuration>
+          <sdk>
+            <platform>${android.platform}</platform>
+            <!-- 4.4.1 usa dx; dx.jar so existe em build-tools 27.x (28+ removeu). -->
+            <buildTools>27.0.3</buildTools>
+          </sdk>
+          <!-- android.jar da platform 27 pode ter stubs java.awt; dx rejeita. dexCoreLibrary=true equivale a core-library no dx. -->
+          <dexCoreLibrary>true</dexCoreLibrary>
+          <sign>
+            <debug>true</debug>
+          </sign>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

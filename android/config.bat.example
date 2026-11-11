@@ -1,0 +1,4 @@
+@echo off
+REM Modelo: copie para config.bat se for apagar o existente ou usar em outra maquina.
+REM AGP 7.4.2 requer JDK 11+. Edite JAVA_HOME para o caminho do JDK 11 ou 17.
+set "JAVA_HOME=C:\Program Files\Java\jdk-11"
