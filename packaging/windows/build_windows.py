@@ -46,6 +46,10 @@ def find_iscc() -> Path | None:
         Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Inno Setup 6" / "ISCC.exe",
         Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Inno Setup 5" / "ISCC.exe",
     ]
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if local_appdata:
+        # O winget instala o Inno Setup por usuario em %LOCALAPPDATA%\Programs.
+        candidates.insert(0, Path(local_appdata) / "Programs" / "Inno Setup 6" / "ISCC.exe")
     return next((candidate for candidate in candidates if candidate.is_file()), None)
 
 
