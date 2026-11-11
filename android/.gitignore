@@ -1,0 +1,38 @@
+# ============================================================================
+# GASPAR - APP ANDROID - .GITIGNORE
+# Stack: Java 8 | minSdk 24 / targetSdk 27 / compileSdk 33
+#        Gradle 7.5 | AGP 7.4.2
+# Atualizado: 2026-11-11
+# ============================================================================
+
+# ============================================================================
+# BUILD E CACHES (Gradle/AGP)
+# ============================================================================
+build/
+.gradle/
+.cxx/
+.externalNativeBuild/
+captures/
+*.hprof
+
+# Saidas de compilacao (o APK de debug e o assinado sao gerados, nao fonte)
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# ============================================================================
+# ASSINATURA E CREDENCIAIS - NUNCA VERSIONAR
+# ============================================================================
+# O modelo versionado e keystore.properties.example (sem senhas).
+keystore.properties
+*.keystore
+*.jks
+local.properties
+
+# ============================================================================
+# LOGS E ESTADO DAS FERRAMENTAS DE APOIO
+# ============================================================================
+*.log
+pdv_adb_*.txt

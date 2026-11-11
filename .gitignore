@@ -1,53 +1,56 @@
-# ============================================================
-# Gaspar - Mascote Cara Core
-# Regras para Python, PyInstaller, Inno Setup, Debian/AppImage,
-# ambientes virtuais, editores, testes e arquivos do sistema.
-# ============================================================
+# ============================================================================
+# GASPAR - MASCOTE CARA CORE - .GITIGNORE
+# Stack: Python 3.10+ (Tkinter/Pillow) | PyInstaller | Inno Setup
+#        Debian/AppImage | Android (Gradle 7.5 / AGP 7.4.2)
+# Atualizado: 2026-11-11
+# ============================================================================
+# Regras por ferramenta. O detalhamento do app Android fica em
+# android/.gitignore; as regras de segredo e artefato repetidas aqui são
+# rede de segurança para quem roda os scripts a partir da raiz.
 
-# ------------------------------------------------------------
-# Python
-# ------------------------------------------------------------
+# ============================================================================
+# SEGREDOS E CREDENCIAIS - NUNCA VERSIONAR
+# ============================================================================
+# O diretório inteiro é bloqueado (não apenas por sufixo), para que arquivos
+# com nomes inesperados dentro dele também fiquem fora do repositório.
+secrets/
+credentials/
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.*
+!.env.example
+
+# ============================================================================
+# PYTHON
+# ============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 *.pyd
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+.eggs/
 
-# ------------------------------------------------------------
-# Ambientes virtuais e configuracoes locais
-# ------------------------------------------------------------
+# ============================================================================
+# AMBIENTES VIRTUAIS E CONFIGURACAO LOCAL
+# ============================================================================
 .venv/
 venv/
 env/
 ENV/
-.env
-.env.*
-!.env.example
-
 config.local.*
 settings.local.*
-cycle_log.txt.*
 
-# ------------------------------------------------------------
-# Testes, cobertura e ferramentas de analise
-# ------------------------------------------------------------
+# ============================================================================
+# TESTES, COBERTURA E ANALISE ESTATICA
+# ============================================================================
 .pytest_cache/
 .coverage
 .coverage.*
@@ -62,22 +65,23 @@ dmypy.json
 .ruff_cache/
 .pyre/
 
-# ------------------------------------------------------------
-# Artefatos de build e empacotamento
-# ------------------------------------------------------------
-# PyInstaller (os arquivos .spec sao codigo-fonte e continuam versionados)
+# ============================================================================
+# BUILD E EMPACOTAMENTO
+# ============================================================================
+# PyInstaller usa build/ e dist/; os .spec em packaging/ sao codigo-fonte
+# (editados a mao) e continuam versionados.
+build/
+dist/
 *.manifest
+Output/
+*.iss.bak
 
-# Executaveis e instaladores gerados
+# Instaladores e executaveis gerados
 *.exe
 *.msi
 *.msix
 *.appx
 *.appxbundle
-
-# Inno Setup
-Output/
-*.iss.bak
 
 # Pacotes Debian
 *.deb
@@ -92,33 +96,34 @@ Output/
 AppDir/
 squashfs-root/
 
-# ------------------------------------------------------------
-# Logs e dados de execucao
-# ------------------------------------------------------------
+# ============================================================================
+# ANDROID (rede de seguranca; detalhes em android/.gitignore)
+# ============================================================================
+android/.gradle/
+android/local.properties
+android/captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+
+# ============================================================================
+# DADOS DE EXECUCAO E LOGS
+# ============================================================================
 *.log
+logs/
 cycle_log.txt
 
-# ------------------------------------------------------------
-# Segredos e credenciais
-# ------------------------------------------------------------
-secrets/
-credentials/
-*.key
-*.pem
-*.p12
-*.pfx
-*.secret
-
-# ------------------------------------------------------------
-# Editores e IDEs
-# ------------------------------------------------------------
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
-!.vscode/launch.json
-!.vscode/tasks.json
+# ============================================================================
+# EDITORES E IDEs
+# ============================================================================
+.vscode/
 .idea/
 *.iml
+*.ipr
+*.iws
+out/
 *.swp
 *.swo
 *~
@@ -126,9 +131,9 @@ credentials/
 .classpath
 .settings/
 
-# ------------------------------------------------------------
-# Sistema operacional e arquivos temporarios
-# ------------------------------------------------------------
+# ============================================================================
+# SISTEMA OPERACIONAL
+# ============================================================================
 .DS_Store
 .DS_Store?
 ._*
@@ -140,6 +145,9 @@ desktop.ini
 $RECYCLE.BIN/
 *.lnk
 
+# ============================================================================
+# COPIAS DE SEGURANCA E ARQUIVOS TEMPORARIOS
+# ============================================================================
 *.tmp
 *.temp
 *.bak
@@ -148,15 +156,16 @@ $RECYCLE.BIN/
 *.orig
 *.rej
 
-# ------------------------------------------------------------
-# Notebooks e bancos locais
-# ------------------------------------------------------------
+# ============================================================================
+# NOTEBOOKS E BANCOS LOCAIS
+# ============================================================================
 .ipynb_checkpoints/
 *.db
 *.sqlite
 *.sqlite3
 
-# ------------------------------------------------------------
-# Artefatos de ferramentas de imagem
-# ------------------------------------------------------------
+# ============================================================================
+# MATERIAIS LOCAIS DE TRABALHO
+# ============================================================================
+# Imagens geradas para estudo de estilo; nao fazem parte do produto.
 vibe_images/
