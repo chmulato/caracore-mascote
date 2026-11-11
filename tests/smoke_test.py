@@ -7,6 +7,7 @@ Uso: python tests/smoke_test.py
 from __future__ import annotations
 
 import ctypes
+import json
 import os
 import sys
 import tempfile
@@ -179,6 +180,10 @@ def test_gui() -> None:
             pause_fullscreen=False,
         )
     )
+    Path(os.environ["GASPAR_HOME"], "sms_config.json").write_text(
+        json.dumps({"enabled": False}),
+        encoding="utf-8",
+    )
     root = tk.Tk()
     app = GasparApp(root)
     initial = (app.overlay.win.winfo_rootx(), app.overlay.win.winfo_rooty())
@@ -188,6 +193,23 @@ def test_gui() -> None:
         check(root.winfo_exists() == 1, "app: painel criado")
         check(app.overlay is not None and app.overlay_visible, "app: Gaspar flutuante visivel")
         check(app.sim_var.get() == "Parada", "app: simulacao parada (auto_start=False)")
+        app.open_sms_panel()
+        root.update_idletasks()
+        check(app._sms_window is not None and app._sms_window.winfo_exists(), "sms: janela Celular/SMS abre")
+        check(app.sms_status_var.get() == "Ponte de SMS desligada", "sms: ponte desligada no teste")
+        app._close_sms_window()
+
+        app.overlay_button.invoke()
+        root.update_idletasks()
+        check(not app.overlay_visible and not app.var_overlay.get(), "app: botao tira o Gaspar da tela")
+        check(
+            app.overlay_button.cget("text") == "Trazer o Gaspar de volta",
+            "app: botao oferece trazer o Gaspar de volta",
+        )
+        app.overlay_button.invoke()
+        root.update_idletasks()
+        check(app.overlay_visible and app.var_overlay.get(), "app: botao traz o Gaspar de volta")
+
         if sys.platform == "win32":
             _win32_overlay_checks(app)
 
