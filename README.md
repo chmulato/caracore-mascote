@@ -8,15 +8,28 @@ O mascote oficial da **Cara Core Informática**: um fantasminha verde-limão que
 | --- | --- |
 | Branch oficial | **master** |
 | Versão atual | **1.6.0** |
+| Download | [Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0) |
 | Licença | **MIT** |
 | Plataformas | **Windows 10/11** e **Linux (X11/XWayland)** |
 | Empresa | **Cara Core Informática** |
 
 ## Se você só quer usar
 
+### Baixar agora
+
+Escolha o arquivo do sistema que você usa. O download começa ao clicar no link.
+
+| Seu sistema | Arquivo | Baixar |
+| --- | --- | --- |
+| Windows 10 ou 11 | `GasparSetup-1.6.0.exe` (63 MB) | [Baixar para Windows](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/GasparSetup-1.6.0.exe) |
+| Debian, Ubuntu, Mint e derivados | `gaspar_1.6.0_amd64.deb` (33 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/gaspar_1.6.0_amd64.deb) |
+| Outras distribuições Linux | `Gaspar-1.6.0-amd64.AppImage` (24 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/Gaspar-1.6.0-amd64.AppImage) |
+
+Todos os arquivos ficam na página da [Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0). O arquivo [SHA256SUMS.txt](https://github.com/chmulato/caracore-mascote/releases/download/v1.6.0/SHA256SUMS.txt) serve para conferir se o download chegou completo; se você não sabe o que fazer com ele, pode ignorar.
+
 ### Windows
 
-1. Receba o arquivo `GasparSetup-1.6.0.exe`.
+1. Baixe o arquivo `GasparSetup-1.6.0.exe` no link acima.
 2. Dê dois cliques e siga o assistente: **Avançar**, **Instalar**, **Concluir**.
 3. Abra o Gaspar pelo atalho da Área de Trabalho ou pelo menu Iniciar.
 4. Na primeira vez, o painel de configuração abre junto. Ajuste o que quiser e clique em **Ocultar** para deixar só o mascote na tela.
@@ -26,7 +39,7 @@ Se o Windows exibir o aviso azul do SmartScreen, clique em **Mais informações*
 
 ### Linux - Debian, Ubuntu, Mint e derivados
 
-1. Receba o arquivo `gaspar_1.6.0_amd64.deb`.
+1. Baixe o arquivo `gaspar_1.6.0_amd64.deb` no link acima.
 2. Dê dois cliques e instale pelo aplicativo de pacotes, ou use o terminal:
 
    ```bash
@@ -38,11 +51,11 @@ Se o Windows exibir o aviso azul do SmartScreen, clique em **Mais informações*
 
 ### Linux - qualquer distribuição, sem instalar
 
-1. Receba o arquivo `Gaspar-1.6.0-x86_64.AppImage`.
+1. Baixe o arquivo `Gaspar-1.6.0-amd64.AppImage` no link acima.
 2. Clique com o botão direito, abra **Propriedades**, vá em **Permissões** e marque **Permitir executar**.
 3. Dê dois cliques no arquivo.
 
-> Ainda não tem o instalador? Ele é gerado a partir do código-fonte; os comandos estão em **Para quem é técnico**, mais abaixo.
+> Quer outra versão ou conferir os checksums? Todas ficam na página de [Releases](https://github.com/chmulato/caracore-mascote/releases). Para gerar os instaladores a partir do código-fonte, veja **Para quem é técnico**, mais abaixo.
 
 > O Gaspar precisa de uma sessão **X11 ou XWayland**. Em Wayland puro, o mascote pode aparecer com um fundo quadrado e o clique pode não atravessar.
 
@@ -228,7 +241,7 @@ bash packaging/linux/build_linux.sh
 - Windows: `dist/windows/gaspar/gaspar.exe` e `dist/windows/gaspar_blackbox/gaspar_blackbox.exe`; o instalador Inno Setup exige o Inno Setup 6 instalado.
 - Linux: `dist/linux/gaspar/gaspar`, `dist/linux/gaspar_blackbox/gaspar_blackbox`, além de `.deb` e AppImage quando `dpkg-deb` e `appimagetool` estiverem disponíveis.
 
-Os executáveis não são assinados digitalmente. O SmartScreen pode avisar na primeira execução; isso é esperado em builds locais.
+Os executáveis não são assinados digitalmente. O SmartScreen pode avisar na primeira execução; isso é esperado em programas distribuídos diretamente pela Cara Core.
 
 ### Documentação técnica
 
@@ -237,11 +250,12 @@ Os executáveis não são assinados digitalmente. O SmartScreen pode avisar na p
 
 ### Estado de validação desta versão
 
-- Testes de fumaça: aprovados no Windows.
-- Build Windows com PyInstaller: aprovado para `gaspar.exe` e `gaspar_blackbox.exe`.
-- Execução do `.exe` empacotado: validada com pasta de dados temporária.
-- Instalador Inno Setup: script pronto; a compilação exige o Inno Setup 6 na máquina de build.
-- Pacotes Linux (`.deb` e AppImage): scripts prontos; a geração exige uma máquina Linux com `dpkg-deb` e, para AppImage, `appimagetool`.
+- Testes de fumaça: aprovados no Windows, com pasta de dados temporária.
+- Build Windows com PyInstaller: `gaspar.exe` e `gaspar_blackbox.exe` gerados; `gaspar.exe --version` respondeu `Gaspar 1.6.0`.
+- Instalador Inno Setup: `GasparSetup-1.6.0.exe` gerado (63 MB).
+- Pacote `.deb`: instalado em Debian 12; `gaspar --version` respondeu `Gaspar 1.6.0` e as entradas de menu foram criadas.
+- AppImage: executado com extração temporária; `gaspar --version` respondeu `Gaspar 1.6.0`.
+- Os três instaladores e o `SHA256SUMS.txt` estão publicados na [Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0).
 
 ## Licença e créditos
 
