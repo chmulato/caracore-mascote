@@ -15,6 +15,9 @@ O mascote oficial da **Cara Core Informática**: um fantasminha verde-limão que
 
 ## Se você só quer usar
 
+> Vai usar também o SMS pelo celular? O passo a passo dos dois lados, com a
+> lista de arquivos, está em [docs/instalacao.md](docs/instalacao.md).
+
 ### Baixar agora
 
 Escolha o arquivo do sistema que você usa. O download começa ao clicar no link.
@@ -55,7 +58,7 @@ Se o Windows exibir o aviso azul do SmartScreen, clique em **Mais informações*
 2. Clique com o botão direito, abra **Propriedades**, vá em **Permissões** e marque **Permitir executar**.
 3. Dê dois cliques no arquivo.
 
-> Quer outra versão ou conferir os checksums? Todas ficam na página de [Releases](https://github.com/chmulato/caracore-mascote/releases). Para gerar os instaladores a partir do código-fonte, veja **Para quem é técnico**, mais abaixo.
+> Quer outra versão ou conferir os checksums? Todas ficam na página de [Releases](https://github.com/chmulato/caracore-mascote/releases). Para gerar os instaladores a partir do código-fonte, veja o [guia técnico](docs/tecnico.md).
 
 > O Gaspar precisa de uma sessão **X11 ou XWayland**. Em Wayland puro, o mascote pode aparecer com um fundo quadrado e o clique pode não atravessar.
 
@@ -64,6 +67,8 @@ Se o Windows exibir o aviso azul do SmartScreen, clique em **Mais informações*
 O Gaspar é um companheiro de tela. Ele fica flutuando nos cantos, dá pequenas voltas de vez em quando e, em paralelo, simula uma presença ativa para que o Teams e o Slack não mostrem você como ausente.
 
 Ele foi feito para ser **discreto**: não abre janelas por cima do seu trabalho, não rouba o foco do teclado, não bloqueia cliques e não mexe no mouse enquanto você está usando o computador.
+
+O mascote é a parte visível. Atrás dele funciona a **ponte de SMS** que atende o PDV. Você pode **tirar o mascote da tela** a qualquer momento sem desligar a ponte nem a simulação.
 
 O aplicativo também inclui o **Gaspar BlackBox**, uma ferramenta opcional para bloquear domínios de telemetria no arquivo `hosts` do sistema.
 
@@ -74,6 +79,7 @@ O aplicativo também inclui o **Gaspar BlackBox**, uma ferramenta opcional para 
 - **Registra o que aconteceu:** cada ciclo fica em `cycle_log.txt`, na pasta de dados do usuário.
 - **Respeita sua ausência:** só age depois de 60 segundos sem mouse ou teclado.
 - **Bloqueia telemetria (opcional):** o BlackBox aplica e remove um bloco de domínios no arquivo `hosts`, de forma reversível.
+- **Envia SMS pelo celular (novo):** o PDV pede, o Gaspar entrega ao aplicativo Android e o celular dispara a mensagem.
 
 ## O que ele não faz
 
@@ -87,6 +93,30 @@ O aplicativo também inclui o **Gaspar BlackBox**, uma ferramenta opcional para 
 | Não aparece em tela cheia | Em vídeos, jogos e apresentações, ele se esconde e os ciclos pausam. |
 | Não torna a tela ilegível | A opacidade padrão é 82%, e ele fica quase transparente quando o cursor se aproxima. |
 | Não some sem aviso | Ao fechar o painel, ele continua na bandeja; só sai quando você escolhe **Sair**. |
+
+## SMS pelo celular
+
+O Gaspar também pode servir de ponte entre o PDV e um celular Android: o PDV
+pede o SMS, o Gaspar entrega o pedido pela rede Wi-Fi e o celular envia pelo
+chip. Na janela **Celular / SMS** você pareia o aparelho pelo QR, procura o
+celular na rede, faz um envio de teste e acompanha os últimos resultados.
+
+Para usar, você precisa de três coisas:
+
+1. **O Gaspar instalado** no computador (passos acima).
+2. **O aplicativo do celular instalado** (APK compilado a partir da pasta
+   `android/`; o guia de instalação mostra como obter).
+3. **Celular e computador na mesma Wi-Fi**, com o Gaspar aberto.
+
+Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
+**Parear celular** e leia o QR com o aplicativo do celular.
+
+> Este recurso está no código-fonte. Os instaladores 1.6.0 publicados ainda não
+> o incluem; é preciso recompilar para receber a ponte.
+
+O passo a passo completo dos dois lados, com a lista de arquivos de instalação,
+está em [docs/instalacao.md](docs/instalacao.md). O uso no dia a dia e os
+limites estão em [docs/sms.md](docs/sms.md).
 
 ## Conhecendo o painel
 
@@ -118,7 +148,9 @@ O painel é rolável e se ajusta à altura da tela.
 | Botão | O que faz |
 | --- | --- |
 | **Ocultar** | Esconde o painel e deixa o app na bandeja. |
+| **Tirar o Gaspar da tela** | Remove o mascote da tela. A simulação e a ponte de SMS continuam funcionando. O botão vira **Trazer o Gaspar de volta**. |
 | **BlackBox** | Abre o bloqueio de telemetria. |
+| **Celular / SMS** | Abre a ponte de SMS: pareamento, teste e acompanhamento. |
 | **Abrir logs** | Abre a pasta onde ficam as configurações e o histórico. |
 | **Sair** | Encerra o Gaspar de verdade. |
 
@@ -141,14 +173,16 @@ Fechar o painel pelo botão da janela **não encerra o app**: ele continua na ba
 | --- | --- |
 | Windows | `%APPDATA%\CaraCore\Gaspar\` |
 | Linux | `~/.config/caracore/gaspar/` |
-| Testes ou modo portátil | pasta indicada pela variável `GASPAR_HOME` |
 
 Arquivos:
 
 - `config.json`: suas preferências.
-- `cycle_log.txt`: eventos e ciclos. Ao passar de 1 MB, o arquivo é rotacionado para `cycle_log.txt.1`.
+- `cycle_log.txt`: histórico dos ciclos.
+- Arquivos que começam com `sms_`: configuração e histórico da ponte de SMS.
+  Eles guardam o token e a chave do celular; não compartilhe essa pasta.
 
-Nada é enviado para a internet. Configurações e logs ficam somente no seu computador.
+Nada é enviado para a internet. Configurações e logs ficam somente no seu
+computador.
 
 ## Perguntas frequentes
 
@@ -159,7 +193,7 @@ Não. Com **Agir somente quando eu estiver ausente** marcado, ele espera 60 segu
 Não. Com **Pausar em tela cheia** marcado, o mascote se esconde e os ciclos param enquanto a tela cheia estiver ativa.
 
 **Como faço para ele sumir da tela?**
-Desmarque **Gaspar flutuante**, clique em **Ocultar** para esconder o painel ou escolha **Sair** na bandeja para encerrar o app.
+Clique em **Tirar o Gaspar da tela**. O mascote some, mas o app continua na bandeja e a ponte de SMS segue funcionando. Para voltar, clique em **Trazer o Gaspar de volta**. Você também pode desmarcar **Gaspar flutuante** ou escolher **Sair** na bandeja para encerrar o app.
 
 **Preciso ser administrador?**
 Para usar o mascote e a simulação, não. Somente o **BlackBox** pede elevação, porque altera o arquivo `hosts` do sistema.
@@ -179,83 +213,39 @@ No Windows, use **Aplicativos instalados** e remova **Gaspar - Mascote Cara Core
 ## Problemas comuns
 
 **O mascote aparece com um quadrado de fundo no Linux**
-A sessão não está em X11/XWayland, ou faltam as bibliotecas `libX11` e `libXext`. Entre numa sessão X11 ou instale as bibliotecas.
+A sessão não está em X11/XWayland. Entre numa sessão X11. Em Wayland puro o
+recorte do mascote não funciona; o guia técnico explica os detalhes.
 
 **O mouse se mexe enquanto eu trabalho**
-Confirme que **Agir somente quando eu estiver ausente** está marcado. Em sistemas sem detecção de ausência, aumente o intervalo ou desmarque **Movimentar o mouse**.
+Confirme que **Agir somente quando eu estiver ausente** está marcado. Se o
+sistema não detectar sua ausência, aumente o intervalo ou desmarque
+**Movimentar o mouse**.
 
 **O mascote cobre o painel**
-Feche e reabra o painel; a ordem das janelas é reaplicada a cada meio segundo.
+Feche e reabra o painel; o mascote volta para trás dele.
 
 **O BlackBox não abre pelo painel**
-Use uma instalação completa: no Windows, o instalador inclui o Gaspar e o BlackBox; no Linux, o `.deb` e o AppImage incluem os dois.
+Use uma instalação completa: no Windows, o instalador inclui o Gaspar e o
+BlackBox; no Linux, o `.deb` e o AppImage incluem os dois.
 
-**Nada é registrado no log**
-Verifique a pasta de dados do usuário e a permissão de escrita. Em testes, defina `GASPAR_HOME` para uma pasta temporária.
+**O celular não aparece na janela Celular / SMS**
+Confirme a Wi-Fi, o aplicativo aberto e a bateria otimizada desativada. O passo
+a passo está em [docs/instalacao.md](docs/instalacao.md).
 
-## Para quem é técnico
+**Preciso de ajuda com algum erro**
+Veja os guias de [instalação](docs/instalacao.md), [SMS](docs/sms.md) e
+[BlackBox](docs/blackbox.md). Se o problema for no funcionamento interno, o
+[guia técnico](docs/tecnico.md) tem a seção de solução de problemas.
 
-O Gaspar é escrito em **Python 3.10+** com **Tkinter**, **Pillow**, **pyautogui**, **psutil** e **pystray**.
+## Documentação
 
-### Rodar a partir do código
+- **Instalação completa (computador e celular):** [docs/instalacao.md](docs/instalacao.md)
+- **SMS no dia a dia:** [docs/sms.md](docs/sms.md)
+- **BlackBox e telemetria:** [docs/blackbox.md](docs/blackbox.md)
+- **Guia técnico (código, build, protocolo e testes):** [docs/tecnico.md](docs/tecnico.md)
 
-```bash
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-# Linux
-source .venv/bin/activate
-
-python -m pip install -r requirements.txt
-python run.py
-```
-
-Opções de linha de comando:
-
-```bash
-python run.py --minimized    # abre direto na bandeja
-python run.py --version      # mostra a versão
-python -m gaspar             # equivalente a run.py
-python run_blackbox.py       # abre o BlackBox diretamente
-```
-
-### Testes
-
-```bash
-python tests/smoke_test.py
-```
-
-O teste usa uma pasta temporária via `GASPAR_HOME`, não altera o `hosts` real e cobre configuração, hosts, motor de presença, overlay, transparência, click-through, z-order, tela cheia e criação do log.
-
-### Build
-
-```bat
-python packaging\windows\build_windows.py
-```
-
-```bash
-bash packaging/linux/build_linux.sh
-```
-
-- Windows: `dist/windows/gaspar/gaspar.exe` e `dist/windows/gaspar_blackbox/gaspar_blackbox.exe`; o instalador Inno Setup exige o Inno Setup 6 instalado.
-- Linux: `dist/linux/gaspar/gaspar`, `dist/linux/gaspar_blackbox/gaspar_blackbox`, além de `.deb` e AppImage quando `dpkg-deb` e `appimagetool` estiverem disponíveis.
-
-Os executáveis não são assinados digitalmente. O SmartScreen pode avisar na primeira execução; isso é esperado em programas distribuídos diretamente pela Cara Core.
-
-### Documentação técnica
-
-- Estrutura completa, transparência, click-through, empacotamento, migração da versão antiga e estado de validação: [docs/tecnico.md](docs/tecnico.md).
-- Blackbox, telemetria do VS Code/Cursor, extensões e firewall: [docs/blackbox.md](docs/blackbox.md).
-
-### Estado de validação desta versão
-
-- Testes de fumaça: aprovados no Windows, com pasta de dados temporária.
-- Build Windows com PyInstaller: `gaspar.exe` e `gaspar_blackbox.exe` gerados; `gaspar.exe --version` respondeu `Gaspar 1.6.0`.
-- Instalador Inno Setup: `GasparSetup-1.6.0.exe` gerado (63 MB).
-- Pacote `.deb`: instalado em Debian 12; `gaspar --version` respondeu `Gaspar 1.6.0` e as entradas de menu foram criadas.
-- AppImage: executado com extração temporária; `gaspar --version` respondeu `Gaspar 1.6.0`.
-- Os três instaladores e o `SHA256SUMS.txt` estão publicados na [Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0).
+Este README foi feito para quem instala e usa o Gaspar. As instruções de
+código, compilação e empacotamento ficam no guia técnico.
 
 ## Licença e créditos
 

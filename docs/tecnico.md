@@ -15,8 +15,12 @@ Documentação para quem mantém, compila ou audita o Gaspar. O guia do usuário
 - pyautogui
 - psutil
 - pystray
+- cryptography (AES-256-GCM da ponte de SMS)
+- qrcode (QR de pareamento do celular)
 
 No Linux, instale também `python3-tk`, `libx11-6`, `libxext6`, `libxtst6` e `libxss1`.
+
+O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, targetSdk 27, compileSdk 33, Gradle 7.5 e Android Gradle Plugin 7.4.2.
 
 ## Arquitetura
 
@@ -33,6 +37,16 @@ No Linux, instale também `python3-tk`, `libx11-6`, `libxext6`, `libxtst6` e `li
 | `gaspar/overlay.py` | Mascote flutuante, transparência, click-through e z-order. |
 | `gaspar/paths.py` | Ativos e pasta de dados do usuário. |
 | `gaspar/presence.py` | Motor de simulação de presença. |
+| `gaspar/sms/bridge.py` | Regras de envio, limites, fila, repetição e deduplicação por venda. |
+| `gaspar/sms/client.py` | Conexão TCP com o aplicativo Android e leitura do recibo. |
+| `gaspar/sms/config.py` | Configuração da ponte, segredos, token da API e token de pareamento. |
+| `gaspar/sms/crypto.py` | Derivação da chave compartilhada e AES-256-GCM. |
+| `gaspar/sms/discovery.py` | Descoberta do celular na rede local (UDP). |
+| `gaspar/sms/network.py` | Descoberta do IP local do computador. |
+| `gaspar/sms/protocol.py` | Formato do anúncio, do comando e do enquadramento TCP. |
+| `gaspar/sms/qr.py` | Geração do QR Code de pareamento. |
+| `gaspar/sms/server.py` | API HTTP local para o PDV e recepção do diagnóstico do celular. |
+| `gaspar/sms/store.py` | Fila, histórico e trilha dos envios, com número mascarado. |
 | `gaspar/telemetry_hosts.py` | Bloqueio de telemetria no arquivo `hosts`. |
 | `gaspar/tray.py` | Ícone da bandeja. |
 
@@ -40,12 +54,26 @@ No Linux, instale também `python3-tk`, `libx11-6`, `libxext6`, `libxtst6` e `li
 
 ```text
 .
+├── android/                       # aplicativo Android que envia os SMS
+│   ├── src/                       # código Java, manifesto e recursos
+│   ├── gradle/                    # wrapper do Gradle
+│   ├── build.gradle
+│   ├── settings.gradle
+│   ├── pom.xml
+│   ├── build.bat                  # debug, release, bundle e clean
+│   ├── publicar-celular.bat       # instala o APK via adb
+│   ├── verificar-app.bat          # dispositivo, app e permissão SEND_SMS
+│   ├── criar-keystore.bat         # assinatura release
+│   ├── keystore.properties.example
+│   └── README.md
 ├── assets/
 │   ├── gaspar.png                 # imagem oficial (512 px, transparência real)
 │   ├── gaspar.ico                 # ícone 16..256 px
 │   └── gaspar_flutuando.gif       # animação de flutuação (220x220)
 ├── docs/
 │   ├── blackbox.md                # guia do ambiente black-box
+│   ├── instalacao.md              # instalação do Gaspar e do aplicativo do celular
+│   ├── sms.md                     # guia da ponte de SMS
 │   └── tecnico.md                 # este guia
 ├── gaspar/
 │   ├── __init__.py
@@ -59,6 +87,18 @@ No Linux, instale também `python3-tk`, `libx11-6`, `libxext6`, `libxtst6` e `li
 │   ├── overlay.py
 │   ├── paths.py
 │   ├── presence.py
+│   ├── sms/                       # ponte local de SMS
+│   │   ├── __init__.py
+│   │   ├── bridge.py
+│   │   ├── client.py
+│   │   ├── config.py
+│   │   ├── crypto.py
+│   │   ├── discovery.py
+│   │   ├── network.py
+│   │   ├── protocol.py
+│   │   ├── qr.py
+│   │   ├── server.py
+│   │   └── store.py
 │   ├── telemetry_hosts.py
 │   └── tray.py
 ├── packaging/
@@ -75,7 +115,8 @@ No Linux, instale também `python3-tk`, `libx11-6`, `libxext6`, `libxtst6` e `li
 │       ├── gaspar.spec
 │       └── gaspar_blackbox.spec
 ├── tests/
-│   └── smoke_test.py
+│   ├── smoke_test.py
+│   └── test_sms.py                # 20 testes unitários da ponte
 ├── tools/
 │   └── make_assets.py
 ├── run.py
@@ -271,11 +312,120 @@ O `--dry-run` não altera o arquivo e não exige administrador.
 
 Atenção: o bloqueio inclui domínios de login e marketplace da Microsoft (`login.microsoftonline.com`, `vscode.dev`, `marketplace.visualstudio.com`). Isso pode impedir autenticação ou instalação de extensões enquanto o bloqueio estiver ativo. O guia completo, com configurações de telemetria do VS Code/Cursor, extensões e firewall, está em [docs/blackbox.md](blackbox.md).
 
+## Ponte local de SMS
+
+O PDV não fala com o celular diretamente. O caminho é:
+
+```text
+PDV  --HTTP localhost-->  Gaspar (ponte)  --TCP na Wi-Fi-->  app Android  -->  chip/SMS
+                                  ^
+                                  +-- HTTP: diagnóstico do celular no pareamento
+```
+
+Nada sai para a internet: a API escuta na rede local, o PDV pode chamar por `127.0.0.1` e o celular precisa estar na mesma rede Wi-Fi.
+
+### Janela Celular / SMS
+
+O botão **Celular / SMS** abre uma janela separada (o painel principal não foi alterado). Ela mostra o estado do celular, a caixa **Ponte ativa**, **Procurar celular**, **Parear celular**, envio de teste, endereço/token da API e os últimos envios. A ponte só sobe quando **Ponte ativa** está marcada e o app é iniciado; no teste de fumaça ela fica desligada para não abrir porta nem disparar aviso do firewall.
+
+### Pareamento
+
+O QR contém uma linha com seis campos separados por `|`:
+
+```text
+CARACORE-SETUP|<ip_do_pc>|<porta_http>|<chave_b64>|<token_de_setup>|<licenca>
+```
+
+- `ip_do_pc`: IP da rede local, obtido em `gaspar/sms/network.py` (conexão UDP para 8.8.8.8, sem enviar dados, com fallback pelo hostname).
+- `porta_http`: porta da API local (padrão 8766).
+- `chave_b64`: segredo compartilhado de 32 bytes, gerado com `os.urandom` e guardado em `sms_config.json`.
+- `token_de_setup`: token de uso único, válido por 15 minutos; o app o envia no diagnóstico e ele é apagado em seguida.
+- `licenca`: opcional, repassada ao app quando existir.
+
+O app lê o QR, aplica IP, porta, chave e licença, testa permissões de SMS e otimização de bateria e faz `POST /api/mobile/diagnostic`. O Gaspar confere o token, grava o resultado do diagnóstico e conclui o pareamento. O mesmo token não pode ser usado duas vezes.
+
+### Descoberta do celular (UDP)
+
+- Porta 49999, com broadcast para `255.255.255.255` e para os endereços de broadcast das interfaces (via `psutil`).
+- O Gaspar envia `CARACORE-PDV-DISCOVER`.
+- O app responde `CARACORE-APK|<ip>|<porta>`; o Gaspar guarda o IP e a porta em `sms_config.json`.
+- Se a descoberta falhar, o pareamento por QR continua sendo a via principal, porque o app também informa o endereço do Gaspar.
+
+### Envio (TCP + AES-256-GCM)
+
+- Porta 49998 no celular.
+- Cada mensagem é um quadro: 4 bytes de tamanho em big-endian, seguidos do texto cifrado.
+- O texto cifrado é `IV de 12 bytes + AESGCM(...)`, com tag de 128 bits.
+- O conteúdo é o JSON `{"action":"send_sms","number":"...","message":"...","id":"...","ts":...}` em UTF-8.
+- A chave é derivada do segredo do QR: decodifica o base64; se o resultado tiver menos de 32 bytes, aplica SHA-256; usa os primeiros 32 bytes. A mesma regra está em `gaspar/sms/crypto.py` e no `GatewayCrypto` do app Android.
+- Depois de enviar, o Gaspar espera um recibo do celular por até alguns segundos. Recibo ausente não invalida o envio: o pedido fica como `enviado` sem confirmação (`confirmed: false`).
+
+### API para o PDV
+
+Escuta em `0.0.0.0:<porta_http>` (padrão 8766). Autenticação por `X-Api-Token` ou `Authorization: Bearer <token>`; a comparação usa `secrets.compare_digest`.
+
+| Método e rota | Função |
+| --- | --- |
+| `GET /api/health` | Estado da ponte, sem token: `ok`, `phone_online` e quantidade pendente. |
+| `POST /api/sms` | Enfileira um SMS. Corpo: `{"number","message","venda_id"}`. |
+| `GET /api/sms` | Últimos 20 pedidos. |
+| `GET /api/sms/<id>` | Um pedido pelo identificador. |
+| `POST /api/mobile/diagnostic` | Recebe o diagnóstico do celular no pareamento (token de setup, não o token da API). |
+
+Códigos de `POST /api/sms`: `202` aceito, `400` número/mensagem inválidos ou corpo malformado, `401` token ausente ou errado, `429` limite por minuto ou por dia, `507` fila cheia.
+
+Exemplo de chamada do PDV:
+
+```bash
+curl -X POST "http://192.168.0.10:8766/api/sms" \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Token: SEU_TOKEN" \
+  -d '{"number":"5511999999999","message":"Venda 123 confirmada. Obrigado!","venda_id":"venda-123"}'
+```
+
+```json
+{"ok": true, "id": "7f3c...", "status": "fila", "confirmed": false}
+```
+
+O PDV deve tratar `sem resposta`, `401`, `429` e `507` como "não enviado" e tentar de novo mais tarde; o `venda_id` impede duplicidade quando a nova tentativa acontece dentro de 24 horas. O diagnóstico do celular usa `POST /api/mobile/diagnostic` com `token`, `sms_ok`, `battery_ok` e `message`; esse token é o de pareamento, não o da API, e é apagado depois do primeiro uso.
+
+### Regras de segurança e de custo
+
+- Número normalizado entre 10 e 15 dígitos, com `+` opcional; mensagem limitada a 480 caracteres.
+- `venda_id` é idempotente por 24 horas: repetir a mesma venda devolve o pedido já existente em vez de mandar outro SMS.
+- Limites padrão: 20 pedidos por minuto e 300 por dia; fila máxima de 100 pedidos.
+- No máximo duas tentativas por pedido. Celular offline gera `falhou` com o motivo, sem repetir para sempre.
+- Ao abrir, pedidos `fila` voltam para a fila; pedidos `enviando` viram `falhou` com "envio interrompido ao fechar o Gaspar", para não arriscar cobrança duplicada.
+- Os logs mascaram o número; `sms_config.json` é gravado com permissão restrita (quando o sistema permite).
+- O token da API e a chave compartilhada só existem no computador do lojista. Nenhum segredo é versionado no repositório.
+
+### Arquivos da ponte
+
+| Arquivo | Conteúdo |
+| --- | --- |
+| `sms_config.json` | Estado, porta, token da API, chave compartilhada, celular pareado e limites. |
+| `sms_state.json` | Até 500 pedidos, com status e recibo. |
+| `sms_log.jsonl` | Trilha de uma linha por mudança de status, com o número mascarado. |
+
+Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HOME`. O guia do usuário e o passo a passo do celular estão em [docs/sms.md](sms.md).
+
 ## Testes
 
 ```bash
+python -m unittest discover -s tests -p "test_*.py" -v
 python tests/smoke_test.py
 ```
+
+Os 20 testes unitários de `tests/test_sms.py` usam apenas biblioteca padrão (mais `cryptography`) e não abrem porta fixa nem acessam a internet. Eles cobrem:
+
+- Configuração, geração e persistência dos segredos, token de setup de uso único e validade de 15 minutos.
+- Derivação de chave quando o segredo tem menos de 32 bytes.
+- Cifra e decifra no formato do app Android, incluindo detecção de adulteração.
+- Enquadramento TCP, montagem do comando e leitura do anúncio de descoberta.
+- Normalização de número e de mensagem, com recusa de entradas inválidas.
+- Persistência, deduplicação por `venda_id` e restauração da fila.
+- Envio com sucesso, repetição com celular offline, falha definitiva, limite por minuto e fila cheia.
+- API local: saúde, autenticação, aceite, consulta por id, pedido inexistente e diagnóstico de uso único.
 
 O teste de fumaça usa uma pasta temporária via `GASPAR_HOME`, não altera o `hosts` real e cobre:
 
@@ -286,6 +436,7 @@ O teste de fumaça usa uma pasta temporária via `GASPAR_HOME`, não altera o `h
 - No Windows: chave de cor `#ff00ff`, opacidade 82%, clareamento para 12% perto do cursor, `WS_EX_LAYERED`, `WS_EX_TRANSPARENT`, `WS_EX_NOACTIVATE`, click-through e z-order abaixo do painel.
 - Trajeto apenas entre cantos vizinhos, sem cruzar o centro.
 - Sumiço e retorno durante tela cheia simulada.
+- Abertura da janela **Celular / SMS** com a ponte desligada (sem abrir porta nem acionar o firewall).
 - Criação do `cycle_log.txt`.
 
 Em Linux, a parte gráfica é pulada quando não há `DISPLAY` nem `WAYLAND_DISPLAY`.
@@ -320,6 +471,14 @@ O executável não é assinado. Adicione uma exceção somente se você confia n
 
 Verifique a pasta de dados do usuário e a permissão de escrita. Em testes, defina `GASPAR_HOME` para uma pasta temporária.
 
+**O Windows pede permissão de firewall ao ligar a ponte de SMS**
+
+É esperado: a API precisa aceitar conexões na rede local para o PDV e o celular. Autorize somente em redes privadas. Se a porta 8766 estiver ocupada, o Gaspar avisa no registro da ponte; troque a porta na janela **Celular / SMS**.
+
+**O celular não aparece em Procurar celular**
+
+Confirme que o celular e o computador estão na mesma rede Wi-Fi, que o aplicativo Android está aberto e que a rede não isola os dispositivos (redes de visitante costumam bloquear). O pareamento por QR funciona mesmo sem a descoberta. Mais casos em [docs/sms.md](sms.md).
+
 ## Migração da versão anterior
 
 | Arquivo antigo | Novo local |
@@ -347,8 +506,14 @@ O script remove o magenta, recorta o mascote, suaviza a borda, desconta a franja
 
 ## Estado de validação desta versão
 
-- Testes de fumaça: aprovados no Windows.
-- Build Windows com PyInstaller: aprovado para `gaspar.exe` e `gaspar_blackbox.exe`.
+- Testes de fumaça: aprovados no Windows, com pasta de dados temporária.
+- Ponte de SMS: 20 testes unitários aprovados; janela **Celular / SMS** validada no teste de fumaça com a ponte desligada.
+- Botão **Tirar o Gaspar da tela**: validado no teste de fumaça; o mascote some, o botão vira **Trazer o Gaspar de volta** e a simulação e a ponte continuam ativas.
+- Envio real de SMS: **não executado** nesta máquina, porque depende de um celular Android pareado e de um chip com crédito. O protocolo foi validado contra o código do app Android em teste automatizado (mesma derivação de chave e mesmo formato de cifra).
+- Build Windows com PyInstaller: aprovado para `gaspar.exe` e `gaspar_blackbox.exe` **antes** da ponte de SMS; `gaspar.exe --version` respondeu `Gaspar 1.6.0`.
 - Execução do `.exe` empacotado: validada em pasta de dados temporária.
-- Instalador Inno Setup: script pronto; a compilação exige o Inno Setup 6 instalado na máquina de build.
-- Pacotes Linux (`.deb`/AppImage): scripts prontos; a geração exige uma máquina Linux com `dpkg-deb` e, para AppImage, `appimagetool`.
+- Instalador Inno Setup: `GasparSetup-1.6.0.exe` gerado (63 MB); a compilação exige o Inno Setup 6 instalado na máquina de build.
+- Pacote `.deb`: instalado em Debian 12; `gaspar --version` respondeu `Gaspar 1.6.0` e as entradas de menu foram criadas.
+- AppImage: executado com extração temporária; `gaspar --version` respondeu `Gaspar 1.6.0`.
+- Os três instaladores e o `SHA256SUMS.txt` estão publicados na [Release 1.6.0](https://github.com/chmulato/caracore-mascote/releases/tag/v1.6.0), mas **não incluem** a ponte de SMS; um novo build é necessário para empacotá-la.
+- Aplicativo Android: código-fonte versionado; o APK/AAB é gerado na máquina de build com JDK 11+, Android SDK e `adb`. Nenhum APK, keystore ou senha é versionado.
