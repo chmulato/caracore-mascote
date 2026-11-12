@@ -8,10 +8,11 @@ chip e devolve o comprovante. Também recebe SMS de ativação de licença Premi
 (CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e
 o estado da licença.
 
-> Este código é o **1.5**, ainda sem release. O aplicativo publicado é o **1.4**,
-> com o envelope de ponta a ponta e o filtro do SMS de licença pelo número
-> oficial. O 1.5 acrescenta a trava do provedor de licença (`readPermission` de
-> assinatura), que o 1.4 publicado não tem.
+> Este código é o **1.5**, já publicado na
+> [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5),
+> com o envelope de ponta a ponta, o filtro do SMS de licença pelo número
+> oficial e a trava do provedor de licença (`readPermission` de assinatura), que
+> o **1.4** publicado não tem.
 
 O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
 envio não é mais exportada e exige permissão interna de assinatura. O teste
@@ -188,7 +189,7 @@ Recepção de licença por SMS: o `SMSReceiver` escuta SMS com "CC-LICENSE:[CHAV
 
 Na tela de configuração: o status da licença aparece em vermelho ("Licença Gratuita / Inativa") ou em verde ("Licença Premium Ativa"), conforme `isLicencaValida()`. O botão "Verificar Conexão USB" consulta `adb_enabled` e indica se a depuração USB está ativa para o PDV.
 
-Consulta protegida (este código, 1.5, ainda sem release): o ContentProvider `licenca` exige a permissão de assinatura `br.com.caracore.pdv.sms.permission.SMS_INTERNAL`. Só um aplicativo assinado com a mesma chave deste app lê `hardware_id` (ANDROID_ID), `chave`, `valida` (1 ou 0) e `mes_ano` (YYYYMM extraído da chave). O `adb shell content query` deixa de responder: o shell não tem essa permissão. O APK do 1.4 publicado na [Release Android 1.4](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.4) **não** tem essa trava: nele o provedor está exportado e sem permissão de leitura, medido no APK baixado da release.
+Consulta protegida (a partir do 1.5, publicado): o ContentProvider `licenca` exige a permissão de assinatura `br.com.caracore.pdv.sms.permission.SMS_INTERNAL`. Só um aplicativo assinado com a mesma chave deste app lê `hardware_id` (ANDROID_ID), `chave`, `valida` (1 ou 0) e `mes_ano` (YYYYMM extraído da chave). O `adb shell content query` deixa de responder: o shell não tem essa permissão. O APK do 1.4 publicado na [Release Android 1.4](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.4) **não** tem essa trava: nele o provedor está exportado e sem permissão de leitura, medido no APK baixado da release.
 
 O PDV 4.1.0 não consulta esse provedor — ele decide o plano Premium pela licença assinada da máquina (`LicencaPro`), não pela chave que chega por SMS ao celular. A exposição foi mantida apenas como recurso interno, restrito aos apps da Cara Core assinados com a mesma chave.
 

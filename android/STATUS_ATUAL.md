@@ -38,11 +38,12 @@ envio não é exportada e exige permissão interna de assinatura.
   `SmsPreferences`; `isLicencaValida()` exige mês atual ou futuro.
 - Exposição para o PDV: `LicencaContentProvider` (authority
   `br.com.caracore.pdv.sms.licenca`) com `hardware_id` (ANDROID_ID), `chave`,
-  `valida` e `mes_ano`. Na árvore de trabalho ele está protegido por
+  `valida` e `mes_ano`. No 1.5 ele está protegido por
   `readPermission` de assinatura (`SMS_INTERNAL`) — só app assinado com a mesma
-  chave lê, e o `adb shell content query` deixa de responder —, mas isso **ainda
-  não tem release**: o APK do 1.4 publicado está exportado e sem permissão de
-  leitura. O PDV 4.1.0 não consulta o provedor; o plano dele vem de `LicencaPro`.
+  chave lê, e o `adb shell content query` deixa de responder. É o que está no
+  **1.5 publicado**; o APK do 1.4, também publicado, está exportado e sem
+  permissão de leitura. O PDV 4.1.0 não consulta o provedor; o plano dele vem
+  de `LicencaPro`.
 - **Sem acionamento externo**: `SendSmsActivity` é interna (`exported=false` +
   permissão de assinatura) e o serviço de rede não é exportado.
 - Permissões: SEND_SMS e RECEIVE_SMS; o app usa SEND_SMS para enviar e
@@ -117,11 +118,13 @@ envio não é exportada e exige permissão interna de assinatura.
 
 ## Histórico de alterações (resumo)
 
-- **1.5 (código 6, sem release):** trava do provedor de licença. O
+- **1.5 (código 6, publicado):** trava do provedor de licença. O
   `LicencaContentProvider` passa a exigir a permissão de assinatura
   `SMS_INTERNAL` (`readPermission`), então nem o `adb shell content query` lê os
-  dados. O 1.4 publicado ficou com o provedor exportado e sem permissão de
-  leitura; esta correção só chega ao usuário quando a 1.5 for publicada.
+  dados. APK e AAB assinados pela esteira na
+  [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5),
+  com o mesmo certificado do 1.4, então instala por cima. O 1.4, também
+  publicado, ficou com o provedor exportado e sem permissão de leitura.
 
 - **1.4 (código 5, publicado):** filtro do SMS de licença
   corrigido. Antes o número oficial nunca era preenchido, então qualquer SMS com
