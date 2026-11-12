@@ -7,6 +7,10 @@ técnicos ficam em [tecnico.md](tecnico.md).
 > **Antes de tudo:** o SMS funciona com o **Gaspar 1.7.0** (ou mais novo) e o
 > **aplicativo Android 1.2**, os dois já publicados. Os instaladores 1.6.0 não
 > têm a ponte de SMS; se você já usa o mascote, atualize os dois lados.
+>
+> Na **próxima versão**, os dois lados passam a exigir criptografia de ponta a
+> ponta: o Gaspar recusa o pareamento de um celular com aplicativo antigo. Nesse
+> dia, atualize o Gaspar e o aplicativo **juntos**.
 
 ## Antes de começar
 
@@ -92,10 +96,10 @@ a Wi-Fi da loja para conversar com o Gaspar.
    "fontes desconhecidas", autorize apenas para esta instalação.
 4. Se o Play Protect avisar que não reconhece o aplicativo, escolha
    **Instalar mesmo assim**. O APK não vem da Play Store.
-5. **Abra o aplicativo** e conceda as permissões de SMS quando forem pedidas:
-   - enviar SMS;
-   - receber SMS;
-   - ler SMS.
+5. **Abra o aplicativo** e conceda as permissões de SMS quando forem pedidas.
+   O Android pede as três de uma vez (enviar, receber e ler). O aplicativo usa
+   **enviar** para os SMS do PDV e **receber** para a chave de licença; ele
+   **não lê** a caixa de entrada.
 6. **Desative a otimização de bateria** para este aplicativo. Sem isso, o
    Android pode encerrar o serviço e o celular para de responder ao Gaspar.
    No Android 7 a 12, o caminho costuma ser **Configurações > Aplicativos >
@@ -126,12 +130,14 @@ dois aparelhos estão na mesma rede.
 O responsável pelo PDV precisa copiar, da janela **Celular / SMS**:
 
 - o **endereço** mostrado em **Integração com o PDV** (por exemplo,
-  `http://192.168.0.10:8766/api/sms`);
+  `http://127.0.0.1:8766/api/sms`);
 - o **token** da API.
 
-Com esses dois dados, o PDV passa a pedir os SMS ao Gaspar. Os detalhes de
-programação estão em [tecnico.md](tecnico.md#api-para-o-pdv), e o
-comportamento do dia a dia está em [sms.md](sms.md).
+Com esses dois dados, o PDV passa a pedir os SMS ao Gaspar. O endereço é
+`127.0.0.1` de propósito: o Gaspar só aceita pedido da própria máquina, e cada
+pedido leva uma assinatura feita com o token. Os detalhes de programação estão
+em [tecnico.md](tecnico.md#api-para-o-pdv), e o comportamento do dia a dia está
+em [sms.md](sms.md).
 
 ## Checklist final
 
@@ -171,6 +177,6 @@ Os dados ficam no computador em `%APPDATA%\CaraCore\Gaspar\` (Windows) ou
 | O celular não instala o APK | Autorize "fontes desconhecidas" e, se o Play Protect bloquear, escolha instalar mesmo assim. |
 | O celular não aparece em **Procurar celular** | Mesma Wi-Fi, aplicativo aberto, bateria otimizada desativada e firewall liberando o Gaspar em rede privada. |
 | O QR expirou | Clique em **Parear celular** para gerar outro. |
-| O SMS de teste não chega | Confira chip, crédito e permissão de SMS no celular. O estado **enviado** no Gaspar significa "entregue ao celular". |
+| O SMS de teste não chega | Confira chip, crédito e permissão de SMS no celular. O estado **enviado** significa que o chip aceitou; **entregue** é a confirmação da operadora. Se aparecer **sem chave do celular**, pareie de novo. |
 
 Mais casos estão em [sms.md](sms.md#problemas-comuns).

@@ -37,16 +37,20 @@ O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, tar
 | `gaspar/overlay.py` | Mascote flutuante, transparência, click-through e z-order. |
 | `gaspar/paths.py` | Ativos e pasta de dados do usuário. |
 | `gaspar/presence.py` | Motor de simulação de presença. |
+| `gaspar/sms/audit.py` | Trilha de auditoria LGPD só com metadados, retenção e expurgo. |
 | `gaspar/sms/bridge.py` | Regras de envio, limites, fila, repetição e deduplicação por venda. |
 | `gaspar/sms/client.py` | Conexão TCP com o aplicativo Android e leitura do recibo. |
-| `gaspar/sms/config.py` | Configuração da ponte, segredos, token da API e token de pareamento. |
-| `gaspar/sms/crypto.py` | Derivação da chave compartilhada e AES-256-GCM. |
+| `gaspar/sms/config.py` | Configuração da ponte, segredos, chaves públicas e token da API. |
+| `gaspar/sms/crypto.py` | Derivação da chave compartilhada e AES-256-GCM do canal. |
 | `gaspar/sms/discovery.py` | Descoberta do celular na rede local (UDP). |
+| `gaspar/sms/e2e.py` | Envelope de ponta a ponta: ECDH P-256, HKDF-SHA256, AES-256-GCM e rótulos HMAC. |
 | `gaspar/sms/network.py` | Descoberta do IP local do computador. |
 | `gaspar/sms/protocol.py` | Formato do anúncio, do comando e do enquadramento TCP. |
 | `gaspar/sms/qr.py` | Geração do QR Code de pareamento. |
 | `gaspar/sms/server.py` | API HTTP local para o PDV e recepção do diagnóstico do celular. |
-| `gaspar/sms/store.py` | Fila, histórico e trilha dos envios, com número mascarado. |
+| `gaspar/sms/signing.py` | Assinatura HMAC-SHA256 dos pedidos e cache de nonces. |
+| `gaspar/sms/store.py` | Fila, histórico e relatórios; guarda o envelope, não o conteúdo. |
+| `gaspar/sms/templates.py` | Modelos de mensagem transacionais e validação das variáveis. |
 | `gaspar/telemetry_hosts.py` | Bloqueio de telemetria no arquivo `hosts`. |
 | `gaspar/tray.py` | Ícone da bandeja. |
 
@@ -276,7 +280,7 @@ chmod +x dist/linux/Gaspar-1.6.0-x86_64.AppImage
 ./dist/linux/Gaspar-1.6.0-x86_64.AppImage
 ```
 
-O AppImage inclui o Gaspar e o BlackBox. O botão **BlackBox** do painel encontra o executável na própria instalação.
+O AppImage inclui o Gaspar e o BlackBox. O item **Gaspar BlackBox** do ícone da bandeja encontra o executável na própria instalação.
 
 ## Gaspar BlackBox
 
@@ -298,7 +302,7 @@ O BlackBox grava um bloco delimitado no arquivo `hosts`:
 
 Interface:
 
-- Abra pelo botão **BlackBox** no painel do Gaspar.
+- Abra pelo item **Gaspar BlackBox** no ícone da bandeja do Gaspar.
 - Ou use o atalho **Gaspar BlackBox** no Windows/Linux.
 - O programa pede elevação sozinho.
 
@@ -311,6 +315,12 @@ python -m gaspar.telemetry_hosts --remove
 ```
 
 O `--dry-run` não altera o arquivo e não exige administrador.
+
+### Isolamento das integrações do PDV
+
+O Gaspar não abre conexão com o Mercado Pago (`api.mercadopago.com`) nem com o PlugNotas/Tecnospeed (`api.plugnotas.com.br`, `api.sandbox.plugnotas.com.br`). Suas únicas saídas são o canal de atualização (`gaspar.caracore.com.br`) e a ponte local de SMS.
+
+O BlackBox altera somente o arquivo `hosts`, com domínios exatos de telemetria da Microsoft. Nenhum endereço de pagamento ou nota está na lista, e não há regra de proxy, DNS ou firewall. O teste `tests/test_isolamento.py` falha se um domínio protegido aparecer na lista de bloqueio ou no código do pacote.
 
 Atenção: o bloqueio inclui domínios de login e marketplace da Microsoft (`login.microsoftonline.com`, `vscode.dev`, `marketplace.visualstudio.com`). Isso pode impedir autenticação ou instalação de extensões enquanto o bloqueio estiver ativo. O guia completo, com configurações de telemetria do VS Code/Cursor, extensões e firewall, está em [docs/blackbox.md](blackbox.md).
 
@@ -346,6 +356,8 @@ CARACORE-SETUP|<ip_do_pc>|<porta_http>|<chave_b64>|<token_de_setup>|<licenca>
 
 O app lê o QR, aplica IP, porta, chave e licença, testa permissões de SMS e otimização de bateria e faz `POST /api/mobile/diagnostic`. O Gaspar confere o token, grava o resultado do diagnóstico e conclui o pareamento. O mesmo token não pode ser usado duas vezes.
 
+No primeiro uso o app cria um par de chaves **EC P-256** (a privada fica protegida pelo Android Keystore) e envia a **chave pública** no campo `phone_public_key` do diagnóstico. Essa chave é a ponta do envelope descrito abaixo. Um celular já pareado publica a mesma chave em `POST /api/mobile/key`, então atualizar o APK não exige reler o QR. Trocar uma chave já registrada só é aceito na rota do diagnóstico (com o token de pareamento), o que impede que alguém com o segredo da rede coloque outro aparelho no lugar.
+
 ### Descoberta do celular (UDP)
 
 - Porta 49999, com broadcast para `255.255.255.255` e para os endereços de broadcast das interfaces (via `psutil`).
@@ -353,14 +365,16 @@ O app lê o QR, aplica IP, porta, chave e licença, testa permissões de SMS e o
 - O app responde `CARACORE-APK|<ip>|<porta>`; o Gaspar guarda o IP e a porta em `sms_config.json`.
 - Se a descoberta falhar, o pareamento por QR continua sendo a via principal, porque o app também informa o endereço do Gaspar.
 
-### Envio (TCP + AES-256-GCM)
+### Envio (TCP + AES-256-GCM + envelope de ponta a ponta)
 
 - Porta 49998 no celular.
-- Cada mensagem é um quadro: 4 bytes de tamanho em big-endian, seguidos do texto cifrado.
+- Cada mensagem é um quadro: 4 bytes de tamanho em big-endian, seguidos do texto cifrado do canal.
 - O texto cifrado é `IV de 12 bytes + AESGCM(...)`, com tag de 128 bits.
-- O conteúdo é o JSON `{"action":"send_sms","number":"...","message":"...","id":"...","ts":...,"base":"http://ip:8766"}` em UTF-8. O campo `base` atualiza no celular o endereço do Gaspar para devolver o comprovante.
-- A chave é derivada do segredo do QR: decodifica o base64; se o resultado tiver menos de 32 bytes, aplica SHA-256; usa os primeiros 32 bytes. A mesma regra está em `gaspar/sms/crypto.py` e no `GatewayCrypto` do app Android.
-- O celular responde na mesma conexão um quadro cifrado com `{"ok":true,"id":"...","status":"aceito"}` ou `{"ok":false,"error":"..."}`. O Gaspar espera essa resposta por até 0,8 s; ausência não invalida o envio.
+- O conteúdo é o JSON `{"action":"send_sms","envelope":"...","id":"...","ts":...,"seq":N,"base":"http://ip:8766"}` em UTF-8. O campo `base` atualiza no celular o endereço do Gaspar para devolver o comprovante.
+- A chave do canal é derivada do segredo do QR: decodifica o base64; se o resultado tiver menos de 32 bytes, aplica SHA-256; usa os primeiros 32 bytes. A mesma regra está em `gaspar/sms/crypto.py` e no `GatewayCrypto` do app Android.
+- O `envelope` é o conteúdo real e **só o celular abre**: `base64(chave_efêmera(65) || IV(12) || AESGCM(numero||mensagem))`. A chave vem de ECDH P-256 entre uma chave efêmera do Gaspar e a chave pública do celular, passada por HKDF-SHA256 (salt `gaspar-sms-e2e-v1`, info `pdv-phone`). O AAD é o `id` do pedido, então o envelope não pode ser reaproveitado em outro pedido.
+- Com `e2e_required` ligado (padrão), pedido sem a chave do celular é recusado com `400` e a mensagem pede novo pareamento. Com `e2e_required` desligado, o campo `number`/`message` volta a viajar no comando, apenas dentro do canal AES — é o modo antigo, para celular sem a versão com envelope.
+- O celular responde na mesma conexão um quadro cifrado com `{"ok":true,"id":"...","status":"aceito","key":"<chave publica>"}` ou `{"ok":false,"error":"..."}`. O Gaspar espera essa resposta por até 0,8 s; ausência não invalida o envio. A `key` só é aceita para preencher a chave quando ainda não existe nenhuma registrada.
 - O resultado final chega depois por `POST /api/mobile/receipt`, com o corpo JSON `{"id","status","detail","ts"}` cifrado em AES-GCM e codificado em base64. `status` é `sent`, `delivered` ou `failed`; a autenticação é a própria chave do pareamento, não o token da API.
 - Estados do pedido: `fila`, `enviando`, `enviado` (chip aceitou ou pedido entregue ao celular), `entregue` (operadora confirmou) e `falhou`. O comprovante é idempotente e nunca rebaixa um pedido `entregue`.
 
@@ -371,50 +385,238 @@ Escuta em `0.0.0.0:<porta_http>` (padrão 8766). Autenticação por `X-Api-Token
 | Método e rota | Função |
 | --- | --- |
 | `GET /api/health` | Estado da ponte, sem token: `ok`, `phone_online` e quantidade pendente. |
-| `POST /api/sms` | Enfileira um SMS. Corpo: `{"number","message","venda_id"}`. |
-| `GET /api/sms` | Últimos 20 pedidos. |
-| `GET /api/sms/<id>` | Um pedido pelo identificador. |
-| `POST /api/mobile/diagnostic` | Recebe o diagnóstico do celular no pareamento (token de setup, não o token da API). |
+| `POST /api/sms` | Enfileira um SMS. Corpo: `{"number","venda_id","template","variaveis"}`. |
+| `GET /api/sms` | Últimos 20 pedidos, sem número, texto nem envelope. |
+| `GET /api/sms/<id>` | Um pedido pelo identificador, no mesmo formato reduzido. |
+| `GET /api/sms/e2e` | Se a criptografia de ponta a ponta é obrigatória, se a chave do celular existe e o fingerprint. |
+| `POST /api/mobile/diagnostic` | Recebe o diagnóstico do celular no pareamento (token de setup) e a chave pública. |
+| `POST /api/mobile/key` | Celular já pareado publica a chave pública; blob AES-GCM com a chave do pareamento. |
 | `POST /api/mobile/receipt` | Recebe o comprovante do celular (blob AES-GCM com a chave do pareamento). |
 
-Códigos de `POST /api/sms`: `202` aceito, `400` número/mensagem inválidos ou corpo malformado, `401` token ausente ou errado, `429` limite por minuto ou por dia, `507` fila cheia.
+`POST /api/sms` e `GET /api/sms*` só são aceitos de `127.0.0.1`/`::1`; pedido vindo da rede recebe `403`. O `POST` também exige a assinatura `X-Gaspar-Signature` (HMAC-SHA256 de `método\ncaminho\ntimestamp\nnonce\nsha256(corpo)`, com `X-Gaspar-Timestamp` e `X-Gaspar-Nonce`), tolerância de 60 s e nonce de uso único por 10 min.
+
+Códigos de `POST /api/sms`: `202` aceito, `400` número/mensagem/modelo inválidos, chave do celular ausente ou corpo malformado, `401` token ou assinatura ausente, inválida, expirada ou repetida, `403` chamada fora do computador, `429` limite por minuto, por dia, por destinatário ou pedido repetido, `507` fila cheia. A resposta inclui `sealed`, `destino` e `conteudo` (rótulos HMAC), sem número nem texto.
+
+O conteúdo é sempre um modelo: `template: "venda_confirmada"` com `variaveis: {"venda": "123", "total": "19,90"}` (o total é opcional). Texto livre é recusado enquanto `only_templates` estiver ligado. O envio de teste do painel é a única exceção, e é marcado como `origem: "painel"` na auditoria.
 
 Códigos de `POST /api/mobile/receipt`: `202` comprovante aplicado, `400` blob ausente, adulterado ou com estado inválido, `404` pedido desconhecido.
 
-Exemplo de chamada do PDV:
+Exemplo de chamada do PDV (o mesmo cálculo está em `gaspar/sms/signing.py`):
 
-```bash
-curl -X POST "http://192.168.0.10:8766/api/sms" \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Token: SEU_TOKEN" \
-  -d '{"number":"5511999999999","message":"Venda 123 confirmada. Obrigado!","venda_id":"venda-123"}'
+```python
+import hashlib, hmac, json, secrets, time, urllib.request
+
+token = "SEU_TOKEN"
+corpo = json.dumps({
+    "number": "5511999999999",
+    "template": "venda_confirmada",
+    "variaveis": {"venda": "123", "total": "19,90"},
+    "venda_id": "venda-123",
+}).encode()
+nonce, agora = secrets.token_hex(8), int(time.time())
+base = "\n".join(["POST", "/api/sms", str(agora), nonce, hashlib.sha256(corpo).hexdigest()])
+assinatura = hmac.new(token.encode(), base.encode(), hashlib.sha256).hexdigest()
+pedido = urllib.request.Request("http://127.0.0.1:8766/api/sms", data=corpo, method="POST")
+for nome, valor in {
+    "Content-Type": "application/json",
+    "X-Api-Token": token,
+    "X-Gaspar-Timestamp": str(agora),
+    "X-Gaspar-Nonce": nonce,
+    "X-Gaspar-Signature": assinatura,
+}.items():
+    pedido.add_header(nome, valor)
+print(urllib.request.urlopen(pedido).read().decode())
 ```
 
 ```json
-{"ok": true, "id": "7f3c...", "status": "fila", "confirmed": false}
+{"ok": true, "id": "7f3c...", "status": "fila", "confirmed": false, "sealed": true, "destino": "3f2a...", "conteudo": "9c1b..."}
 ```
 
-O PDV deve tratar `sem resposta`, `401`, `429` e `507` como "não enviado" e tentar de novo mais tarde; o `venda_id` impede duplicidade quando a nova tentativa acontece dentro de 24 horas. O diagnóstico do celular usa `POST /api/mobile/diagnostic` com `token`, `sms_ok`, `battery_ok` e `message`; esse token é o de pareamento, não o da API, e é apagado depois do primeiro uso.
+O PDV deve tratar `sem resposta`, `401`, `403`, `429` e `507` como "não enviado" e tentar de novo mais tarde; o `venda_id` impede duplicidade quando a nova tentativa acontece dentro de 24 horas. O diagnóstico do celular usa `POST /api/mobile/diagnostic` com `token`, `sms_ok`, `battery_ok`, `message` e `phone_public_key`; esse token é o de pareamento, não o da API, e é apagado depois do primeiro uso.
 
 ### Regras de segurança e de custo
 
 - Número normalizado entre 10 e 15 dígitos, com `+` opcional; mensagem limitada a 480 caracteres.
 - `venda_id` é idempotente por 24 horas: repetir a mesma venda devolve o pedido já existente em vez de mandar outro SMS.
 - Limites padrão: 20 pedidos por minuto e 300 por dia; fila máxima de 100 pedidos.
+- Por destinatário: 1 por hora e 3 por dia. O mesmo texto para o mesmo destino em 30 minutos devolve o pedido existente em vez de enviar de novo. Os limites contam pelo rótulo HMAC do número, não pelo número gravado.
 - No máximo duas tentativas por pedido. Celular offline gera `falhou` com o motivo, sem repetir para sempre.
 - Ao abrir, pedidos `fila` voltam para a fila; pedidos `enviando` viram `falhou` com "envio interrompido ao fechar o Gaspar", para não arriscar cobrança duplicada.
-- Os logs mascaram o número; `sms_config.json` é gravado com permissão restrita (quando o sistema permite).
-- O token da API e a chave compartilhada só existem no computador do lojista. Nenhum segredo é versionado no repositório.
+- O app Android guarda um contador de sequência (`seq`) e recusa pedido com sequência repetida; também limita a 300 SMS por dia no próprio aparelho e ignora um identificador de pedido já aceito.
+- `sms_config.json` é gravado com permissão restrita (quando o sistema permite). A auditoria não guarda número nem texto; o estado guarda o envelope cifrado, que o Gaspar não abre.
+- O token da API, a chave compartilhada e a chave de auditoria só existem no computador do lojista. Nenhum segredo é versionado no repositório.
 
 ### Arquivos da ponte
 
 | Arquivo | Conteúdo |
 | --- | --- |
-| `sms_config.json` | Estado, porta, token da API, chave compartilhada, celular pareado e limites. |
-| `sms_state.json` | Até 500 pedidos, com status, horários de envio/entrega e motivo de falha. |
-| `sms_log.jsonl` | Trilha de uma linha por mudança de status, com o número mascarado. |
+| `sms_config.json` | Estado, porta, token da API, chave compartilhada, chave de auditoria, chave pública do celular, limites e retenção. |
+| `sms_state.json` | Até 500 pedidos, com status, horários, o envelope cifrado e os rótulos HMAC; sem número nem texto. |
+| `sms_audit.jsonl` | Trilha de uma linha por mudança de estado, só com metadados; retenção padrão de 90 dias. |
 
-Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HOME`. O guia do usuário e o passo a passo do celular estão em [docs/sms.md](sms.md).
+Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HOME`. O guia do usuário e o passo a passo do celular estão em [docs/sms.md](sms.md); o termo de segurança e o tratamento de dados estão em [docs/seguranca-sms.md](seguranca-sms.md).
+
+## Canal de atualização
+
+O Gaspar tem um canal próprio, separado do gateway do CSO Transporte
+(`api.caracore.com.br`). O canal é um único arquivo assinado, publicado como
+conteúdo estático no GitHub Pages:
+
+```text
+https://gaspar.caracore.com.br/latest.json
+```
+
+O DNS `gaspar.caracore.com.br` aponta para `chmulato.github.io`; a esteira
+[`channel.yml`](../.github/workflows/channel.yml) publica o arquivo depois de
+conferir a assinatura. A mesma publicação serve a página de apresentação
+(`docs/index.html` e `docs/assets/`) na raiz do site, e o `latest.json` fica ao
+lado dela. Não existe servidor de aplicação, banco nem chave privada na nuvem.
+
+### Contrato do `latest.json`
+
+O arquivo é um envelope com o manifesto em base64 e a assinatura Ed25519:
+
+```json
+{
+  "payload": "<JSON compacto em base64>",
+  "signature": "<assinatura Ed25519 em base64>",
+  "key_id": "gaspar-2026-11",
+  "appId": "gaspar",
+  "version": "1.7.1",
+  "downloadUrl": "https://github.com/.../GasparSetup-1.7.1.exe",
+  "sha256": "...",
+  "mandatory": false,
+  "releaseNotes": "...",
+  "assets": { "windows-setup": { "url": "...", "sha256": "...", "size": 0 } }
+}
+```
+
+Os campos fora do `payload` são espelhos para leitura humana. O aplicativo
+**ignora todos eles** e usa somente o que está dentro do payload assinado:
+
+| Campo | Regra |
+| --- | --- |
+| `appId` | Precisa ser `gaspar`. |
+| `version` | Versão publicada, comparada em partes numéricas. |
+| `channel` | Precisa ser `stable`. |
+| `mandatory` | Verdadeiro deixa a atualização obrigatória. |
+| `min_supported` | Quem estiver abaixo também recebe a atualização como obrigatória. |
+| `published_at` | Data de publicação da release. |
+| `notes_url` | Página de novidades. |
+| `releaseNotes` | Texto da release. |
+| `assets` | Pacotes por plataforma, com `url`, `sha256` e `size`. |
+
+O aplicativo calcula `obrigatória = mandatory OR versão_local < min_supported`.
+Não existe variante separada do manifesto para atualização obrigatória.
+
+Chaves de asset: `windows-setup` (obrigatório, nome `GasparSetup-*.exe`) e
+`linux-deb` (opcional, nome `gaspar_*_amd64.deb`). A URL é montada como
+`https://github.com/{repo}/releases/download/{tag}/{asset}`.
+
+### Confiança, assinatura e limites
+
+- A chave privada Ed25519 fica no HD removível do responsável e é lida apenas de
+  `GASPAR_RELEASE_SIGNING_KEY` (PEM ou PKCS#8 em base64). Ela nunca é versionada,
+  impressa ou enviada.
+- A chave pública fica em `assets/gaspar-update-public.pem`, entra no repositório
+  e no instalador. O aplicativo não liga o canal quando ela está ausente.
+- A assinatura é conferida **antes** de interpretar o payload; qualquer campo
+  fora do payload é ignorado.
+- Só HTTPS; HTTP é aceito apenas em `127.0.0.1`/`localhost` para testes. O
+  manifesto tem limite de 64 KB e o instalador, 256 MB.
+- No Windows, o pacote precisa terminar em `.exe`; o SHA-256 assinado é
+  conferido durante o download e o arquivo parcial é apagado em caso de erro.
+
+### Fluxo no aplicativo
+
+1. `updates.Vigia` consulta o canal 25–60 s depois de abrir e a cada 6 h
+   (variação de ±15 min). Se a última consulta tem menos de 30 min, espera.
+2. A faixa **Atualização** aparece no painel e o item correspondente no menu da
+   bandeja. A notificação da bandeja é emitida uma vez por versão.
+3. **Depois** grava `deferred_version` e esconde a faixa; ela não volta sozinha,
+   mas continua acessível pela bandeja.
+4. **Pular** grava `skipped_version` e remove o item da bandeja.
+5. **Atualizar agora** (Windows) baixa para `data_dir()/updates`, confere o
+   SHA-256, grava `pending_version` e dispara um PowerShell oculto que espera o
+   PID atual terminar, executa o instalador com
+   `/SILENT /SUPPRESSMSGBOXES /NORESTART`, grava `update-result.txt` e reabre o
+   app com `--minimized`. O instalador Inno é por usuário e não tem entrada de
+   `[Run]` para o modo silencioso: quem reabre é o roteiro do updater, para não
+   abrir duas instâncias do Gaspar.
+6. Na abertura seguinte, o app lê `update-result.txt`, registra sucesso ou falha
+   e limpa `pending_version`. No Linux, o botão abre a página de download.
+
+O estado fica em `data_dir()/update.json`:
+
+| Campo | Uso |
+| --- | --- |
+| `last_check` | Última consulta bem-sucedida (epoch). |
+| `skipped_version` | Versão que o usuário não quer mais ver. |
+| `deferred_version` | Versão que o usuário adiou. |
+| `notified_version` | Versão já notificada na bandeja. |
+| `pending_version` | Versão cuja instalação foi iniciada. |
+
+### Ferramenta e esteira
+
+| Comando | Efeito |
+| --- | --- |
+| `python tools/gaspar_channel.py init-key --key <caminho>` | Gera o par; recusa caminho dentro do repositório. |
+| `python tools/gaspar_channel.py sign --tag gaspar-vX.Y.Z` | Gera `dist/channel/latest.json` local. |
+| `python tools/gaspar_channel.py sign --tag ... --publish` | Envia o manifesto à release, dispara `channel.yml`, acompanha e confere a URL pública. |
+| `python tools/gaspar_channel.py check --expect X.Y.Z` | Consulta o canal publicado e valida a assinatura. |
+| `python tools/gaspar_channel.py verify --file latest.json` | Valida um arquivo local (usado pela esteira). |
+
+A configuração do canal fica em `release/channel.json` (repositório, prefixo de
+etiqueta, `key_id`, `min_supported`, `notes_url` e padrões de asset). A
+ferramenta importa `gaspar.updates`, então o manifesto é provado com a mesma
+verificação que o aplicativo usa.
+
+### Publicar uma versão
+
+Uma vez só, com o HD removível conectado, gere o par de chaves:
+
+```bash
+python tools/gaspar_channel.py init-key --key E:/gaspar/gaspar-signing.pem
+```
+
+A chave privada fica fora do repositório e não pode ser recuperada: sem ela não
+é possível assinar versões novas. A chave pública vai para
+`assets/gaspar-update-public.pem`, entra no instalador e é versionada. Enquanto
+ela não existir, o aplicativo mantém o canal desligado.
+
+Em cada versão:
+
+1. Publique a release `gaspar-vX.Y.Z` com o `GasparSetup-X.Y.Z.exe`. A etiqueta
+   precisa bater com `gaspar/__init__.py`; rascunho e pré-release são recusados.
+2. Assine e publique o manifesto:
+
+   ```bash
+   export GASPAR_RELEASE_SIGNING_KEY="$(cat /e/gaspar/gaspar-signing.pem)"
+   python tools/gaspar_channel.py sign --tag gaspar-vX.Y.Z --publish
+   ```
+
+3. Confira o endereço público sem publicar de novo:
+
+   ```bash
+   python tools/gaspar_channel.py check --expect X.Y.Z
+   ```
+
+Uma linha `mandatory: true` no texto da release marca a atualização como
+obrigatória; versões abaixo de `min_supported` também. Depois de publicar,
+ajuste `min_supported` em `release/channel.json`: o valor entra no próximo
+manifesto assinado.
+
+Quem está na 1.7.0 instala a primeira versão com atualizador **uma vez, à mão**.
+A partir dela o aviso passa a funcionar sozinho. O passo a passo para quem usa o
+Gaspar está em [atualizacao.html](atualizacao.html).
+
+### Repositório misto
+
+O repositório publica o Gaspar (tags `gaspar-v*`) e o aplicativo Android (tags
+`android-v*`). O canal não usa `/releases/latest`: ele aponta para o
+`latest.json` da release indicada, e a ferramenta e a esteira recusam etiqueta
+fora de `gaspar-v*`, para que uma release Android não vire "a mais recente" do
+canal.
 
 ## Testes
 
@@ -423,17 +625,37 @@ python -m unittest discover -s tests -p "test_*.py" -v
 python tests/smoke_test.py
 ```
 
-Os 26 testes unitários de `tests/test_sms.py` usam apenas biblioteca padrão (mais `cryptography`) e não abrem porta fixa nem acessam a internet. Eles cobrem:
+Os 59 testes unitários de `tests/test_sms.py` usam apenas biblioteca padrão (mais `cryptography`) e não abrem porta fixa nem acessam a internet. Eles cobrem:
 
 - Configuração, geração e persistência dos segredos, token de setup de uso único e validade de 15 minutos.
 - Derivação de chave quando o segredo tem menos de 32 bytes.
 - Cifra e decifra no formato do app Android, incluindo detecção de adulteração.
+- Envelope de ponta a ponta: ida e volta, AAD amarrado ao pedido, chave efêmera por mensagem, chave pública inválida e rótulos HMAC estáveis.
 - Enquadramento TCP, montagem do comando e leitura do anúncio de descoberta.
 - Normalização de número e de mensagem, com recusa de entradas inválidas.
-- Persistência, deduplicação por `venda_id` e restauração da fila.
+- Persistência, deduplicação por `venda_id` e restauração da fila; pedido antigo é selado antes de sair.
 - Envio com sucesso, repetição com celular offline, falha definitiva, limite por minuto e fila cheia.
-- API local: saúde, autenticação, aceite, consulta por id, pedido inexistente e diagnóstico de uso único.
+- Assinatura HMAC: ausência, chave errada, relógio fora da janela e nonce repetido.
+- Limites por destinatário, repetição de conteúdo, modelo de mensagem e envio manual do painel.
+- API local: saúde, autenticação, aceite, consulta por id, pedido inexistente, `403` fora do computador, diagnóstico de uso único e rota da chave pública.
 - Comprovante: aceite e falha pelo celular, transição `enviado` → `entregue`, comprovante adulterado, pedido desconhecido e recusa sem token da API.
+- Privacidade: `sms_state.json` e `sms_audit.jsonl` não contêm número nem texto; a auditoria recusa campos de conteúdo; expurgo respeita a retenção; o expurgo manual apaga os dois.
+- Android: o manifesto mantém `SendSmsActivity` fechada e a permissão interna como `signature`.
+
+Os 27 testes de `tests/test_updates.py` também usam apenas biblioteca padrão
+(mais `cryptography`) e não acessam a internet nem usam chave real. Eles cobrem:
+
+- Envelope assinado aceito; adulteração, outro `appId` e outro canal recusados.
+- Campos espelho fora do payload ignorados.
+- Comparação de versões, prefixo `v`, pré-release e versão abaixo do mínimo.
+- Escolha do instalador por plataforma e recusa de manifesto sem pacote.
+- Download local com SHA-256 correto e incorreto (arquivo parcial apagado).
+- Persistência de estado e leitura do marcador de instalação.
+- Ferramenta: payload com os dois pacotes, divergência entre `digest` e
+  `SHA256SUMS.txt`, rascunho, pré-release, etiqueta de outro produto e release
+  sem instalador recusados; o manifesto gerado passa pela verificação do app.
+- Roteiro PowerShell: espera o PID, argumentos silenciosos, marcador de
+  resultado e escape de apóstrofo no caminho (sintaxe validada no PowerShell).
 
 O teste de fumaça usa uma pasta temporária via `GASPAR_HOME`, não altera o `hosts` real e cobre:
 
@@ -467,9 +689,9 @@ Confirme que **Agir somente quando eu estiver ausente** está marcado. Em sistem
 
 Ele deve ficar atrás do painel enquanto a janela de configuração está aberta. Se não ficar, feche e reabra o painel; o z-order é reaplicado a cada 500 ms.
 
-**O BlackBox não abre pelo painel**
+**O BlackBox não abre pelo ícone da bandeja**
 
-Gere o build completo (Gaspar e BlackBox). No Windows, o instalador inclui os dois; no Linux, o `.deb` e o AppImage incluem os dois.
+Gere o build completo (Gaspar e BlackBox). No Windows, o instalador inclui os dois; no Linux, o `.deb` e o AppImage incluem os dois. O atalho **Gaspar BlackBox** do menu iniciar continua disponível.
 
 **Antivírus ou SmartScreen bloqueia o `.exe`**
 
@@ -514,7 +736,9 @@ O script remove o magenta, recorta o mascote, suaviza a borda, desconta a franja
 
 ## Estado de validação desta versão
 
-- Testes automáticos: **26 testes** da ponte de SMS e do painel, aprovados na árvore local e na esteira (Linux e Windows) da etiqueta `gaspar-v1.7.0`.
+- Testes automáticos: **53 testes** (painel, ponte de SMS e canal de atualização), aprovados na árvore local; a esteira (Linux e Windows) passa a executá-los no próximo envio.
+- Canal de atualização: código, ferramenta e esteira implementados e testados localmente. O DNS `gaspar.caracore.com.br` já existe; em 11/11/2026 o Pages ainda não estava ligado (HTTP 404 e HTTPS sem certificado) e nenhuma chave real foi gerada.
+- Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não executada**; o roteiro PowerShell foi validado por análise sintática no PowerShell, não por uma instalação real.
 - Janela **Celular / SMS**: validada no teste de fumaça com a ponte desligada; o pareamento real depende de um celular Android.
 - Botão **Tirar o Gaspar da tela**: validado no teste de fumaça; o mascote some, o botão vira **Trazer o Gaspar de volta** e a simulação e a ponte continuam ativas.
 - Envio real de SMS: **não executado** nesta máquina, porque depende de um celular Android pareado e de um chip com crédito. O protocolo foi validado contra o código do app Android em teste automatizado (mesma derivação de chave e mesmo formato de cifra).

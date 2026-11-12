@@ -56,11 +56,10 @@ Boas práticas:
 
 ### Pela interface
 
-1. Abra o painel do Gaspar.
-2. Clique em **BlackBox**.
-3. Aceite a elevação (UAC no Windows, `pkexec` no Linux).
-4. Clique em **Aplicar bloqueio**.
-5. Opcionalmente, clique em **Atualizar cache DNS**.
+1. No ícone do Gaspar, perto do relógio, escolha **Gaspar BlackBox**. O atalho do menu iniciar também abre a ferramenta.
+2. Aceite a elevação (UAC no Windows, `pkexec` no Linux).
+3. Clique em **Aplicar bloqueio**.
+4. Opcionalmente, clique em **Atualizar cache DNS**.
 
 O status mostra **Bloqueio ativo** ou **Bloqueio inativo**. O botão **Remover bloqueio** restaura o conteúdo anterior.
 

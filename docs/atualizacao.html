@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atualização do Gaspar | Cara Core</title>
+<meta name="description" content="Como atualizar o Gaspar hoje, sem desinstalar e sem perder suas preferências, e como vai funcionar o aviso com assinatura digital na próxima versão.">
+<meta name="author" content="Cara Core Informática">
+<meta name="theme-color" content="#059669">
+<link rel="canonical" href="https://gaspar.caracore.com.br/atualizacao.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Gaspar">
+<meta property="og:url" content="https://gaspar.caracore.com.br/atualizacao.html">
+<meta property="og:title" content="Atualização do Gaspar | Cara Core">
+<meta property="og:description" content="Atualize à mão na versão 1.7.0 ou conheça o aviso com assinatura digital que chega na próxima versão.">
+<meta property="og:image" content="https://gaspar.caracore.com.br/assets/og-gaspar.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="assets/gaspar.png">
+<link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 300 800;
+    font-display: swap;
+    src: url("assets/fonts/inter-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 300 800;
+    font-display: swap;
+    src: url("assets/fonts/inter-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+
+  :root {
+    --green: #059669;
+    --green-2: #10b981;
+    --green-700: #047857;
+    --green-900: #064e3b;
+    --ink: #0b1f3a;
+    --ink-2: #111827;
+    --slate: #475569;
+    --muted: #64748b;
+    --bg: #f8fafc;
+    --line: #e2e8f0;
+    --amber-bg: #fffbeb;
+    --amber-line: #fcd34d;
+    --radius: 1.5rem;
+    --page-gutter: clamp(1rem, 3vw, 1.75rem);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; overflow-x: clip; }
+  body {
+    margin: 0;
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--slate);
+    background: var(--bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  img, svg { display: block; max-width: 100%; }
+  a { color: inherit; }
+  h1, h2, h3 { color: var(--ink-2); line-height: 1.15; margin: 0; }
+  p { margin: 0; }
+  code {
+    font-family: ui-monospace, "Cascadia Mono", "Courier New", monospace;
+    font-size: .88em; background: #f1f5f9; border: 1px solid var(--line);
+    border-radius: .35rem; padding: .08rem .35rem; color: var(--ink-2);
+  }
+  .container { width: 100%; max-width: 1180px; margin: 0 auto; padding-left: max(var(--page-gutter), env(safe-area-inset-left)); padding-right: max(var(--page-gutter), env(safe-area-inset-right)); }
+  .skip-link { position: absolute; left: -9999px; top: 0; background: #fff; color: var(--ink); padding: .75rem 1rem; z-index: 100; border-radius: 0 0 .75rem 0; }
+  .skip-link:focus { left: 0; }
+  :focus-visible { outline: 3px solid #34d399; outline-offset: 3px; }
+
+  .pixel {
+    font-family: ui-monospace, "Cascadia Mono", "Courier New", monospace;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-size: .72rem;
+    font-weight: 700;
+  }
+
+  /* Cabeçalho */
+  .breadcrumb { display: flex; gap: .4rem; align-items: center; font-size: .82rem; color: var(--muted); padding-top: .85rem; }
+  .breadcrumb strong { color: var(--ink); font-weight: 600; }
+  .breadcrumb a { text-decoration: none; }
+  .breadcrumb a:hover { color: var(--green-700); }
+  .site-header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255, 255, 255, .94);
+    backdrop-filter: saturate(180%) blur(14px);
+    border-bottom: 1px solid rgba(148, 163, 184, .18);
+  }
+  .site-header .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 76px; }
+  .brand { display: inline-flex; align-items: center; gap: .75rem; text-decoration: none; }
+  .brand img { width: 46px; height: 46px; border-radius: 14px; background: #ecfdf5; box-shadow: inset 0 0 0 1px rgba(5, 150, 105, .16); }
+  .brand-name { font-weight: 800; color: var(--ink); font-size: 1.1rem; line-height: 1.2; }
+  .brand-sub { font-size: .74rem; color: var(--muted); }
+  .nav { display: flex; align-items: center; gap: 1.35rem; }
+  .nav a { text-decoration: none; font-size: .92rem; font-weight: 500; color: #334155; transition: color .2s; }
+  .nav a:hover { color: var(--green-700); }
+  .nav a.btn, .nav a.btn:hover { color: #fff; }
+  .nav a[aria-current="page"] { color: var(--green-700); font-weight: 700; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+    padding: .78rem 1.35rem; border-radius: .8rem; font-weight: 700; font-size: .95rem;
+    text-decoration: none; border: 0; cursor: pointer; transition: transform .18s, box-shadow .18s, background .18s, color .18s;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: linear-gradient(135deg, var(--green), var(--green-2)); color: #fff; box-shadow: 0 10px 24px rgba(5, 150, 105, .28); }
+  .btn-primary:hover { box-shadow: 0 14px 30px rgba(5, 150, 105, .34); }
+  .btn-light { background: #fff; color: var(--green-700); box-shadow: 0 12px 26px rgba(2, 6, 23, .16); }
+  .btn-ghost { border: 2px solid rgba(255, 255, 255, .85); color: #fff; background: transparent; }
+  .btn-ghost:hover { background: #fff; color: var(--green-700); }
+  .nav-toggle { display: none; background: none; border: 0; color: var(--ink); padding: .4rem; cursor: pointer; }
+
+  /* Capa da página */
+  .page-hero {
+    margin: var(--page-gutter); margin-top: clamp(.75rem, 2vw, 1.25rem);
+    border-radius: clamp(1.4rem, 2.6vw, 2rem);
+    overflow: clip; position: relative; color: #fff;
+    background:
+      radial-gradient(900px 460px at 84% 12%, rgba(255, 255, 255, .18), transparent 60%),
+      linear-gradient(135deg, #065f46 0%, #047857 46%, #059669 100%);
+    box-shadow: 0 26px 70px rgba(4, 120, 87, .24);
+  }
+  .page-hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .2;
+    background-image: radial-gradient(rgba(255, 255, 255, .85) 1px, transparent 1px);
+    background-size: 26px 26px;
+    mask-image: linear-gradient(115deg, transparent 45%, #000 100%);
+    -webkit-mask-image: linear-gradient(115deg, transparent 45%, #000 100%);
+  }
+  .page-hero .inner {
+    position: relative; z-index: 1;
+    padding: clamp(2.2rem, 4.6vw, 3.8rem) clamp(1.4rem, 4vw, 3.6rem);
+    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(200px, .5fr);
+    gap: clamp(1.5rem, 4vw, 3rem); align-items: center;
+  }
+  .page-hero-art { justify-self: center; }
+  .page-hero-art img { width: min(250px, 100%); filter: drop-shadow(0 22px 34px rgba(2, 44, 34, .4)); }
+  .page-hero .pixel { color: #fff; margin-bottom: .8rem; }
+  .page-hero h1 { color: #fff; font-size: clamp(2.1rem, 4vw, 3.3rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: .9rem; max-width: 18ch; }
+  .page-hero h1 em { font-style: normal; color: #d1fae5; }
+  .page-hero .lead { color: #ecfdf5; font-size: clamp(1rem, 1.6vw, 1.18rem); max-width: 62ch; }
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.1rem; }
+  .chip {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: rgba(6, 78, 59, .55); border: 1px solid rgba(255, 255, 255, .38);
+    color: #fff; padding: .32rem .7rem; border-radius: 999px; font-size: .76rem; font-weight: 600;
+  }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: #a7f3d0; box-shadow: 0 0 0 3px rgba(167, 243, 208, .25); }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1.6rem; }
+  .hero-note { margin-top: 1rem; font-size: .82rem; color: #ecfdf5; }
+
+  /* Seções */
+  section { min-width: 0; }
+  section[id] { scroll-margin-top: 96px; }
+  .section { padding: clamp(3.2rem, 6vw, 5rem) 0; }
+  .section-head { max-width: 740px; margin: 0 auto clamp(2rem, 4vw, 3rem); text-align: center; }
+  .kicker { color: var(--green-700); margin-bottom: .65rem; }
+  .section-head h2 { font-size: clamp(1.8rem, 3.4vw, 2.7rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: .8rem; }
+  .section-head p { font-size: clamp(1rem, 1.5vw, 1.12rem); color: var(--slate); }
+  .grid { display: grid; gap: 1.15rem; }
+  .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1.5rem; box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+  }
+  .card h3 { font-size: 1.06rem; margin: .9rem 0 .5rem; }
+  .card > p { font-size: .92rem; color: var(--slate); }
+  .icon {
+    width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5); color: var(--green-700);
+    box-shadow: inset 0 0 0 1px #a7f3d0;
+  }
+  .icon svg { width: 24px; height: 24px; }
+
+  /* Passos */
+  .steps { display: grid; gap: 1rem; margin: 1.3rem 0 0; padding: 0; list-style: none; }
+  .steps li { display: flex; gap: .85rem; align-items: flex-start; }
+  .steps .num { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-family: ui-monospace, "Courier New", monospace; font-weight: 800; font-size: .82rem; color: #065f46; background: #d1fae5; border: 1px solid #a7f3d0; }
+  .steps h4 { margin: .15rem 0 .25rem; font-size: .97rem; color: var(--ink-2); }
+  .steps p { font-size: .9rem; }
+  .os-block { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
+  .os-block:first-of-type { margin-top: 1rem; padding-top: 0; border-top: 0; }
+  .os-block h4 { margin: 0 0 .4rem; font-size: 1rem; color: var(--ink-2); }
+  .os-block p { font-size: .9rem; }
+  .os-block p + p { margin-top: .5rem; }
+
+  /* Aviso assinado */
+  .update-band { background: linear-gradient(160deg, #f0fdf4, #ecfdf5 55%, #f8fafc); border-top: 1px solid #d1fae5; border-bottom: 1px solid #d1fae5; }
+  .update-card { border: 2px solid #d1fae5; }
+  .note {
+    display: flex; gap: .8rem; align-items: flex-start; margin-top: 1.6rem;
+    background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: 14px;
+    padding: 1rem 1.1rem; font-size: .86rem; color: #78350f;
+  }
+  .note svg { flex: none; width: 21px; height: 21px; color: #b45309; margin-top: .1rem; }
+  .note a { color: #92400e; font-weight: 700; }
+
+  /* Listas de dados */
+  .checklist { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .7rem; }
+  .checklist li { display: flex; gap: .6rem; align-items: flex-start; font-size: .92rem; color: #334155; }
+  .checklist svg { flex: none; width: 20px; height: 20px; color: var(--green); margin-top: .12rem; }
+  .checklist.off svg { color: #b45309; }
+  .checklist strong { color: var(--ink); }
+
+  /* Perguntas */
+  .faq { max-width: 820px; margin: 0 auto; display: grid; gap: .7rem; }
+  details { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 0 1.15rem; }
+  details[open] { border-color: #a7f3d0; box-shadow: 0 8px 24px rgba(5, 150, 105, .07); }
+  summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1.05rem 0; font-weight: 700; color: var(--ink-2); font-size: .95rem; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; font-family: ui-monospace, monospace; font-size: 1.2rem; color: var(--green-700); }
+  details[open] summary::after { content: "−"; }
+  details p { padding: 0 0 1.1rem; font-size: .9rem; color: var(--slate); }
+
+  /* CTA final e rodapé */
+  .cta-final { background: linear-gradient(135deg, #047857, #10b981); color: #fff; text-align: center; padding: clamp(3rem, 6vw, 4.6rem) 0; }
+  .cta-final h2 { color: #fff; font-size: clamp(1.8rem, 3.4vw, 2.6rem); margin-bottom: .8rem; }
+  .cta-final p { color: #d1fae5; font-size: 1.06rem; max-width: 46ch; margin: 0 auto 1.6rem; }
+  .site-footer { background: #0f172a; color: #cbd5e1; padding: 3rem 0 1.6rem; }
+  .footer-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 2rem; }
+  .site-footer h3 { color: #fff; font-size: .95rem; margin-bottom: .8rem; }
+  .site-footer p { font-size: .86rem; color: #94a3b8; }
+  .site-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; font-size: .86rem; }
+  .site-footer a { color: #cbd5e1; text-decoration: none; }
+  .site-footer a:hover { color: #fff; text-decoration: underline; }
+  .footer-base { border-top: 1px solid #1e293b; margin-top: 2rem; padding-top: 1.2rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: .78rem; color: #94a3b8; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+
+  @media (max-width: 980px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+    .page-hero .inner { grid-template-columns: 1fr; text-align: center; }
+    .page-hero-art { display: none; }
+    .page-hero h1, .page-hero .lead { margin-left: auto; margin-right: auto; }
+    .chips, .hero-actions { justify-content: center; }
+  }
+  @media (max-width: 900px) {
+    .nav { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border-bottom: 1px solid var(--line); padding: 1rem var(--page-gutter) 1.2rem; flex-direction: column; align-items: stretch; gap: .4rem; box-shadow: 0 18px 30px rgba(15, 23, 42, .08); }
+    .nav.open { display: flex; }
+    .nav a:not(.btn) { padding: .55rem 0; border-bottom: 1px solid #f1f5f9; }
+    .nav .btn { margin-top: .5rem; }
+    .nav-toggle { display: inline-flex; }
+  }
+  @media (max-width: 760px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr; }
+    .breadcrumb { font-size: .76rem; }
+  }
+  @media (max-width: 520px) {
+    .hero-actions .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+<nav class="breadcrumb container" aria-label="Navegação institucional">
+  <a href="index.html">Gaspar</a><span aria-hidden="true">·</span><strong>Atualização</strong>
+</nav>
+
+<header class="site-header">
+  <nav class="container bar" aria-label="Menu principal">
+    <a class="brand" href="index.html" aria-label="Gaspar, início">
+      <img src="assets/gaspar.png" alt="" width="46" height="46" aria-hidden="true">
+      <span>
+        <span class="brand-name">Gaspar</span>
+        <span class="brand-sub" style="display:block">Mascote da Cara Core</span>
+      </span>
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <div class="nav" id="menu">
+      <a href="index.html#mascote">O mascote</a>
+      <a href="index.html#como-funciona">Como funciona</a>
+      <a href="index.html#sms">SMS pelo celular</a>
+      <a href="index.html#pdv">Para o PDV</a>
+      <a href="atualizacao.html" aria-current="page">Atualização</a>
+      <a href="index.html#baixar" class="btn btn-primary">Baixar grátis</a>
+    </div>
+  </nav>
+</header>
+
+<main id="conteudo">
+  <section class="page-hero" id="inicio" aria-labelledby="titulo-atualizacao">
+    <div class="inner">
+      <div class="page-hero-copy">
+        <div class="chips">
+          <span class="chip"><span class="dot" aria-hidden="true"></span> Versão publicada 1.7.0</span>
+          <span class="chip">Atualização manual hoje</span>
+          <span class="chip">Suas preferências ficam</span>
+        </div>
+        <p class="pixel">Guia do Gaspar</p>
+        <h1 id="titulo-atualizacao">Atualizar o Gaspar é <em>simples e seguro</em>.</h1>
+        <p class="lead">
+          Na versão 1.7.0, você baixa o instalador novo e instala por cima — sem desinstalar e sem
+          perder suas preferências. A partir da próxima versão, o próprio Gaspar avisa quando há
+          novidade, confere a assinatura digital e só instala quando você permitir.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-light" href="index.html#baixar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            Ir para os downloads
+          </a>
+          <a class="btn btn-ghost" href="#proxima">Como será o aviso</a>
+        </div>
+        <p class="hero-note">O Gaspar não envia dados pessoais, de venda ou de SMS para verificar versões.</p>
+      </div>
+      <div class="page-hero-art">
+        <img src="assets/gaspar.png" alt="Gaspar, o mascote da Cara Core" width="512" height="512">
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="hoje" aria-labelledby="titulo-hoje">
+    <div class="container">
+      <div class="section-head">
+        <p class="pixel kicker">Versão 1.7.0</p>
+        <h2 id="titulo-hoje">Atualizar hoje, passo a passo</h2>
+        <p>O caminho é curto: conferir a versão, fechar o Gaspar, instalar o arquivo novo e confirmar.
+          Nada é apagado — as preferências e o histórico continuam na pasta do seu usuário.</p>
+      </div>
+      <div class="grid grid-2">
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H4z"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>
+          </div>
+          <h3>No Windows 10 e 11</h3>
+          <ol class="steps">
+            <li>
+              <span class="num" aria-hidden="true">1</span>
+              <div>
+                <h4>Veja qual versão você usa</h4>
+                <p>Abra o painel do Gaspar. A versão aparece no rodapé do painel, no canto inferior esquerdo, ao lado do botão <strong>Sair</strong> (por exemplo, <code>v1.7.0</code>). Se já for a mais nova, não precisa fazer nada.</p>
+              </div>
+            </li>
+            <li>
+              <span class="num" aria-hidden="true">2</span>
+              <div>
+                <h4>Baixe o instalador novo</h4>
+                <p>Na <a href="index.html#baixar">página de downloads</a>, baixe o <code>GasparSetup-X.Y.Z.exe</code> da versão atual. O arquivo fica na pasta <strong>Downloads</strong>.</p>
+              </div>
+            </li>
+            <li>
+              <span class="num" aria-hidden="true">3</span>
+              <div>
+                <h4>Feche o Gaspar e instale por cima</h4>
+                <p>Clique com o botão direito no ícone do Gaspar perto do relógio e escolha <strong>Sair</strong>. Depois, abra o instalador baixado e siga o Assistente. Não é preciso desinstalar antes: o instalador atualiza a mesma pasta e mantém seus dados.</p>
+              </div>
+            </li>
+            <li>
+              <span class="num" aria-hidden="true">4</span>
+              <div>
+                <h4>Confira a versão</h4>
+                <p>Abra o painel de novo. O rodapé deve mostrar a versão nova ao lado do botão <strong>Sair</strong>. Se o SmartScreen avisar sobre o programa, confirme que o arquivo veio da página oficial antes de liberar — o executável ainda não tem assinatura de código.</p>
+              </div>
+            </li>
+          </ol>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h4"/><path d="M7 12h8"/><path d="M7 21h10"/></svg>
+          </div>
+          <h3>No Linux</h3>
+          <div class="os-block">
+            <h4>Pacote .deb (Debian, Ubuntu, Mint)</h4>
+            <p>Baixe o <code>gaspar_X.Y.Z_amd64.deb</code> novo e instale por cima do anterior:</p>
+            <p><code>sudo apt install ./gaspar_X.Y.Z_amd64.deb</code></p>
+            <p>O <code>apt</code> atualiza o pacote e resolve as dependências. Suas preferências e o histórico ficam em <code>~/.config/caracore/gaspar/</code>.</p>
+          </div>
+          <div class="os-block">
+            <h4>AppImage</h4>
+            <p>Baixe a <code>Gaspar-X.Y.Z-amd64.AppImage</code> nova e substitua o arquivo antigo. Se o duplo clique não abrir, abra as propriedades do arquivo e marque <strong>Permitir execução</strong>.</p>
+          </div>
+          <div class="os-block">
+            <h4>Conferir a versão</h4>
+            <p>Abra o painel e olhe o rodapé, ao lado do botão <strong>Sair</strong>. Também é possível rodar <code>gaspar --version</code> no terminal.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section update-band" id="proxima" aria-labelledby="titulo-proxima">
+    <div class="container">
+      <div class="section-head">
+        <p class="pixel kicker">Na próxima versão</p>
+        <h2 id="titulo-proxima">O aviso chega sozinho. A instalação espera por você.</h2>
+        <p>A partir da próxima versão, o Gaspar consulta o canal oficial em segundo plano. O aviso só aparece depois que a assinatura digital do comunicado foi conferida.</p>
+      </div>
+      <div class="grid grid-3">
+        <article class="card update-card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          </div>
+          <h3>1. Aviso discreto</h3>
+          <p>Uma faixa no painel e um item no ícone perto do relógio. Sem janela por cima do que você está fazendo.</p>
+        </article>
+        <article class="card update-card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+          </div>
+          <h3>2. Você escolhe a hora</h3>
+          <p><strong>Atualizar agora</strong>, <strong>Depois</strong> ou <strong>Pular esta versão</strong>. Adiar não faz o aviso voltar sozinho; pular vale só para aquela versão.</p>
+        </article>
+        <article class="card update-card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
+          </div>
+          <h3>3. Baixa, confere e reabre</h3>
+          <p>No Windows, o Gaspar baixa o instalador, confere o SHA-256, instala em silêncio e volta minimizado. No Linux, o botão abre a página de download.</p>
+        </article>
+      </div>
+      <div class="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+        <span><strong>Uma transparência importante:</strong> a versão 1.7.0 ainda não se atualiza sozinha. A primeira versão com o aviso precisa ser instalada uma vez à mão; daí em diante, a atualização passa a ser avisada. Se uma instalação falhar, o Gaspar continua na versão anterior e registra o motivo no histórico.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="dados" aria-labelledby="titulo-dados">
+    <div class="container">
+      <div class="section-head">
+        <p class="pixel kicker">Antes e depois</p>
+        <h2 id="titulo-dados">O que continua e o que não acontece</h2>
+      </div>
+      <div class="grid grid-2">
+        <article class="card">
+          <h3 style="margin-top:0">Continua com você</h3>
+          <ul class="checklist">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>
+              <span><strong>Preferências</strong> — ritmo, tecla, modo ausente e demais ajustes ficam salvos.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>
+              <span><strong>Histórico e logs</strong> — o registro de ciclos continua na mesma pasta do usuário.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>
+              <span><strong>Celular pareado</strong> — o pareamento do aplicativo Android e as configurações de SMS permanecem.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>
+              <span><strong>Windows:</strong> <code>%APPDATA%\CaraCore\Gaspar\</code> · <strong>Linux:</strong> <code>~/.config/caracore/gaspar/</code></span>
+            </li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3 style="margin-top:0">O que a atualização não faz</h3>
+          <ul class="checklist off">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>
+              <span><strong>Não envia seus dados</strong> — nem pessoais, nem de venda, nem de SMS. A consulta de versão não carrega informações suas.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>
+              <span><strong>Não instala sem permissão</strong> — na próxima versão, nada é instalado sem o seu <strong>Atualizar agora</strong>.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>
+              <span><strong>Não mexe nos outros programas</strong> — o Gaspar não altera o PDV nem as comunicações dele com os serviços de pagamento ou de notas.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>
+              <span><strong>Não pede administrador para o Gaspar</strong> — no Windows, a instalação é por usuário. Só o BlackBox, ferramenta opcional que altera o arquivo <code>hosts</code>, pede elevação.</span>
+            </li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="duvidas" aria-labelledby="titulo-duvidas" style="background:#fff;border-top:1px solid var(--line)">
+    <div class="container">
+      <div class="section-head">
+        <p class="pixel kicker">Dúvidas comuns</p>
+        <h2 id="titulo-duvidas">Antes de atualizar</h2>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>Preciso desinstalar o Gaspar antes?</summary>
+          <p>Não. O instalador do Windows atualiza a mesma pasta e mantém as preferências, o histórico e o pareamento do celular. No Linux, o <code>apt install</code> também instala por cima da versão anterior.</p>
+        </details>
+        <details>
+          <summary>Perco o pareamento do celular ou as configurações de SMS?</summary>
+          <p>Não. A configuração fica na pasta do usuário (<code>%APPDATA%\CaraCore\Gaspar\</code> no Windows e <code>~/.config/caracore/gaspar/</code> no Linux) e não é apagada pela atualização. Se o celular estiver offline no momento, a ponte volta a funcionar quando ele reconectar.</p>
+        </details>
+        <details>
+          <summary>O Gaspar já se atualiza sozinho na 1.7.0?</summary>
+          <p>Ainda não. Nesta versão, a atualização é manual: baixe o instalador novo na página de downloads e instale por cima. O aviso com assinatura digital e a instalação guiada entram na próxima versão.</p>
+        </details>
+        <details>
+          <summary>O aviso automático baixa qualquer arquivo?</summary>
+          <p>Na próxima versão, o Gaspar só mostra o aviso depois de conferir a assinatura digital do comunicado com a chave pública que acompanha o programa. Antes de instalar, confere também o SHA-256 do instalador. Se algo não bater, ele não instala e registra o motivo.</p>
+        </details>
+        <details>
+          <summary>Como volto para a versão anterior?</summary>
+          <p>Baixe o instalador da versão anterior na <a href="https://github.com/chmulato/caracore-mascote/releases">página de versões</a> e instale por cima, do mesmo jeito. Suas preferências e seu histórico continuam guardados.</p>
+        </details>
+        <details>
+          <summary>O que faço se a instalação falhar?</summary>
+          <p>Na 1.7.0, tente de novo com o instalador baixado; se continuar, baixe o arquivo outra vez e confira se o Gaspar estava fechado. Na próxima versão, uma instalação que falhar mantém o Gaspar na versão anterior e registra o motivo no histórico.</p>
+        </details>
+        <details>
+          <summary>O instalador tem assinatura de código?</summary>
+          <p>Ainda não. Por isso o Windows pode exibir o aviso do SmartScreen. Confirme que o arquivo veio de <strong>gaspar.caracore.com.br</strong> ou da página oficial de versões antes de liberar. O guia técnico do canal assinado está em <a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/tecnico.md">docs/tecnico.md</a>.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-final" aria-labelledby="titulo-final">
+    <div class="container">
+      <h2 id="titulo-final">Tudo pronto para a versão nova.</h2>
+      <p>Baixe o instalador da versão atual e instale por cima. Leva poucos minutos e não apaga nada.</p>
+      <a class="btn btn-light" href="index.html#baixar">Ir para os downloads</a>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <p class="brand-name" style="color:#fff">Cara Core Informática</p>
+        <p style="margin-top:.5rem">Tecnologia local para o balcão da loja, com os dados no computador do comerciante.</p>
+      </div>
+      <div>
+        <h3>O Gaspar</h3>
+        <ul>
+          <li><a href="index.html#mascote">O mascote</a></li>
+          <li><a href="index.html#como-funciona">Como funciona</a></li>
+          <li><a href="index.html#sms">SMS pelo celular</a></li>
+          <li><a href="index.html#pdv">Para o PDV</a></li>
+          <li><a href="atualizacao.html" aria-current="page">Atualização</a></li>
+          <li><a href="index.html#baixar">Download</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Guias e suporte</h3>
+        <ul>
+          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/instalacao.md">Instalação completa</a></li>
+          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/sms.md">SMS no dia a dia</a></li>
+          <li><a href="atualizacao.html">Atualização do Gaspar</a></li>
+          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/tecnico.md">Guia técnico</a></li>
+          <li><a href="mailto:suporte@caracore.com.br">suporte@caracore.com.br</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-base">
+      <p>&copy; 2024–<span id="ano">2026</span> Cara Core Informática · CNPJ 23.969.028/0001-37 · <a href="https://www.caracore.com.br/">www.caracore.com.br</a></p>
+      <p>Gaspar 1.7.0 · mascote oficial da Cara Core</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var toggle = document.getElementById('nav-toggle');
+    var menu = document.getElementById('menu');
+    if (toggle && menu) {
+      toggle.addEventListener('click', function () {
+        var open = menu.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
+      });
+      menu.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () {
+          menu.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.setAttribute('aria-label', 'Abrir menu');
+        });
+      });
+    }
+
+    var ano = document.getElementById('ano');
+    if (ano) ano.textContent = String(new Date().getFullYear());
+  })();
+</script>
+</body>
+</html>
