@@ -81,7 +81,8 @@
         <provider
             android:name=".LicencaContentProvider"
             android:authorities="br.com.caracore.pdv.sms.licenca"
-            android:exported="true" />
+            android:exported="true"
+            android:readPermission="br.com.caracore.pdv.sms.permission.SMS_INTERNAL" />
 
         <service
             android:name=".GatewayListenerService"

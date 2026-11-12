@@ -4,9 +4,12 @@ Este diretório guarda o aplicativo que roda no celular Android e dispara os SMS
 pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
 
-> O código deste diretório corresponde ao **1.4**, ainda sem release. O
-> aplicativo publicado é o **1.3**, que abre o envelope cifrado. O Gaspar
-> **1.7.1** usa o 1.3 normalmente.
+> O código deste diretório corresponde ao **1.5**, ainda sem release. O
+> aplicativo publicado é o **1.4**: ele abre o envelope cifrado e só aceita SMS
+> de licença do número oficial configurado na tela. O 1.5 acrescenta a trava do
+> provedor de licença (`readPermission` de assinatura) que o 1.4 publicado não
+> tem. O Gaspar **1.7.1** ou mais novo usa o 1.4 normalmente; o aplicativo
+> **1.2** só atende o Gaspar **1.7.0**.
 
 ## Para que serve
 

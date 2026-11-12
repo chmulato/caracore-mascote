@@ -8,8 +8,10 @@ chip e devolve o comprovante. Também recebe SMS de ativação de licença Premi
 (CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e
 o estado da licença.
 
-> Este código é o **1.4**, ainda não publicado. O aplicativo disponível para
-> instalação é o **1.3**, com o envelope de ponta a ponta.
+> Este código é o **1.5**, ainda sem release. O aplicativo publicado é o **1.4**,
+> com o envelope de ponta a ponta e o filtro do SMS de licença pelo número
+> oficial. O 1.5 acrescenta a trava do provedor de licença (`readPermission` de
+> assinatura), que o 1.4 publicado não tem.
 
 O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
 envio não é mais exportada e exige permissão interna de assinatura. O teste
@@ -75,7 +77,7 @@ O script usa Gradle em GRADLE_7_5 (ex.: D:\dev\caracore-pdv\tools\gradle-7.5) se
 build.bat
 ```
 
-O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.4.apk` para scripts como publicar-celular.bat.
+O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.5.apk` para scripts como publicar-celular.bat.
 
 O script: aplica config.bat para JAVA_HOME; verifica ANDROID_HOME; chama instalar-gradle-wrapper.bat se o jar do wrapper não existir; executa gradlew --stop, gradlew assembleDebug --no-build-cache --max-workers=1 -Dorg.gradle.vfs.watch=false.
 
@@ -87,7 +89,7 @@ Exige `keystore.properties` com storeFile, storePassword, keyAlias e keyPassword
 build.bat release
 ```
 
-O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.4-release.apk`.
+O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.5-release.apk`.
 
 ### AAB para Play Store (bundle)
 
@@ -182,17 +184,13 @@ o aparelho usa a janela **Celular / SMS** do Gaspar.
 
 ## Licença Premium e exposição para o PDV
 
-Recepção de licença por SMS: o `SMSReceiver` escuta SMS com "CC-LICENSE:[CHAVE]" ou "CARACORE-KEY:[CHAVE]" no corpo. Quando o número oficial da Cara Core estiver configurado em `SmsPreferences`, só SMS desse remetente são aceites; caso contrário qualquer remetente. A chave é guardada e validada no formato CC-YYYYMM-{hex8} (YYYYMM deve ser maior ou igual ao mês atual).
+Recepção de licença por SMS: o `SMSReceiver` escuta SMS com "CC-LICENSE:[CHAVE]" ou "CARACORE-KEY:[CHAVE]" no corpo e aplica a regra de `LicenseSms`. Com o número oficial gravado em `SmsPreferences` (campo "Número que envia a licença"), só SMS desse remetente são aceitos; **sem esse número, nenhum SMS de licença é aceito**. A chave é guardada e validada no formato CC-YYYYMM-{hex8} (YYYYMM deve ser maior ou igual ao mês atual).
 
 Na tela de configuração: o status da licença aparece em vermelho ("Licença Gratuita / Inativa") ou em verde ("Licença Premium Ativa"), conforme `isLicencaValida()`. O botão "Verificar Conexão USB" consulta `adb_enabled` e indica se a depuração USB está ativa para o PDV.
 
-Consulta via ADB: o PDV pode obter HardwareID, chave e validade através do ContentProvider:
+Consulta protegida (este código, 1.5, ainda sem release): o ContentProvider `licenca` exige a permissão de assinatura `br.com.caracore.pdv.sms.permission.SMS_INTERNAL`. Só um aplicativo assinado com a mesma chave deste app lê `hardware_id` (ANDROID_ID), `chave`, `valida` (1 ou 0) e `mes_ano` (YYYYMM extraído da chave). O `adb shell content query` deixa de responder: o shell não tem essa permissão. O APK do 1.4 publicado na [Release Android 1.4](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.4) **não** tem essa trava: nele o provedor está exportado e sem permissão de leitura, medido no APK baixado da release.
 
-```
-adb shell content query --uri content://br.com.caracore.pdv.sms.licenca/licenca
-```
-
-Colunas: `hardware_id` (ANDROID_ID), `chave`, `valida` (1 ou 0), `mes_ano` (YYYYMM extraído da chave).
+O PDV 4.1.0 não consulta esse provedor — ele decide o plano Premium pela licença assinada da máquina (`LicencaPro`), não pela chave que chega por SMS ao celular. A exposição foi mantida apenas como recurso interno, restrito aos apps da Cara Core assinados com a mesma chave.
 
 ---
 
