@@ -13,6 +13,7 @@ Fluxo:
     export GASPAR_RELEASE_SIGNING_KEY="$(cat E:/gaspar/gaspar-signing.pem)"
     python tools/gaspar_channel.py sign --tag gaspar-v1.7.1
     python tools/gaspar_channel.py sign --tag gaspar-v1.7.1 --publish
+    python tools/gaspar_channel.py prova --tag gaspar-v1.7.1
     python tools/gaspar_channel.py check --expect 1.7.1
 """
 
@@ -20,11 +21,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -46,10 +49,15 @@ ENV_CHAVE = "GASPAR_RELEASE_SIGNING_KEY"
 OBRIGATORIA = re.compile(r"(?im)^\s*mandatory\s*:\s*(true|sim|yes)\s*$")
 SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 VERSAO = re.compile(r"^\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$")
+TAG_VERSAO = re.compile(r"^(?:gaspar-)?v?(\d+\.\d+\.\d+(?:[.-][0-9A-Za-z.-]+)?)$")
 
 
 class Falha(Exception):
     pass
+
+
+class VersaoAtrasada(Falha):
+    """O canal ainda publica a versao anterior; vale esperar o cache."""
 
 
 def ler_config() -> dict:
@@ -122,15 +130,23 @@ def _digest(asset: dict) -> str | None:
 
 
 def _baixar_asset(repo: str, asset: dict) -> bytes:
-    identificador = asset.get("id")
-    if not identificador:
-        raise Falha(f"asset {asset.get('name')} sem id para leitura")
+    # O `id` do `gh release view --json assets` e o identificador GraphQL
+    # (RA_...); a rota REST exige o numero, que vem em `apiUrl`.
+    api_url = str(asset.get("apiUrl") or "").strip()
+    prefixo = "https://api.github.com/"
+    if api_url.startswith(prefixo):
+        caminho = api_url[len(prefixo):]
+    else:
+        identificador = asset.get("databaseId") or asset.get("id")
+        if not identificador:
+            raise Falha(f"asset {asset.get('name')} sem id para leitura")
+        caminho = f"repos/{repo}/releases/assets/{identificador}"
     return gh(
         [
             "api",
             "-H",
             "Accept: application/octet-stream",
-            f"repos/{repo}/releases/assets/{identificador}",
+            caminho,
         ],
         binario=True,
     )
@@ -366,6 +382,213 @@ def conferir_url(url: str, expect: str | None, tentativas: int = 1) -> None:
         return
 
 
+def versao_da_tag(tag: str) -> str | None:
+    encontrado = TAG_VERSAO.match(tag)
+    return encontrado.group(1) if encontrado else None
+
+
+def tags_publicadas(repo: str) -> list[tuple[str, str]]:
+    saida = gh(
+        [
+            "release",
+            "list",
+            "-R",
+            repo,
+            "--limit",
+            "50",
+            "--json",
+            "tagName,isDraft,isPrerelease",
+        ]
+    )
+    tags = []
+    for item in json.loads(saida or "[]"):
+        if item.get("isDraft") or item.get("isPrerelease"):
+            continue
+        tag = str(item.get("tagName") or "").strip()
+        versao = versao_da_tag(tag)
+        if versao:
+            tags.append((tag, versao))
+    return tags
+
+
+def _mais_nova(candidatas: list[tuple[str, str]]) -> tuple[str, str]:
+    melhor = candidatas[0]
+    for item in candidatas[1:]:
+        if updates.ha_versao_nova(item[1], melhor[1]):
+            melhor = item
+    return melhor
+
+
+def _sha256(corpo: bytes) -> str:
+    return hashlib.sha256(corpo).hexdigest()
+
+
+def _payload_do_envelope(corpo: bytes) -> dict:
+    envelope = json.loads(corpo)
+    return json.loads(base64.b64decode(envelope["payload"]))
+
+
+def _resumo(valor) -> str:
+    return json.dumps(valor, ensure_ascii=False, sort_keys=True)[:160]
+
+
+def _primeira_diferenca(esperado: dict, real: dict) -> str:
+    for chave in sorted(set(esperado) | set(real)):
+        if esperado.get(chave) != real.get(chave):
+            return (
+                f"campo {chave}: release {_resumo(esperado.get(chave))} "
+                f"x publicado {_resumo(real.get(chave))}"
+            )
+    return "payload diferente"
+
+
+def conferir_referencias(manifesto, referencias: list[str]) -> list[str]:
+    if not referencias:
+        raise Falha("nenhuma versao anterior publicada para provar a regra de obrigatoriedade")
+    linhas = []
+    for versao in referencias:
+        try:
+            disponivel = updates.avaliar(manifesto, local=versao)
+        except updates.FalhaAtualizacao as exc:
+            raise Falha(f"{versao}: {exc}") from exc
+        if disponivel is None:
+            raise Falha(f"quem esta na {versao} nao receberia o aviso da {manifesto.versao}")
+        abaixo = bool(manifesto.min_supported) and updates.ha_versao_nova(
+            manifesto.min_supported, versao
+        )
+        esperado = manifesto.mandatory or abaixo
+        if disponivel.mandatory != esperado:
+            raise Falha(
+                f"{versao}: obrigatoria={disponivel.mandatory}, esperado {esperado} "
+                f"(mandatory={manifesto.mandatory}, "
+                f"min_supported={manifesto.min_supported or '-'})"
+            )
+        linhas.append(
+            f"quem esta na {versao}: aviso da {manifesto.versao} "
+            f"{'obrigatorio' if disponivel.mandatory else 'opcional'}"
+        )
+    return linhas
+
+
+def conferir_adulteracao(corpo: bytes, chave) -> None:
+    envelope = json.loads(corpo)
+    payload = _payload_do_envelope(corpo)
+    payload["version"] = "9.9.9"
+    envelope["payload"] = base64.b64encode(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).decode("ascii")
+    adulterado = json.dumps(envelope, ensure_ascii=False, indent=2).encode("utf-8")
+    try:
+        updates.verificar_envelope(adulterado, chave)
+    except updates.FalhaAtualizacao:
+        return
+    raise Falha("o manifesto com a versao trocada foi aceito")
+
+
+def conferir_prova(
+    versao: str,
+    esperado: dict,
+    config: dict,
+    corpo_oficial: bytes,
+    corpo_espelho: bytes,
+    referencias: list[str],
+    chave,
+) -> list[str]:
+    """Repete o aceite de uma release: oficial, espelho, regra e adulteracao."""
+    oficial = updates.verificar_envelope(corpo_oficial, chave)
+    espelho = updates.verificar_envelope(corpo_espelho, chave)
+    if oficial.versao != versao:
+        raise VersaoAtrasada(f"o canal oficial publica {oficial.versao}; esperado {versao}")
+    if oficial.key_id != config["key_id"]:
+        raise Falha(f"key_id publicado {oficial.key_id}, esperado {config['key_id']}")
+    real = _payload_do_envelope(corpo_oficial)
+    if real != esperado:
+        raise Falha(
+            "o manifesto assinado nao corresponde a release: "
+            + _primeira_diferenca(esperado, real)
+        )
+    if espelho.versao != versao:
+        raise VersaoAtrasada(f"o espelho no gateway publica {espelho.versao}; esperado {versao}")
+    if corpo_oficial != corpo_espelho:
+        raise Falha(
+            "o espelho no gateway nao entrega os mesmos bytes do canal oficial "
+            f"({_sha256(corpo_oficial)[:12]} x {_sha256(corpo_espelho)[:12]})"
+        )
+    linhas = [
+        f"canal oficial: {versao}, key_id {oficial.key_id}, assinatura OK",
+        f"espelho no gateway: mesmos bytes ({_sha256(corpo_oficial)}), assinatura OK",
+        "payload assinado confere com a release (campos e assets)",
+    ]
+    linhas.extend(conferir_referencias(oficial, referencias))
+    if updates.avaliar(oficial, local=versao) is not None:
+        raise Falha(f"a propria versao {versao} recebe aviso de atualizacao")
+    linhas.append(f"versao atual {versao}: sem aviso")
+    conferir_adulteracao(corpo_oficial, chave)
+    linhas.append("manifesto adulterado (versao trocada sem assinar de novo): recusado")
+    return linhas
+
+
+def _buscar_canal(url: str, rotulo: str) -> bytes:
+    try:
+        return updates.buscar_manifesto(url)
+    except updates.FalhaAtualizacao as exc:
+        raise Falha(f"{rotulo} ({url}): {exc}") from exc
+
+
+def conferir_instalador(manifesto) -> str:
+    setup = manifesto.assets.get("windows-setup") or {}
+    url = str(setup.get("url") or "")
+    sha = str(setup.get("sha256") or "").lower()
+    if not url or not SHA256.match(sha):
+        raise Falha("manifesto sem instalador do Windows verificavel")
+    with tempfile.TemporaryDirectory() as pasta:
+        try:
+            updates.baixar_instalador(url, sha, Path(pasta))
+        except updates.FalhaAtualizacao as exc:
+            raise Falha(f"instalador publicado nao confere o sha256: {exc}") from exc
+    return sha
+
+
+def prova(config: dict, tag: str | None, url: str, espelho: str, tentativas: int) -> None:
+    if tentativas < 1:
+        raise Falha("--tentativas precisa ser 1 ou mais")
+    chave = updates.chave_publica(CHAVE_PUBLICA)
+    if chave is None:
+        raise Falha(f"chave publica ausente em {CHAVE_PUBLICA}")
+    tags = tags_publicadas(config["repo"])
+    if tag:
+        if not tag.startswith(config["tag_prefix"]) or not versao_da_tag(tag):
+            raise Falha(f"etiqueta {tag} fora do padrao {config['tag_prefix']}<versao>")
+    else:
+        candidatas = [item for item in tags if item[0].startswith(config["tag_prefix"])]
+        if not candidatas:
+            raise Falha(f"nenhuma release {config['tag_prefix']}* publicada")
+        tag = _mais_nova(candidatas)[0]
+    dados = release(config["repo"], tag)
+    versao, esperado = montar_payload(dados, config)
+    referencias = [item[1] for item in tags if updates.ha_versao_nova(versao, item[1])]
+    for tentativa in range(1, tentativas + 1):
+        corpo = _buscar_canal(url, "canal oficial")
+        corpo_espelho = _buscar_canal(espelho, "espelho no gateway")
+        try:
+            linhas = conferir_prova(
+                versao, esperado, config, corpo, corpo_espelho, referencias, chave
+            )
+            break
+        except VersaoAtrasada as exc:
+            if tentativa == tentativas:
+                raise
+            print(f"{exc}; aguardando o canal atualizar ({tentativa}/{tentativas}).")
+            time.sleep(10)
+    print(f"release: {tag}")
+    print(f"canal oficial: {url}")
+    print(f"espelho: {espelho}")
+    for linha in linhas:
+        print(f"OK  {linha}")
+    sha = conferir_instalador(updates.verificar_envelope(corpo, chave))
+    print(f"OK  instalador do Windows baixado do manifesto: sha256 {sha}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Canal de atualizacao do Gaspar.")
     sub = parser.add_subparsers(dest="comando", required=True)
@@ -386,6 +609,19 @@ def main(argv: list[str] | None = None) -> int:
     verificar.add_argument("--file", required=True, type=Path)
     verificar.add_argument("--expect", help="versao esperada")
 
+    prova_cmd = sub.add_parser(
+        "prova", help="repete o aceite da release no canal oficial e no espelho do gateway"
+    )
+    prova_cmd.add_argument("--tag", help="etiqueta gaspar-vX.Y.Z (padrao: a mais nova publicada)")
+    prova_cmd.add_argument("--url", help="canal oficial (padrao: o da configuracao)")
+    prova_cmd.add_argument("--mirror", help="espelho no gateway (padrao: o da configuracao)")
+    prova_cmd.add_argument(
+        "--tentativas",
+        type=int,
+        default=1,
+        help="tentativas com 10 s entre elas, para esperar o cache do canal",
+    )
+
     try:
         args = parser.parse_args(argv)
         config = ler_config()
@@ -394,6 +630,18 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.comando == "check":
             conferir_url(args.url or config["channel_url"], args.expect)
+            return 0
+        if args.comando == "prova":
+            espelho = args.mirror or str(config.get("mirror_url") or "").strip()
+            if not espelho:
+                raise Falha("mirror_url ausente em release/channel.json; use --mirror")
+            prova(
+                config,
+                args.tag,
+                args.url or config["channel_url"],
+                espelho,
+                args.tentativas,
+            )
             return 0
         if args.comando == "verify":
             try:

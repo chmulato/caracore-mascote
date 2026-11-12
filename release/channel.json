@@ -7,6 +7,7 @@
   "min_supported": "1.7.0",
   "notes_url": "https://gaspar.caracore.com.br/",
   "channel_url": "https://gaspar.caracore.com.br/latest.json",
+  "mirror_url": "https://api.caracore.com.br/releases/gaspar/latest.json",
   "assets": {
     "windows-setup": "^GasparSetup-.*[.]exe$",
     "linux-deb": "^gaspar_.*_amd64[.]deb$"
