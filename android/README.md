@@ -6,6 +6,9 @@ pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
 
 > O código deste diretório corresponde ao **1.3**, ainda sem release. O
 > aplicativo publicado é o **1.2**, que não abre o envelope cifrado.
+> O Gaspar **1.7.1** exige o celular no **1.3**: sem a chave pública do
+> aparelho ele recusa o envio. Até o 1.3 sair, quem usa SMS fica no Gaspar
+> **1.7.0** com o aplicativo **1.2**.
 
 ## Para que serve
 
@@ -60,8 +63,9 @@ verificar-keystore.bat   :: confere a senha do keystore
 - O app não aceita acionamento por outros aplicativos e limita o envio a 300 SMS
   por dia no próprio aparelho.
 - No código deste repositório, o Gaspar não guarda o número nem o texto: a
-  auditoria registra só metadados. A **1.7.0 publicada** ainda grava o número
-  completo e o texto no histórico local; a mudança chega na próxima versão.
+  auditoria e o histórico registram só metadados. O Gaspar **1.7.1** publicado
+  já funciona assim. O **1.7.0** ainda grava o número completo e o texto no
+  histórico local, e é a versão recomendada enquanto o aplicativo 1.3 não sai.
   O termo completo está em
   [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 

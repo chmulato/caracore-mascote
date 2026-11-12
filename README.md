@@ -13,17 +13,18 @@ você está usando o computador.
 |  |  |
 | --- | --- |
 | Branch oficial | **master** |
-| Versão publicada do Gaspar | **1.7.0** |
+| Versão publicada do Gaspar | **1.7.1** |
 | Aplicativo do celular publicado | **1.2** |
-| Download | [Release 1.7.0](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.0) |
+| Download | [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1) |
 | Licença | **MIT** |
 | Plataformas | **Windows 10/11** e **Linux (X11/XWayland)** |
 | Empresa | **Cara Core Informática** |
 
 > **O que você baixa hoje.** Os arquivos de instalação publicados são o Gaspar
-> **1.7.0** e o aplicativo do celular **1.2**. O código deste repositório já tem
-> melhorias preparadas para a **próxima versão**; elas ainda não estão nesses
-> instaladores. O resumo está em
+> **1.7.1** e o aplicativo do celular **1.2**. O aplicativo **1.3**, que
+> completa a proteção do SMS, ainda está em preparação: quem usa a ponte de SMS
+> deve continuar com o Gaspar **1.7.0** e o aplicativo **1.2** até o 1.3 sair.
+> O resumo está em
 > [O que vem na próxima versão](#o-que-vem-na-próxima-versão).
 
 ## Se você só quer usar
@@ -37,18 +38,20 @@ Escolha o arquivo do sistema que você usa. O download começa ao clicar no link
 
 | Seu sistema | Arquivo | Baixar |
 | --- | --- | --- |
-| Windows 10 ou 11 | `GasparSetup-1.7.0.exe` (31 MB) | [Baixar para Windows](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/GasparSetup-1.7.0.exe) |
-| Debian, Ubuntu, Mint e derivados | `gaspar_1.7.0_amd64.deb` (41 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/gaspar_1.7.0_amd64.deb) |
-| Outras distribuições Linux | `Gaspar-1.7.0-amd64.AppImage` (30 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/Gaspar-1.7.0-amd64.AppImage) |
+| Windows 10 ou 11 | `GasparSetup-1.7.1.exe` (31 MB) | [Baixar para Windows](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.1/GasparSetup-1.7.1.exe) |
+| Debian, Ubuntu, Mint e derivados | `gaspar_1.7.1_amd64.deb` (41 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.1/gaspar_1.7.1_amd64.deb) |
+| Outras distribuições Linux | `Gaspar-1.7.1-amd64.AppImage` (30 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.1/Gaspar-1.7.1-amd64.AppImage) |
 
 Para o **celular**, baixe o aplicativo `pdv-sms-enviar-1.2-release.apk` (694 KB)
 na [Release do aplicativo Android 1.2](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2).
+Para SMS, ele acompanha o Gaspar 1.7.0; o Gaspar 1.7.1 exige o aplicativo 1.3,
+que ainda está em preparação.
 
-Todos os arquivos ficam na página da [Release 1.7.0](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.0). O arquivo [SHA256SUMS.txt](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.0/SHA256SUMS.txt) serve para conferir se o download chegou completo; se você não sabe o que fazer com ele, pode ignorar.
+Todos os arquivos ficam na página da [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1). O arquivo [SHA256SUMS.txt](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.1/SHA256SUMS.txt) serve para conferir se o download chegou completo; se você não sabe o que fazer com ele, pode ignorar.
 
 ### Windows
 
-1. Baixe o arquivo `GasparSetup-1.7.0.exe` no link acima.
+1. Baixe o arquivo `GasparSetup-1.7.1.exe` no link acima.
 2. Dê dois cliques e siga o assistente: **Avançar**, **Instalar**, **Concluir**.
 3. Abra o Gaspar pelo atalho da Área de Trabalho ou pelo menu Iniciar.
 4. Na primeira vez, o painel de configuração abre junto. Ajuste o que quiser e
@@ -62,11 +65,11 @@ isso é esperado em programas distribuídos diretamente pela Cara Core.
 
 ### Linux - Debian, Ubuntu, Mint e derivados
 
-1. Baixe o arquivo `gaspar_1.7.0_amd64.deb` no link acima.
+1. Baixe o arquivo `gaspar_1.7.1_amd64.deb` no link acima.
 2. Dê dois cliques e instale pelo aplicativo de pacotes, ou use o terminal:
 
    ```bash
-   sudo apt install ./gaspar_1.7.0_amd64.deb
+   sudo apt install ./gaspar_1.7.1_amd64.deb
    ```
 
 3. Abra **Gaspar** pelo menu de aplicativos, ou digite `gaspar` no terminal.
@@ -74,7 +77,7 @@ isso é esperado em programas distribuídos diretamente pela Cara Core.
 
 ### Linux - qualquer distribuição, sem instalar
 
-1. Baixe o arquivo `Gaspar-1.7.0-amd64.AppImage` no link acima.
+1. Baixe o arquivo `Gaspar-1.7.1-amd64.AppImage` no link acima.
 2. Clique com o botão direito, abra **Propriedades**, vá em **Permissões** e
    marque **Permitir executar**.
 3. Dê dois cliques no arquivo.
@@ -126,7 +129,7 @@ bloquear domínios de telemetria no arquivo `hosts` do sistema.
 | Não aparece em tela cheia | Em vídeos, jogos e apresentações, ele se esconde e os ciclos pausam. |
 | Não torna a tela ilegível | A opacidade padrão é 82%, e ele fica quase transparente quando o cursor se aproxima. |
 | Não some sem aviso | Ao fechar o painel, ele continua na bandeja; só sai quando você escolhe **Sair**. |
-| Não acessa a internet | Na versão publicada, nada sai do seu computador; o SMS circula só na sua rede Wi-Fi. |
+| Consulta só o canal oficial | A partir da 1.7.1, o Gaspar pergunta ao canal oficial se há versão nova; nenhum dado seu, de venda ou de SMS é enviado. O SMS circula só na sua rede Wi-Fi. |
 | Não mexe em outros sistemas | Ele não conversa com Mercado Pago, PlugNotas nem com o PDV; só recebe pedidos de SMS no próprio computador. |
 
 ## SMS pelo celular
@@ -143,11 +146,13 @@ Na janela **Celular / SMS** você pareia o aparelho lendo um QR code, faz um
 envio de teste e acompanha os últimos resultados, com a marca de **enviado** (o
 chip aceitou) e **entregue** (a operadora confirmou).
 
-Na versão publicada (Gaspar **1.7.0** e aplicativo **1.2**), o pedido circula
-apenas dentro da sua rede local. A **próxima versão** acrescenta três proteções:
-o pedido passa a viajar cifrado de ponta a ponta (só o celular pareado consegue
-abrir), o Gaspar aplica limites de envio por número e o histórico passa a
-guardar só data, venda, modelo e estado, sem o número e sem o texto. Detalhes em
+O Gaspar **1.7.1** já recusa pedidos que não vêm do próprio computador, exige
+que o pedido do PDV venha assinado e aplica limites de envio por número. A
+proteção de ponta a ponta do texto, porém, depende do aplicativo **1.3** do
+celular, que ainda está em preparação: com o aplicativo **1.2** publicado, o
+Gaspar 1.7.1 recusa o envio de SMS. Por isso, quem usa a ponte de SMS deve
+continuar com o Gaspar **1.7.0** e o aplicativo **1.2** até o 1.3 ser publicado.
+Detalhes em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html) e [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 
 Para usar, você precisa de três coisas:
@@ -162,9 +167,10 @@ Para usar, você precisa de três coisas:
 Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
 **Parear celular** e leia o QR com o aplicativo do celular.
 
-> Este recurso está incluído no Gaspar **1.7.0** e no aplicativo Android **1.2**,
-> ambos publicados em [Releases](https://github.com/chmulato/caracore-mascote/releases).
-> Instaladores 1.6.0 não têm a ponte; atualize os dois lados.
+> A ponte de SMS está no Gaspar **1.7.1**, mas o envio exige o aplicativo
+> Android **1.3**, que ainda está em preparação. Com o aplicativo **1.2**
+> publicado, use o Gaspar **1.7.0** para enviar SMS. Instaladores 1.6.0 não têm
+> a ponte; atualize os dois lados.
 
 O passo a passo completo dos dois lados, com a lista de arquivos de instalação,
 está em [wiki.caracore.com.br/gaspar/instalacao.html](https://wiki.caracore.com.br/gaspar/instalacao.html). O uso no dia a dia e os
@@ -235,30 +241,26 @@ Arquivos:
 - `cycle_log.txt`: histórico dos ciclos.
 - Arquivos que começam com `sms_`: configuração e histórico da ponte de SMS.
 
-Configurações e logs ficam somente no seu computador. Na versão publicada, o
-Gaspar **não acessa a internet**. Não compartilhe a pasta de dados: ela guarda o
-token do pareamento do celular.
+Configurações e logs ficam somente no seu computador. A partir da 1.7.1, o
+Gaspar consulta apenas o canal oficial de atualização e não envia dados seus,
+de venda ou de SMS. Não compartilhe a pasta de dados: ela guarda o token do
+pareamento do celular.
 
 ## O que vem na próxima versão
 
 Estas melhorias já estão no código deste repositório, mas **ainda não estão nos
 instaladores publicados**:
 
-- **Pedido de SMS protegido:** o PDV assina o pedido, o Gaspar recusa chamadas
-  de fora do próprio computador e o texto viaja cifrado até o celular.
-- **Limites de envio:** teto por número, por hora e por dia, para evitar
-  repetição acidental.
-- **Histórico sem conteúdo:** a auditoria guarda data, venda, modelo e estado,
-  sem número e sem texto, com botão para apagar tudo.
-- **Aviso de atualização:** o Gaspar avisa quando há versão nova e só instala
-  com a sua permissão. Quem está na 1.7.0 instala a próxima versão uma vez, à
-  mão; depois o aviso passa a funcionar sozinho.
 - **Aplicativo do celular 1.3:** lê o pedido cifrado, guarda a chave no próprio
-  aparelho e volta a atender sozinho depois de reiniciar.
+  aparelho e volta a atender sozinho depois de reiniciar. Com ele, a ponte de
+  SMS volta a funcionar junto com o Gaspar 1.7.1.
+- **Chamada automática do PDV:** o PDV pede a mensagem ao Gaspar ao fechar a
+  venda. Hoje o envio parte do painel do Gaspar ou de quem integra o PDV.
 
-Enquanto essa versão não sai, para atualizar o Gaspar baixe o instalador novo
-na página de [Releases](https://github.com/chmulato/caracore-mascote/releases) e
-execute por cima: suas preferências são mantidas.
+O Gaspar **1.7.1** do computador já está publicado com o aviso de versão nova e
+as proteções do pedido de SMS. Para atualizar, baixe o instalador novo na página
+de [Releases](https://github.com/chmulato/caracore-mascote/releases) e execute
+por cima: suas preferências são mantidas.
 
 ## Perguntas frequentes
 
@@ -278,9 +280,9 @@ Gaspar de volta**. Você também pode desmarcar **Gaspar flutuante** ou escolher
 **Sair** na bandeja para encerrar o app.
 
 **O Gaspar usa a internet?**
-Na versão publicada, não. Tudo fica no seu computador, e o SMS circula só na
-sua rede Wi-Fi. A próxima versão consulta apenas o canal oficial para saber se
-existe versão nova; nenhum dado seu, de venda ou de SMS é enviado.
+A partir da 1.7.1, ele consulta apenas o canal oficial para saber se existe
+versão nova; nenhum dado seu, de venda ou de SMS é enviado. O SMS circula só na
+sua rede Wi-Fi.
 
 **O Gaspar mexe nas conexões do Mercado Pago ou do PlugNotas?**
 Não. O Gaspar não conversa com essas APIs, não intercepta o tráfego e não altera
@@ -308,12 +310,13 @@ ou compilou a partir deste repositório, pode liberar. Caso contrário, não
 execute.
 
 **Como o Gaspar se atualiza?**
-Hoje (versão 1.7.0), baixando o instalador novo na página de
-[Releases](https://github.com/chmulato/caracore-mascote/releases) e executando
-por cima; as preferências são mantidas. Na próxima versão, o Gaspar passa a
-avisar sozinho, com **Atualizar agora**, **Depois**, **Pular esta versão** e
-**Ver novidades** — nada é instalado sem a sua permissão. O passo a passo está
-em [Atualização do Gaspar](https://gaspar.caracore.com.br/atualizacao.html).
+A partir da 1.7.1, o Gaspar consulta o canal oficial, confere a assinatura
+digital e mostra um aviso discreto quando há versão nova, com **Atualizar
+agora**, **Depois**, **Pular esta versão** e **Ver novidades** — nada é
+instalado sem a sua permissão. No Windows ele baixa o instalador, confere o
+arquivo e instala; no Linux, o botão abre a página de download. Quem está na
+1.7.0 instala a 1.7.1 uma vez, à mão. O passo a passo está em
+[Atualização do Gaspar](https://gaspar.caracore.com.br/atualizacao.html).
 
 **Como desinstalar?**
 No Windows, use **Aplicativos instalados** e remova **Gaspar - Mascote Cara
@@ -366,10 +369,10 @@ código, compilação e empacotamento ficam no guia técnico.
 
 ## Para quem compila
 
-O código deste repositório está **à frente** dos instaladores publicados. Se
-você compilar o Gaspar a partir daqui, o celular também precisa do aplicativo
-**1.3** (pasta `android/`), que lê o pedido cifrado; essa versão ainda não foi
-publicada. As instruções estão em [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md) e
+O código deste repositório corresponde ao Gaspar **1.7.1** publicado. Para usar
+a ponte de SMS, o celular também precisa do aplicativo **1.3** (pasta
+`android/`), que lê o pedido cifrado; essa versão ainda não foi publicada. As
+instruções estão em [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md) e
 [android/README.md](android/README.md).
 
 ## Licença e créditos

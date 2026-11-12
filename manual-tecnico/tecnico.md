@@ -3,7 +3,7 @@
 Documentação para quem mantém, compila ou audita o Gaspar. O guia do usuário está no [README](../README.md).
 
 - Branch oficial: **master**
-- Versão: **1.7.0**
+- Versão: **1.7.1**
 - Licença: **MIT**
 - Plataformas: **Windows 10/11** e **Linux (X11/XWayland)**
 
@@ -53,6 +53,7 @@ O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, tar
 | `gaspar/sms/templates.py` | Modelos de mensagem transacionais e validação das variáveis. |
 | `gaspar/telemetry_hosts.py` | Bloqueio de telemetria no arquivo `hosts`. |
 | `gaspar/tray.py` | Ícone da bandeja. |
+| `gaspar/updates.py` | Canal de atualização: assinatura Ed25519, consulta periódica e instalação no Windows. |
 
 ## Estrutura do repositório
 
@@ -73,8 +74,11 @@ O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, tar
 ├── assets/
 │   ├── gaspar.png                 # imagem oficial (512 px, transparência real)
 │   ├── gaspar.ico                 # ícone 16..256 px
-│   └── gaspar_flutuando.gif       # animação de flutuação (220x220)
+│   ├── gaspar_flutuando.gif       # animação de flutuação (220x220)
+│   └── gaspar-update-public.pem   # chave pública Ed25519 do canal
 ├── docs/                          # loja publicada (só o comercial)
+│   ├── assets/
+│   ├── CNAME
 │   ├── index.html
 │   └── atualizacao.html
 ├── manual-tecnico/
@@ -93,18 +97,25 @@ O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, tar
 │   ├── presence.py
 │   ├── sms/                       # ponte local de SMS
 │   │   ├── __init__.py
+│   │   ├── audit.py               # trilha LGPD só com metadados
 │   │   ├── bridge.py
 │   │   ├── client.py
 │   │   ├── config.py
 │   │   ├── crypto.py
 │   │   ├── discovery.py
+│   │   ├── e2e.py                 # envelope de ponta a ponta
 │   │   ├── network.py
 │   │   ├── protocol.py
 │   │   ├── qr.py
 │   │   ├── server.py
-│   │   └── store.py
+│   │   ├── signing.py             # assinatura HMAC dos pedidos
+│   │   ├── store.py
+│   │   └── templates.py           # modelos de mensagem
 │   ├── telemetry_hosts.py
-│   └── tray.py
+│   ├── tray.py
+│   └── updates.py                 # canal de atualização
+├── release/
+│   └── channel.json               # configuração do canal
 ├── packaging/
 │   ├── windows/
 │   │   ├── build_windows.py
@@ -119,10 +130,18 @@ O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, tar
 │       ├── gaspar.spec
 │       └── gaspar_blackbox.spec
 ├── tests/
-│   ├── smoke_test.py
-│   └── test_sms.py                # 20 testes unitários da ponte
+│   ├── smoke_test.py              # 5 verificações de fumaça
+│   ├── test_isolamento.py         # 2 testes de isolamento das integrações
+│   ├── test_channel.py            # 12 testes da rotina de release
+│   ├── test_sms.py                # 59 testes da ponte
+│   └── test_updates.py            # 27 testes do canal
 ├── tools/
+│   ├── gaspar_channel.py          # init-key, sign, prova, check e verify
 │   └── make_assets.py
+├── .github/workflows/
+│   ├── android.yml
+│   ├── channel.yml
+│   └── gaspar.yml
 ├── run.py
 ├── run_blackbox.py
 ├── requirements.txt
@@ -202,7 +221,7 @@ Saídas:
 
 - `dist/windows/gaspar/gaspar.exe`
 - `dist/windows/gaspar_blackbox/gaspar_blackbox.exe`
-- `dist/installer/GasparSetup-1.7.0.exe` (quando o Inno Setup está instalado)
+- `dist/installer/GasparSetup-1.7.1.exe` (quando o Inno Setup está instalado)
 
 O instalador:
 
@@ -254,13 +273,13 @@ Saídas:
 
 - `dist/linux/gaspar/gaspar`
 - `dist/linux/gaspar_blackbox/gaspar_blackbox`
-- `dist/linux/gaspar_1.7.0_<arch>.deb`
-- `dist/linux/Gaspar-1.7.0-<arch>.AppImage`
+- `dist/linux/gaspar_1.7.1_<arch>.deb`
+- `dist/linux/Gaspar-1.7.1-<arch>.AppImage`
 
 Instalação do `.deb`:
 
 ```bash
-sudo apt install ./dist/linux/gaspar_1.7.0_amd64.deb
+sudo apt install ./dist/linux/gaspar_1.7.1_amd64.deb
 gaspar
 gaspar-blackbox
 ```
@@ -276,8 +295,8 @@ O `.deb` instala:
 AppImage:
 
 ```bash
-chmod +x dist/linux/Gaspar-1.6.0-x86_64.AppImage
-./dist/linux/Gaspar-1.6.0-x86_64.AppImage
+chmod +x dist/linux/Gaspar-1.7.1-amd64.AppImage
+./dist/linux/Gaspar-1.7.1-amd64.AppImage
 ```
 
 O AppImage inclui o Gaspar e o BlackBox. O item **Gaspar BlackBox** do ícone da bandeja encontra o executável na própria instalação.
@@ -374,6 +393,7 @@ No primeiro uso o app cria um par de chaves **EC P-256** (a privada fica protegi
 - A chave do canal é derivada do segredo do QR: decodifica o base64; se o resultado tiver menos de 32 bytes, aplica SHA-256; usa os primeiros 32 bytes. A mesma regra está em `gaspar/sms/crypto.py` e no `GatewayCrypto` do app Android.
 - O `envelope` é o conteúdo real e **só o celular abre**: `base64(chave_efêmera(65) || IV(12) || AESGCM(numero||mensagem))`. A chave vem de ECDH P-256 entre uma chave efêmera do Gaspar e a chave pública do celular, passada por HKDF-SHA256 (salt `gaspar-sms-e2e-v1`, info `pdv-phone`). O AAD é o `id` do pedido, então o envelope não pode ser reaproveitado em outro pedido.
 - Com `e2e_required` ligado (padrão), pedido sem a chave do celular é recusado com `400` e a mensagem pede novo pareamento. Com `e2e_required` desligado, o campo `number`/`message` volta a viajar no comando, apenas dentro do canal AES — é o modo antigo, para celular sem a versão com envelope.
+- O aplicativo publicado (1.2) não envia a chave pública; o código de `android/` já é o 1.3, ainda sem release. Por isso o Gaspar 1.7.1, com `e2e_required` no padrão, recusa o envio até o celular estar pareado com o 1.3. Quem depende de SMS hoje permanece no Gaspar 1.7.0 com o aplicativo 1.2.
 - O celular responde na mesma conexão um quadro cifrado com `{"ok":true,"id":"...","status":"aceito","key":"<chave publica>"}` ou `{"ok":false,"error":"..."}`. O Gaspar espera essa resposta por até 0,8 s; ausência não invalida o envio. A `key` só é aceita para preencher a chave quando ainda não existe nenhuma registrada.
 - O resultado final chega depois por `POST /api/mobile/receipt`, com o corpo JSON `{"id","status","detail","ts"}` cifrado em AES-GCM e codificado em base64. `status` é `sent`, `delivered` ou `failed`; a autenticação é a própria chave do pareamento, não o token da API.
 - Estados do pedido: `fila`, `enviando`, `enviado` (chip aceitou ou pedido entregue ao celular), `entregue` (operadora confirmou) e `falhou`. O comprovante é idempotente e nunca rebaixa um pedido `entregue`.
@@ -458,9 +478,8 @@ Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HO
 
 ## Canal de atualização
 
-O Gaspar tem um canal próprio, separado do gateway do CSO Transporte
-(`api.caracore.com.br`). O canal é um único arquivo assinado, publicado como
-conteúdo estático no GitHub Pages:
+O Gaspar tem um canal próprio. O endereço que o aplicativo consulta é um único
+arquivo assinado, publicado como conteúdo estático no GitHub Pages:
 
 ```text
 https://gaspar.caracore.com.br/latest.json
@@ -471,6 +490,13 @@ O DNS `gaspar.caracore.com.br` aponta para `chmulato.github.io`; a esteira
 conferir a assinatura. A mesma publicação serve a página de apresentação
 (`docs/index.html` e `docs/assets/`) na raiz do site, e o `latest.json` fica ao
 lado dela. Não existe servidor de aplicação, banco nem chave privada na nuvem.
+
+O gateway `api.caracore.com.br` serve o **mesmo arquivo** como espelho, em
+`/releases/gaspar/latest.json`. Ele baixa o `latest.json` da release `gaspar-v*`
+e entrega os bytes sem assinar de novo: a assinatura é conferida pelo aplicativo
+com a chave pública embutida. O gateway não guarda a chave privada do Gaspar e
+também é separado do produto CSO Transporte, que usa o mesmo host com regras
+próprias.
 
 ### Contrato do `latest.json`
 
@@ -564,12 +590,13 @@ O estado fica em `data_dir()/update.json`:
 | `python tools/gaspar_channel.py sign --tag gaspar-vX.Y.Z` | Gera `dist/channel/latest.json` local. |
 | `python tools/gaspar_channel.py sign --tag ... --publish` | Envia o manifesto à release, dispara `channel.yml`, acompanha e confere a URL pública. |
 | `python tools/gaspar_channel.py check --expect X.Y.Z` | Consulta o canal publicado e valida a assinatura. |
+| `python tools/gaspar_channel.py prova --tag gaspar-vX.Y.Z` | Repete o aceite da release no canal oficial e no espelho, baixa o instalador e confere o SHA-256. |
 | `python tools/gaspar_channel.py verify --file latest.json` | Valida um arquivo local (usado pela esteira). |
 
 A configuração do canal fica em `release/channel.json` (repositório, prefixo de
-etiqueta, `key_id`, `min_supported`, `notes_url` e padrões de asset). A
-ferramenta importa `gaspar.updates`, então o manifesto é provado com a mesma
-verificação que o aplicativo usa.
+etiqueta, `key_id`, `min_supported`, `notes_url`, endereço do canal, endereço do
+espelho e padrões de asset). A ferramenta importa `gaspar.updates`, então o
+manifesto é provado com a mesma verificação que o aplicativo usa.
 
 ### Publicar uma versão
 
@@ -586,20 +613,41 @@ ela não existir, o aplicativo mantém o canal desligado.
 
 Em cada versão:
 
-1. Publique a release `gaspar-vX.Y.Z` com o `GasparSetup-X.Y.Z.exe`. A etiqueta
-   precisa bater com `gaspar/__init__.py`; rascunho e pré-release são recusados.
-2. Assine e publique o manifesto:
+1. Suba a versão em `gaspar/__init__.py` e gere os pacotes. A esteira recusa a
+   etiqueta `gaspar-vX.Y.Z` que não bata com `gaspar.__version__`.
+2. Crie o rascunho da release com o `GasparSetup-X.Y.Z.exe`, o `.deb` e o texto
+   das novidades. Rascunho e pré-release são recusados pela ferramenta e pela
+   esteira até serem publicados.
+3. **Publique a release.**
+4. Com o HD removível conectado, **assine e publique o manifesto** no
+   PowerShell:
 
-   ```bash
-   export GASPAR_RELEASE_SIGNING_KEY="$(cat /e/gaspar/gaspar-signing.pem)"
+   ```powershell
+   $env:GASPAR_RELEASE_SIGNING_KEY = Get-Content E:\gaspar\gaspar-signing.pem -Raw
    python tools/gaspar_channel.py sign --tag gaspar-vX.Y.Z --publish
+   Remove-Item Env:GASPAR_RELEASE_SIGNING_KEY
    ```
 
-3. Confira o endereço público sem publicar de novo:
+   O comando envia o `latest.json` à release, dispara a esteira do Pages,
+   acompanha o resultado e confere o endereço público.
+5. **Rode a prova dupla:**
 
    ```bash
-   python tools/gaspar_channel.py check --expect X.Y.Z
+   python tools/gaspar_channel.py prova --tag gaspar-vX.Y.Z --tentativas 36
    ```
+
+   As tentativas esperam até 6 minutos pelo cache do Pages e do gateway (o
+   gateway guarda a resposta por 5 min). A prova só fecha quando:
+
+   - o canal oficial responde a versão pedida e a assinatura confere;
+   - o espelho entrega **os mesmos bytes** do canal oficial;
+   - o payload assinado confere com a release (versão, `mandatory`,
+     `min_supported`, notas, URLs e SHA-256 dos dois pacotes);
+   - cada versão anterior publicada recebe o aviso com a obrigatoriedade certa
+     (abaixo de `min_supported` a atualização é obrigatória);
+   - a versão atual não recebe aviso;
+   - o instalador baixado do endereço do manifesto tem o SHA-256 assinado;
+   - um manifesto com a versão trocada sem assinar de novo é recusado.
 
 Uma linha `mandatory: true` no texto da release marca a atualização como
 obrigatória; versões abaixo de `min_supported` também. Depois de publicar,
@@ -656,6 +704,17 @@ Os 27 testes de `tests/test_updates.py` também usam apenas biblioteca padrão
   sem instalador recusados; o manifesto gerado passa pela verificação do app.
 - Roteiro PowerShell: espera o PID, argumentos silenciosos, marcador de
   resultado e escape de apóstrofo no caminho (sintaxe validada no PowerShell).
+
+Os 12 testes de `tests/test_channel.py` provam a rotina de release sem rede e
+sem chave real: espelho com bytes diferentes recusado, manifesto de outra
+release recusado, `key_id` trocado recusado, canal atrasado sinalizado para
+nova tentativa, versão adulterada recusada, regra de obrigatoriedade por
+`min_supported` e conversão das etiquetas (`gaspar-v1.7.1`, `v1.6.0`;
+`android-v1.3` é ignorada).
+
+Os 2 testes de `tests/test_isolamento.py` falham se um domínio de pagamento ou
+de nota fiscal (`api.mercadopago.com`, `api.plugnotas.com.br` e o sandbox)
+aparecer na lista do BlackBox ou no código do pacote.
 
 O teste de fumaça usa uma pasta temporária via `GASPAR_HOME`, não altera o `hosts` real e cobre:
 
@@ -736,13 +795,13 @@ O script remove o magenta, recorta o mascote, suaviza a borda, desconta a franja
 
 ## Estado de validação desta versão
 
-- Testes automáticos: **53 testes** (painel, ponte de SMS e canal de atualização), aprovados na árvore local; a esteira (Linux e Windows) passa a executá-los no próximo envio.
-- Canal de atualização: código, ferramenta e esteira implementados e testados localmente. O DNS `gaspar.caracore.com.br` já existe; em 11/11/2026 o Pages ainda não estava ligado (HTTP 404 e HTTPS sem certificado) e nenhuma chave real foi gerada.
-- Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não executada**; o roteiro PowerShell foi validado por análise sintática no PowerShell, não por uma instalação real.
+- Testes automáticos: **105 testes** — 59 da ponte de SMS, 27 do canal, 12 da rotina de release, 2 de isolamento e 5 do teste de fumaça —, aprovados na árvore local; a esteira `gaspar.yml` executa os 100 testes unitários no Linux e no Windows e o teste de fumaça no Linux.
+- Canal de atualização: **no ar**. O DNS `gaspar.caracore.com.br` aponta para o Pages, e o `latest.json` (2.882 bytes) foi assinado com a chave `gaspar-2026-11` e publicado na [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1). O gateway `api.caracore.com.br/releases/gaspar/latest.json` entrega os mesmos bytes. O comando `prova --tag gaspar-v1.7.1` repetiu o aceite nos dois endereços, conferiu o SHA-256 do instalador baixado do manifesto e recusou um manifesto adulterado. A chave privada fica só no HD removível do responsável; a pública está versionada em `assets/gaspar-update-public.pem` e dentro dos dois pacotes.
+- Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não executada**; o roteiro PowerShell foi validado por análise sintática no PowerShell, não por uma atualização real. O aplicativo empacotado rodou em sandbox com a chave do canal presente, mas o ciclo completo 1.7.0 → 1.7.1 ainda será observado na primeira atualização real.
 - Janela **Celular / SMS**: validada no teste de fumaça com a ponte desligada; o pareamento real depende de um celular Android.
 - Botão **Tirar o Gaspar da tela**: validado no teste de fumaça; o mascote some, o botão vira **Trazer o Gaspar de volta** e a simulação e a ponte continuam ativas.
 - Envio real de SMS: **não executado** nesta máquina, porque depende de um celular Android pareado e de um chip com crédito. O protocolo foi validado contra o código do app Android em teste automatizado (mesma derivação de chave e mesmo formato de cifra).
-- Pacotes 1.7.0: gerados pela esteira nos dois sistemas, com `SHA256SUMS.txt` conferido e publicado na [Release 1.7.0](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.0) — instalador 31 MB, `.deb` 41 MB e AppImage 30 MB.
-- O `.exe`, o `.deb` e o AppImage **desta versão** não foram reinstalados nesta máquina; a instalação em Debian 12, a execução do `.exe` empacotado e a do AppImage validadas são as da 1.6.0, com a mesma receita de build (Inno Setup 6 na máquina de build).
-- Aplicativo Android 1.2: APK e AAB **assinados** gerados pela esteira e publicados na [Release Android 1.2](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2); o APK não foi instalado em celular nesta máquina.
+- Pacotes 1.7.1: gerados pela esteira nos dois sistemas, com `SHA256SUMS.txt` conferido e publicado na Release 1.7.1 — instalador 31 MB, `.deb` 41 MB e AppImage 30 MB.
+- A instalação dos pacotes 1.7.1 em Debian 12 não foi medida nesta versão; a última instalação medida (Debian 12, `.exe` empacotado e AppImage) foi a da 1.6.0, com a mesma receita de build (Inno Setup 6 na máquina de build).
+- Aplicativo Android 1.2: APK e AAB **assinados** gerados pela esteira e publicados na [Release Android 1.2](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2); o APK não foi instalado em celular nesta máquina. O código de `android/` já é o 1.3 e tem um rascunho de release (`android-v1.3`), ainda não publicado. Por isso o SMS no Gaspar 1.7.1 depende de uma versão do celular que ainda não foi distribuída.
 - Nenhum APK, keystore ou senha é versionado.
