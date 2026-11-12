@@ -1,9 +1,9 @@
 ; Instalador do Gaspar - Mascote Cara Core
 ; Compile com: python packaging/windows/build_windows.py
-; Ou: ISCC.exe /DMyAppVersion=1.7.2 /DMySourceRoot=<raiz do repo> gaspar.iss
+; Ou: ISCC.exe /DMyAppVersion=1.7.3 /DMySourceRoot=<raiz do repo> gaspar.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.7.2"
+  #define MyAppVersion "1.7.3"
 #endif
 #ifndef MySourceRoot
   #define MySourceRoot "..\.."

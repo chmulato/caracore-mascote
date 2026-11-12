@@ -3,7 +3,7 @@
 Documentação para quem mantém, compila ou audita o Gaspar. O guia do usuário está no [README](../README.md).
 
 - Branch oficial: **master**
-- Versão: **1.7.2**
+- Versão: **1.7.3** (publicada: **1.7.2**)
 - Licença: **MIT**
 - Plataformas: **Windows 10/11** e **Linux (X11/XWayland)**
 
@@ -222,7 +222,7 @@ Saídas:
 
 - `dist/windows/gaspar/gaspar.exe`
 - `dist/windows/gaspar_blackbox/gaspar_blackbox.exe`
-- `dist/installer/GasparSetup-1.7.2.exe` (quando o Inno Setup está instalado)
+- `dist/installer/GasparSetup-1.7.3.exe` (quando o Inno Setup está instalado)
 
 O instalador:
 
@@ -274,13 +274,13 @@ Saídas:
 
 - `dist/linux/gaspar/gaspar`
 - `dist/linux/gaspar_blackbox/gaspar_blackbox`
-- `dist/linux/gaspar_1.7.2_<arch>.deb`
-- `dist/linux/Gaspar-1.7.2-<arch>.AppImage`
+- `dist/linux/gaspar_1.7.3_<arch>.deb`
+- `dist/linux/Gaspar-1.7.3-<arch>.AppImage`
 
 Instalação do `.deb`:
 
 ```bash
-sudo apt install ./dist/linux/gaspar_1.7.2_amd64.deb
+sudo apt install ./dist/linux/gaspar_1.7.3_amd64.deb
 gaspar
 gaspar-blackbox
 ```
@@ -296,8 +296,8 @@ O `.deb` instala:
 AppImage:
 
 ```bash
-chmod +x dist/linux/Gaspar-1.7.2-amd64.AppImage
-./dist/linux/Gaspar-1.7.2-amd64.AppImage
+chmod +x dist/linux/Gaspar-1.7.3-amd64.AppImage
+./dist/linux/Gaspar-1.7.3-amd64.AppImage
 ```
 
 O AppImage inclui o Gaspar e o BlackBox. O item **Gaspar BlackBox** do ícone da bandeja encontra o executável na própria instalação.
@@ -840,10 +840,10 @@ O script remove o magenta, recorta o mascote, suaviza a borda, desconta a franja
 
 ## Estado de validação desta versão
 
-- Testes automáticos: **119 testes** — 59 da ponte de SMS, 41 do canal, 12 da rotina de release, 2 de isolamento e 5 do teste de fumaça —, aprovados na árvore local; a esteira `gaspar.yml` executa os 114 testes unitários no Linux e no Windows e o teste de fumaça no Linux.
+- Testes automáticos: **121 testes** — 59 da ponte de SMS, 43 do canal e do atualizador, 12 da rotina de release, 2 de isolamento e 5 do teste de fumaça —, aprovados na árvore local em 12/11/2026; a esteira `gaspar.yml` executa os 116 testes unitários no Linux e no Windows e o teste de fumaça no Linux, ainda sem execução registrada para esta versão.
 - Canal de atualização: **no ar**. O `latest.json` (3.135 bytes) da 1.7.2 foi assinado com a chave `gaspar-2026-11` e publicado na [Release 1.7.2](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.2). Medido em 12/11/2026: o gateway `api.caracore.com.br/releases/gaspar/latest.json` e o domínio `gaspar.caracore.com.br/latest.json` entregam os mesmos 3.135 bytes, e a assinatura confere com a chave pública em `assets/gaspar-update-public.pem` (`key_id` `gaspar-2026-11`, `min_supported` 1.7.0). A chave privada fica só no HD removível do responsável; a pública está versionada e dentro dos dois pacotes. A 1.7.2, publicada, inverte a ordem do canal: consulta o gateway primeiro e deixa o domínio antigo como reserva.
 - Vigilância do canal: a esteira `canal-monitor.yml` roda a cada 6 horas e falha quando o canal sai do ar, perde a assinatura, diverge do espelho, fica atrás da release mais nova ou aponta para pacote ausente ou com tamanho diferente. O comando equivalente é `python tools/gaspar_channel.py monitor`; medido no ar e na esteira em 12/11/2026.
-- Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não executada**. O roteiro PowerShell foi validado por análise sintática, não por uma atualização disparada pelo app. O ciclo 1.7.0 → 1.7.1 foi medido em 12/11/2026 como reinstalação manual por cima: versão final 1.7.1, preferências e token preservados, canal consultado no primeiro minuto e desinstalação limpa. O caminho automático 1.7.1 → 1.7.2 continua sem execução registrada.
+- Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não concluída**. O roteiro PowerShell foi validado por análise sintática e, em seguida, disparado pelo app no sandbox — sem sucesso, pelos dois defeitos descritos abaixo. O ciclo 1.7.0 → 1.7.1 foi medido em 12/11/2026 como reinstalação manual por cima: versão final 1.7.1, preferências e token preservados, canal consultado no primeiro minuto e desinstalação limpa. O ciclo automático 1.7.1 → 1.7.2 foi medido no mesmo sandbox em 12/11/2026 e **falhou** por dois defeitos do atualizador: a pasta de download não era criada e o processo que instala era encerrado junto com o aplicativo. Os dois foram corrigidos na 1.7.3 e cobertos por teste (o teste novo falha no código antigo com o mesmo `FileNotFoundError` que o app registrou), mas o ciclo automático ainda não foi reexecutado.
 - Janela **Celular / SMS**: validada no teste de fumaça com a ponte desligada; o pareamento real depende de um celular Android.
 - Botão **Tirar o Gaspar da tela**: validado no teste de fumaça; o mascote some, o botão vira **Trazer o Gaspar de volta** e a simulação e a ponte continuam ativas.
 - Envio real de SMS: **não executado** nesta máquina, porque depende de um celular Android pareado e de um chip com crédito. O protocolo foi validado contra o código do app Android em teste automatizado (mesma derivação de chave e mesmo formato de cifra).

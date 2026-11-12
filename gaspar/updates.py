@@ -308,7 +308,7 @@ def baixar_instalador(url: str, sha256: str, destino: Path, timeout: int = 60) -
         raise FalhaAtualizacao("endereco do pacote sem nome")
     if sys.platform == "win32" and not nome.lower().endswith(".exe"):
         raise FalhaAtualizacao("pacote do Windows nao e instalador .exe")
-    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.mkdir(parents=True, exist_ok=True)
     alvo = destino / nome
     parcial = alvo.with_suffix(alvo.suffix + ".part")
     pedido = urllib.request.Request(
@@ -404,7 +404,7 @@ def aplicar_windows(instalador: Path, app_exe: Path | None, versao: str) -> None
     codificado = base64.b64encode(roteiro.encode("utf-16-le")).decode("ascii")
     criar = 0
     if sys.platform == "win32":
-        criar = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        criar = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
     subprocess.Popen(
         ["powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", codificado],
         stdin=subprocess.DEVNULL,

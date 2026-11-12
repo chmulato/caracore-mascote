@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -236,6 +237,20 @@ class DownloadTest(unittest.TestCase):
             self.assertTrue(alvo.exists())
             self.assertEqual(conteudo, alvo.read_bytes())
 
+    def test_cria_a_pasta_de_destino(self):
+        conteudo = os.urandom(512)
+        servidor = _ServidorArquivo(conteudo)
+        self.addCleanup(servidor.fechar)
+        with tempfile.TemporaryDirectory() as tmp:
+            destino = Path(tmp) / "dados" / "updates"
+            alvo = updates.baixar_instalador(
+                f"{servidor.url}/GasparSetup-1.7.3.exe",
+                hashlib.sha256(conteudo).hexdigest(),
+                destino,
+            )
+            self.assertEqual(destino, alvo.parent)
+            self.assertEqual(conteudo, alvo.read_bytes())
+
     def test_sha_errado_apaga_o_arquivo(self):
         conteudo = os.urandom(1024)
         servidor = _ServidorArquivo(conteudo)
@@ -275,6 +290,23 @@ class InstalacaoTest(unittest.TestCase):
         self.assertIn("'/SILENT','/SUPPRESSMSGBOXES','/NORESTART'", roteiro)
         self.assertIn("version=1.0.0`ncode=$codigo", roteiro)
         self.assertIn("ArgumentList '--minimized'", roteiro)
+
+    def test_ajudante_sobe_sem_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"GASPAR_HOME": tmp}):
+                with mock.patch.object(updates.subprocess, "Popen") as popen:
+                    updates.aplicar_windows(
+                        Path("C:/Temp/GasparSetup-1.7.3.exe"), None, "1.7.3"
+                    )
+        self.assertEqual(1, popen.call_count)
+        flags = popen.call_args.kwargs["creationflags"]
+        sem_console = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        destacado = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+        if sys.platform == "win32":
+            self.assertEqual(sem_console, flags)
+        else:
+            self.assertEqual(0, flags)
+        self.assertFalse(flags & destacado)
 
     def test_le_marcador_de_instalacao(self):
         with tempfile.TemporaryDirectory() as tmp:
