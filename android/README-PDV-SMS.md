@@ -8,6 +8,9 @@ chip e devolve o comprovante. Também recebe SMS de ativação de licença Premi
 (CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e
 o estado da licença.
 
+> Este código é o **1.3**, ainda não publicado. O aplicativo disponível para
+> instalação é o **1.2**, sem o envelope de ponta a ponta.
+
 O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
 envio não é mais exportada e exige permissão interna de assinatura. O teste
 manual agora é feito pela janela **Celular / SMS** do Gaspar.
@@ -195,10 +198,10 @@ Colunas: `hardware_id` (ANDROID_ID), `chave`, `valida` (1 ou 0), `mes_ano` (YYYY
 
 ## Permissão de SMS
 
-Na primeira abertura o app solicita SEND_SMS, RECEIVE_SMS e READ_SMS — o Android
-agrupa as três, então elas aparecem juntas na tela do sistema. O app usa
+Na primeira abertura o app solicita SEND_SMS e RECEIVE_SMS. O app usa
 SEND_SMS para enviar e RECEIVE_SMS para receber a chave de licença; **não
-consulta a caixa de entrada** nem lê mensagens antigas. Toque em Permitir.
+consulta a caixa de entrada** nem lê mensagens antigas, e por isso não pede
+READ_SMS. Toque em Permitir.
 
 O envio normal vem do Gaspar pela rede Wi-Fi, não de outro aplicativo. Não é
 preciso liberar nada além dessas permissões.
@@ -223,7 +226,7 @@ preciso liberar nada além dessas permissões.
   do QR nem compartilhe o código; se desconfiar, pareie de novo pelo Gaspar.
 
 O termo completo, com o que é guardado e os limites, está em
-[docs/seguranca-sms.md](../docs/seguranca-sms.md).
+[wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 
 ---
 

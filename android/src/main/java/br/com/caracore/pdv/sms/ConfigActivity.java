@@ -126,12 +126,10 @@ public class ConfigActivity extends Activity {
     private void solicitarPermissoesSms() {
         if (Build.VERSION.SDK_INT < 23) return;
         if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED
-                || checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED
-                || checkSelfPermission(Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
+                || checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{
                     Manifest.permission.SEND_SMS,
-                    Manifest.permission.RECEIVE_SMS,
-                    Manifest.permission.READ_SMS
+                    Manifest.permission.RECEIVE_SMS
             }, REQ_SMS);
         }
     }

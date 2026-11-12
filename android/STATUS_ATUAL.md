@@ -40,8 +40,9 @@ envio não é exportada e exige permissão interna de assinatura.
   `valida` e `mes_ano`.
 - **Sem acionamento externo**: `SendSmsActivity` é interna (`exported=false` +
   permissão de assinatura) e o serviço de rede não é exportado.
-- Permissões: SEND_SMS, RECEIVE_SMS e READ_SMS; o app usa SEND_SMS para enviar e
-  RECEIVE_SMS para a licença, e não consulta a caixa de entrada.
+- Permissões: SEND_SMS e RECEIVE_SMS; o app usa SEND_SMS para enviar e
+  RECEIVE_SMS para a licença, e não consulta a caixa de entrada (READ_SMS
+  removida em 12/11/2026).
 - Tratamento de exceções: `PdvSmsLogger` (tag PdvSms), `ErrorReporter`,
   `AppExceptionHandler`; exceções de domínio em `SmsSendException`,
   `SmsPermissionException`, `SmsDisabledException`, `SmsValidationException` e
@@ -69,7 +70,7 @@ envio não é exportada e exige permissão interna de assinatura.
 - Criptografia: `GatewayCrypto` (canal AES-GCM com o segredo do pareamento) e
   `E2ECrypto` (envelope por pedido). Chaves em `SmsPreferences`, com a privada
   embrulhada por chave do Android Keystore.
-- Permissões: SEND_SMS, RECEIVE_SMS, READ_SMS, INTERNET, CAMERA,
+- Permissões: SEND_SMS, RECEIVE_SMS, INTERNET, CAMERA,
   FOREGROUND_SERVICE, RECEIVE_BOOT_COMPLETED,
   REQUEST_IGNORE_BATTERY_OPTIMIZATIONS.
 
@@ -96,15 +97,11 @@ envio não é exportada e exige permissão interna de assinatura.
 - `allowBackup` está ligado: as preferências podem ir para o backup do Google. A
   chave privada do envelope fica presa ao Keystore e não funciona em outro
   aparelho; o segredo do pareamento deve ser trocado pareando de novo.
-- READ_SMS é solicitada junto do grupo de permissões de SMS, mas o app não lê a
-  caixa de entrada. A meta é removê-la quando o conjunto de SMS do Android
-  permitir pedir apenas SEND_SMS/RECEIVE_SMS sem quebrar a tela de permissões.
 
 ---
 
 ## Possível evolução
 
-- Remover READ_SMS quando o fluxo de licença não depender dela.
 - Desligar `allowBackup` ou excluir as preferências da ponte do backup.
 - Logs opcionais em arquivo (sem número nem texto) para diagnóstico em campo.
 - Ajuste de targetSdk/compileSdk e de permissões conforme políticas da loja, se houver publicação.
@@ -122,10 +119,10 @@ envio não é exportada e exige permissão interna de assinatura.
   deixou de ser exportada e exige permissão de assinatura; limite de 300 SMS por
   dia no aparelho; logs sem número nem texto. Guia em
   [README-PDV-SMS.md](README-PDV-SMS.md); termo em
-  [docs/seguranca-sms.md](../docs/seguranca-sms.md).
+  [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 
 - Alinhamento com CaraCore-PDV (v1.1): marca "CaraCore PDV - Envio SMS"; descrição "o que faz" em linguagem de operação sem internet; cores do header em verde (#059669) alinhadas ao portal; README e STATUS referem Enlace de Contingência; strings e comentários em pt-BR.
-- Licença Premium: `SMSReceiver` (CC-LICENSE/CARACORE-KEY, filtro por número oficial), `SmsPreferences` (chave, número oficial, `isLicencaValida()`), `LicencaContentProvider` (hardware_id, chave, valida, mes_ano). `ConfigActivity`: status da licença (vermelho/verde), botão "Verificar Conexão USB". Permissões RECEIVE_SMS, READ_SMS no Manifest e em runtime.
+- Licença Premium: `SMSReceiver` (CC-LICENSE/CARACORE-KEY, filtro por número oficial), `SmsPreferences` (chave, número oficial, `isLicencaValida()`), `LicencaContentProvider` (hardware_id, chave, valida, mes_ano). `ConfigActivity`: status da licença (vermelho/verde), botão "Verificar Conexão USB". Permissões RECEIVE_SMS e SEND_SMS no Manifest e em runtime.
 - Build em `build\` no projeto; `gradle.properties` e `-Dorg.gradle.vfs.watch=false` para reduzir AccessDenied. Basta uma exclusão no Defender: a pasta do projeto.
 - `config.bat`: detecção de JDK 11+ (Java, Adoptium, Microsoft, Corretto) e fallback para JDK 8 com aviso.
 - `ConfigActivity` como launcher com painel "CaraCore PDV - Envio SMS"; `SendSmsActivity` para intent de envio; `PdvSmsLogger`, `ErrorReporter`, `AppExceptionHandler`; exceções de domínio; ícone padrão; `SmsPreferences` para ativo/pausado.
