@@ -85,7 +85,6 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
-          cname: gaspar.caracore.com.br
 
       - name: Empacotar o site
         uses: actions/upload-pages-artifact@v3
