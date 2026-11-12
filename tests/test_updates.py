@@ -381,5 +381,145 @@ class FerramentaTest(unittest.TestCase):
             gaspar_channel.montar_payload(dados, self._config())
 
 
+class CanalTest(unittest.TestCase):
+    def _corpo(self, versao: str = "1.8.0", privada=None) -> bytes:
+        if privada is None:
+            privada, _ = chave_teste()
+        return json.dumps(envelope(payload_teste(versao), privada)).encode("utf-8")
+
+    def test_principal_e_o_gateway_e_a_reserva_e_o_dominio_antigo(self):
+        self.assertEqual(
+            "https://api.caracore.com.br/releases/gaspar/latest.json", updates.CANAL_URL
+        )
+        self.assertEqual("https://gaspar.caracore.com.br/latest.json", updates.CANAL_RESERVA)
+        self.assertEqual((updates.CANAL_URL, updates.CANAL_RESERVA), updates.CANAL_URLS)
+
+    def test_principal_responde_e_a_reserva_nao_e_chamada(self):
+        privada, publica = chave_teste()
+        corpo = self._corpo(privada=privada)
+        chamadas = []
+
+        def buscar(url, timeout=updates.TIMEOUT):
+            chamadas.append(url)
+            return corpo
+
+        with mock.patch.object(updates, "buscar_manifesto", side_effect=buscar):
+            disponivel, origem = updates.consultar_com_origem(chave=publica, local="1.7.0")
+        self.assertEqual(updates.CANAL_URL, origem)
+        self.assertEqual([updates.CANAL_URL], chamadas)
+        self.assertEqual("1.8.0", disponivel.versao)
+
+    def test_reserva_responde_quando_o_principal_esta_fora(self):
+        privada, publica = chave_teste()
+        corpo = self._corpo(privada=privada)
+
+        def buscar(url, timeout=updates.TIMEOUT):
+            if url == updates.CANAL_URL:
+                raise updates.FalhaAtualizacao("canal inacessivel (URLError)")
+            return corpo
+
+        with mock.patch.object(updates, "buscar_manifesto", side_effect=buscar):
+            disponivel, origem = updates.consultar_com_origem(chave=publica, local="1.7.0")
+        self.assertEqual(updates.CANAL_RESERVA, origem)
+        self.assertEqual("1.8.0", disponivel.versao)
+
+    def test_reserva_nao_aceita_manifesto_de_outra_chave(self):
+        privada, _ = chave_teste()
+        _, outra_publica = chave_teste()
+        corpo = self._corpo(privada=privada)
+
+        def buscar(url, timeout=updates.TIMEOUT):
+            if url == updates.CANAL_URL:
+                raise updates.FalhaAtualizacao("canal inacessivel (URLError)")
+            return corpo
+
+        with mock.patch.object(updates, "buscar_manifesto", side_effect=buscar):
+            with self.assertRaises(updates.FalhaAtualizacao) as erro:
+                updates.consultar_com_origem(chave=outra_publica)
+        self.assertIn("assinatura do manifesto nao confere", str(erro.exception))
+
+    def test_os_dois_enderecos_fora_do_ar_mostram_as_duas_falhas(self):
+        _privada, publica = chave_teste()
+
+        def buscar(url, timeout=updates.TIMEOUT):
+            raise updates.FalhaAtualizacao(f"sem resposta em {url}")
+
+        with mock.patch.object(updates, "buscar_manifesto", side_effect=buscar):
+            with self.assertRaises(updates.FalhaAtualizacao) as erro:
+                updates.consultar_com_origem(chave=publica)
+        texto = str(erro.exception)
+        self.assertIn("canal e reserva falharam", texto)
+        self.assertIn(updates.CANAL_URL, texto)
+        self.assertIn(updates.CANAL_RESERVA, texto)
+
+    def test_endereco_unico_nao_cai_para_outro(self):
+        _privada, publica = chave_teste()
+        chamadas = []
+
+        def buscar(url, timeout=updates.TIMEOUT):
+            chamadas.append(url)
+            raise updates.FalhaAtualizacao("canal inacessivel (URLError)")
+
+        with mock.patch.object(updates, "buscar_manifesto", side_effect=buscar):
+            with self.assertRaises(updates.FalhaAtualizacao):
+                updates.consultar_com_origem("https://exemplo.invalido/latest.json", chave=publica)
+        self.assertEqual(["https://exemplo.invalido/latest.json"], chamadas)
+
+
+class AppFalso:
+    def __init__(self):
+        self.logs = []
+        self.avisos = []
+
+    def ui(self, funcao, *args):
+        funcao(*args)
+
+    def log_system(self, mensagem):
+        self.logs.append(mensagem)
+
+    def mostrar_atualizacao(self, info):
+        self.avisos.append(info)
+
+
+class VigiaTest(unittest.TestCase):
+    def _vigia(self, app, publica) -> updates.Vigia:
+        vigia = updates.Vigia(
+            app, publica, url=(updates.CANAL_URL, updates.CANAL_RESERVA), local="1.7.0"
+        )
+        self.addCleanup(vigia.parar)
+        return vigia
+
+    def _rodar(self, vigia, buscar):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"GASPAR_HOME": tmp}):
+                with mock.patch.object(updates, "buscar_manifesto", side_effect=buscar):
+                    vigia._consultar()
+
+    def test_reserva_aparece_no_log_uma_vez_e_a_volta_tambem(self):
+        app = AppFalso()
+        privada, publica = chave_teste()
+        corpo = json.dumps(envelope(payload_teste("1.8.0"), privada)).encode("utf-8")
+        vigia = self._vigia(app, publica)
+        estado = {"principal": False}
+
+        def buscar(url, timeout=updates.TIMEOUT):
+            if url == updates.CANAL_URL and not estado["principal"]:
+                raise updates.FalhaAtualizacao("canal inacessivel (URLError)")
+            return corpo
+
+        self._rodar(vigia, buscar)
+        self._rodar(vigia, buscar)
+        self.assertEqual(
+            1,
+            sum("endereco de reserva" in linha for linha in app.logs),
+            app.logs,
+        )
+        estado["principal"] = True
+        self._rodar(vigia, buscar)
+        self.assertIn(
+            "Canal de atualizacao: de volta ao endereco principal.", app.logs
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

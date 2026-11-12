@@ -31,7 +31,11 @@ from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from . import __version__
 from .paths import asset_path, data_dir
 
-CANAL_URL = "https://gaspar.caracore.com.br/latest.json"
+CANAL_URL = "https://api.caracore.com.br/releases/gaspar/latest.json"
+CANAL_RESERVA = "https://gaspar.caracore.com.br/latest.json"
+CANAL_URLS = (CANAL_URL, CANAL_RESERVA)
+# O gateway entrega os mesmos bytes do dominio antigo; ele vem primeiro e o
+# dominio antigo responde quando o gateway estiver fora.
 APP_ID = "gaspar"
 CANAL = "stable"
 CHAVE_PUBLICA_ASSET = "gaspar-update-public.pem"
@@ -259,13 +263,40 @@ def avaliar(manifesto: Manifesto, local: str = __version__) -> Disponivel | None
     )
 
 
-def consultar(url: str = CANAL_URL, chave=None, local: str = __version__) -> Disponivel | None:
+def _origens(url) -> tuple[str, ...]:
+    if isinstance(url, str):
+        return (url,)
+    alvos = tuple(str(alvo) for alvo in url if alvo)
+    return alvos or CANAL_URLS
+
+
+def consultar_com_origem(
+    url=CANAL_URLS, chave=None, local: str = __version__
+) -> tuple[Disponivel | None, str]:
+    """Tenta cada endereco em ordem e devolve o resultado com quem respondeu.
+
+    A assinatura e conferida em todos os enderecos: a reserva nao e um caminho
+    mais fraco, apenas outro lugar de onde buscar os mesmos bytes assinados.
+    """
     if chave is None:
         chave = chave_publica()
     if chave is None:
         raise FalhaAtualizacao("chave publica do canal ausente")
-    manifesto = verificar_envelope(buscar_manifesto(url), chave)
-    return avaliar(manifesto, local)
+    falhas = []
+    for alvo in _origens(url):
+        try:
+            manifesto = verificar_envelope(buscar_manifesto(alvo), chave)
+        except FalhaAtualizacao as exc:
+            falhas.append(str(exc))
+            continue
+        return avaliar(manifesto, local), alvo
+    if len(falhas) == 1:
+        raise FalhaAtualizacao(falhas[0])
+    raise FalhaAtualizacao("canal e reserva falharam (" + "; ".join(falhas) + ")")
+
+
+def consultar(url=CANAL_URLS, chave=None, local: str = __version__) -> Disponivel | None:
+    return consultar_com_origem(url, chave, local)[0]
 
 
 def baixar_instalador(url: str, sha256: str, destino: Path, timeout: int = 60) -> Path:
@@ -420,13 +451,14 @@ def abrir_pagina(url: str) -> bool:
 class Vigia:
     """Consulta o canal em segundo plano e avisa a interface pelo callback."""
 
-    def __init__(self, app, chave, url: str = CANAL_URL, local: str = __version__):
+    def __init__(self, app, chave, url=CANAL_URLS, local: str = __version__):
         self.app = app
         self.chave = chave
         self.url = url
         self.local = local
         self.disponivel: Disponivel | None = None
         self.ultimo_erro = ""
+        self._origem = ""
         self._parar = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -440,11 +472,21 @@ class Vigia:
         self._parar.set()
 
     def verificar_agora(self) -> Disponivel | None:
-        disponivel = consultar(self.url, self.chave, self.local)
+        disponivel, origem = consultar_com_origem(self.url, self.chave, self.local)
+        self._anotar_origem(origem)
         if disponivel is not None:
             self.disponivel = disponivel
             self.app.ui(self.app.mostrar_atualizacao, disponivel)
         return disponivel
+
+    def _anotar_origem(self, origem: str) -> None:
+        if origem == self._origem:
+            return
+        anterior, self._origem = self._origem, origem
+        if origem != _origens(self.url)[0]:
+            self.app.log_system("Canal de atualizacao: respondendo pelo endereco de reserva.")
+        elif anterior:
+            self.app.log_system("Canal de atualizacao: de volta ao endereco principal.")
 
     def _laco(self) -> None:
         if self._parar.wait(random.uniform(*ESPERA_INICIAL)):
@@ -458,7 +500,7 @@ class Vigia:
 
     def _consultar(self) -> None:
         try:
-            disponivel = consultar(self.url, self.chave, self.local)
+            disponivel, origem = consultar_com_origem(self.url, self.chave, self.local)
         except FalhaAtualizacao as exc:
             if str(exc) != self.ultimo_erro:
                 self.ultimo_erro = str(exc)
@@ -472,6 +514,7 @@ class Vigia:
                 )
             return
         self.ultimo_erro = ""
+        self._anotar_origem(origem)
         salvar_estado(last_check=int(time.time()))
         if disponivel is None:
             return

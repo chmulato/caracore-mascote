@@ -3,7 +3,7 @@
 Documentação para quem mantém, compila ou audita o Gaspar. O guia do usuário está no [README](../README.md).
 
 - Branch oficial: **master**
-- Versão: **1.7.1**
+- Versão: **1.7.2**
 - Licença: **MIT**
 - Plataformas: **Windows 10/11** e **Linux (X11/XWayland)**
 
@@ -221,7 +221,7 @@ Saídas:
 
 - `dist/windows/gaspar/gaspar.exe`
 - `dist/windows/gaspar_blackbox/gaspar_blackbox.exe`
-- `dist/installer/GasparSetup-1.7.1.exe` (quando o Inno Setup está instalado)
+- `dist/installer/GasparSetup-1.7.2.exe` (quando o Inno Setup está instalado)
 
 O instalador:
 
@@ -273,13 +273,13 @@ Saídas:
 
 - `dist/linux/gaspar/gaspar`
 - `dist/linux/gaspar_blackbox/gaspar_blackbox`
-- `dist/linux/gaspar_1.7.1_<arch>.deb`
-- `dist/linux/Gaspar-1.7.1-<arch>.AppImage`
+- `dist/linux/gaspar_1.7.2_<arch>.deb`
+- `dist/linux/Gaspar-1.7.2-<arch>.AppImage`
 
 Instalação do `.deb`:
 
 ```bash
-sudo apt install ./dist/linux/gaspar_1.7.1_amd64.deb
+sudo apt install ./dist/linux/gaspar_1.7.2_amd64.deb
 gaspar
 gaspar-blackbox
 ```
@@ -295,8 +295,8 @@ O `.deb` instala:
 AppImage:
 
 ```bash
-chmod +x dist/linux/Gaspar-1.7.1-amd64.AppImage
-./dist/linux/Gaspar-1.7.1-amd64.AppImage
+chmod +x dist/linux/Gaspar-1.7.2-amd64.AppImage
+./dist/linux/Gaspar-1.7.2-amd64.AppImage
 ```
 
 O AppImage inclui o Gaspar e o BlackBox. O item **Gaspar BlackBox** do ícone da bandeja encontra o executável na própria instalação.
@@ -337,7 +337,7 @@ O `--dry-run` não altera o arquivo e não exige administrador.
 
 ### Isolamento das integrações do PDV
 
-O Gaspar não abre conexão com o Mercado Pago (`api.mercadopago.com`) nem com o PlugNotas/Tecnospeed (`api.plugnotas.com.br`, `api.sandbox.plugnotas.com.br`). Suas únicas saídas são o canal de atualização (`gaspar.caracore.com.br`) e a ponte local de SMS.
+O Gaspar não abre conexão com o Mercado Pago (`api.mercadopago.com`) nem com o PlugNotas/Tecnospeed (`api.plugnotas.com.br`, `api.sandbox.plugnotas.com.br`). Suas únicas saídas são o canal de atualização (`api.caracore.com.br` e `gaspar.caracore.com.br`) e a ponte local de SMS.
 
 O BlackBox altera somente o arquivo `hosts`, com domínios exatos de telemetria da Microsoft. Nenhum endereço de pagamento ou nota está na lista, e não há regra de proxy, DNS ou firewall. O teste `tests/test_isolamento.py` falha se um domínio protegido aparecer na lista de bloqueio ou no código do pacote.
 
@@ -478,12 +478,21 @@ Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HO
 
 ## Canal de atualização
 
-O Gaspar tem um canal próprio. O endereço que o aplicativo consulta é um único
-arquivo assinado, publicado como conteúdo estático no GitHub Pages:
+O Gaspar tem um canal próprio. O aplicativo consulta um único arquivo assinado,
+publicado como conteúdo estático no GitHub Pages e espelhado pelo gateway. A
+partir da 1.7.2 a ordem é: gateway primeiro, domínio antigo como reserva.
 
 ```text
-https://gaspar.caracore.com.br/latest.json
+principal  https://api.caracore.com.br/releases/gaspar/latest.json
+reserva    https://gaspar.caracore.com.br/latest.json
 ```
+
+Os dois endereços entregam os mesmos bytes. A assinatura é conferida em
+qualquer um deles com a chave pública embutida, então a reserva não é um
+caminho mais fraco: se o gateway devolver um manifesto que não confere, a
+atualização não é aceita. Quando a reserva responde, o log registra
+`Canal de atualizacao: respondendo pelo endereco de reserva.`; a volta ao
+principal também fica registrada.
 
 O DNS `gaspar.caracore.com.br` aponta para `chmulato.github.io`; a esteira
 [`channel.yml`](../.github/workflows/channel.yml) publica o arquivo depois de
@@ -496,7 +505,8 @@ O gateway `api.caracore.com.br` serve o **mesmo arquivo** como espelho, em
 e entrega os bytes sem assinar de novo: a assinatura é conferida pelo aplicativo
 com a chave pública embutida. O gateway não guarda a chave privada do Gaspar e
 também é separado do produto CSO Transporte, que usa o mesmo host com regras
-próprias.
+próprias. Ele guarda a resposta por até 5 minutos, por isso uma versão recém
+publicada pode demorar alguns minutos para aparecer aos aplicativos.
 
 ### Contrato do `latest.json`
 
@@ -508,8 +518,8 @@ O arquivo é um envelope com o manifesto em base64 e a assinatura Ed25519:
   "signature": "<assinatura Ed25519 em base64>",
   "key_id": "gaspar-2026-11",
   "appId": "gaspar",
-  "version": "1.7.1",
-  "downloadUrl": "https://github.com/.../GasparSetup-1.7.1.exe",
+  "version": "1.7.2",
+  "downloadUrl": "https://github.com/.../GasparSetup-1.7.2.exe",
   "sha256": "...",
   "mandatory": false,
   "releaseNotes": "...",
@@ -796,8 +806,8 @@ O script remove o magenta, recorta o mascote, suaviza a borda, desconta a franja
 ## Estado de validação desta versão
 
 - Testes automáticos: **105 testes** — 59 da ponte de SMS, 27 do canal, 12 da rotina de release, 2 de isolamento e 5 do teste de fumaça —, aprovados na árvore local; a esteira `gaspar.yml` executa os 100 testes unitários no Linux e no Windows e o teste de fumaça no Linux.
-- Canal de atualização: **no ar**. O DNS `gaspar.caracore.com.br` aponta para o Pages, e o `latest.json` (2.882 bytes) foi assinado com a chave `gaspar-2026-11` e publicado na [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1). O gateway `api.caracore.com.br/releases/gaspar/latest.json` entrega os mesmos bytes. O comando `prova --tag gaspar-v1.7.1` repetiu o aceite nos dois endereços, conferiu o SHA-256 do instalador baixado do manifesto e recusou um manifesto adulterado. A chave privada fica só no HD removível do responsável; a pública está versionada em `assets/gaspar-update-public.pem` e dentro dos dois pacotes.
-- Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não executada**; o roteiro PowerShell foi validado por análise sintática no PowerShell, não por uma atualização real. O aplicativo empacotado rodou em sandbox com a chave do canal presente, mas o ciclo completo 1.7.0 → 1.7.1 ainda será observado na primeira atualização real.
+- Canal de atualização: **no ar**. O DNS `gaspar.caracore.com.br` aponta para o Pages, e o `latest.json` (2.882 bytes) foi assinado com a chave `gaspar-2026-11` e publicado na [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1). O gateway `api.caracore.com.br/releases/gaspar/latest.json` entrega os mesmos bytes. O comando `prova --tag gaspar-v1.7.1` repetiu o aceite nos dois endereços, conferiu o SHA-256 do instalador baixado do manifesto e recusou um manifesto adulterado. A chave privada fica só no HD removível do responsável; a pública está versionada em `assets/gaspar-update-public.pem` e dentro dos dois pacotes. A 1.7.2 (na árvore, ainda não publicada) inverte a ordem: consulta o gateway primeiro e deixa o domínio antigo como reserva.
+- Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não executada**. O roteiro PowerShell foi validado por análise sintática, não por uma atualização disparada pelo app. O ciclo 1.7.0 → 1.7.1 foi medido em 12/11/2026 como reinstalação manual por cima: versão final 1.7.1, preferências e token preservados, canal consultado no primeiro minuto e desinstalação limpa. O caminho automático 1.7.1 → N depende da primeira versão publicada depois da 1.7.1.
 - Janela **Celular / SMS**: validada no teste de fumaça com a ponte desligada; o pareamento real depende de um celular Android.
 - Botão **Tirar o Gaspar da tela**: validado no teste de fumaça; o mascote some, o botão vira **Trazer o Gaspar de volta** e a simulação e a ponte continuam ativas.
 - Envio real de SMS: **não executado** nesta máquina, porque depende de um celular Android pareado e de um chip com crédito. O protocolo foi validado contra o código do app Android em teste automatizado (mesma derivação de chave e mesmo formato de cifra).
