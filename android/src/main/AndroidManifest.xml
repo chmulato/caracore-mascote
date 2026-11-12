@@ -13,9 +13,13 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="27" />
 
+    <permission
+        android:name="br.com.caracore.pdv.sms.permission.SMS_INTERNAL"
+        android:protectionLevel="signature" />
+
     <application
         android:name=".PdvSmsApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@android:drawable/sym_def_app_icon"
         android:label="@string/app_name"
         android:roundIcon="@android:drawable/sym_def_app_icon"
@@ -37,7 +41,8 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity
             android:name=".SendSmsActivity"
-            android:exported="true"
+            android:exported="false"
+            android:permission="br.com.caracore.pdv.sms.permission.SMS_INTERNAL"
             android:excludeFromRecents="true"
             android:taskAffinity="" />
 

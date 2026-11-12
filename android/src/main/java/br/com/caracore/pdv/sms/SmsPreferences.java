@@ -2,7 +2,9 @@ package br.com.caracore.pdv.sms;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.text.TextUtils;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,6 +25,16 @@ public final class SmsPreferences {
     private static final String KEY_GATEWAY_SHARED_SECRET = "gateway_shared_secret";
     /** URL base do PDV (ex.: http://192.168.1.10:8080) para setup/diagnóstico. */
     private static final String KEY_PDV_BASE_URL = "pdv_base_url";
+    private static final String KEY_QUOTA_DAY = "quota_day";
+    private static final String KEY_QUOTA_COUNT = "quota_count";
+    private static final String KEY_LAST_SEQUENCE = "last_sequence";
+    private static final String KEY_SEEN_JOBS = "seen_jobs";
+    /** Par de chaves da criptografia de ponta a ponta (privada protegida pelo Keystore). */
+    private static final String KEY_E2E_PRIVATE = "e2e_private";
+    private static final String KEY_E2E_PUBLIC = "e2e_public";
+
+    public static final int DAILY_LIMIT = 300;
+    private static final int SEEN_JOBS_LIMIT = 100;
 
     /** Formato CC-YYYYMM-{hex8}; usamos o grupo 1 para YYYYMM. */
     private static final Pattern PREFIX_LICENCA = Pattern.compile("^CC-(\\d{6})-[0-9a-fA-F]{8}$");
@@ -119,7 +131,91 @@ public final class SmsPreferences {
     }
 
     public void setGatewaySharedSecret(String secret) {
-        prefs.edit().putString(KEY_GATEWAY_SHARED_SECRET, secret != null ? secret.trim() : null).apply();
+        String novo = secret != null ? secret.trim() : null;
+        String atual = getGatewaySharedSecret();
+        boolean mudou = novo == null ? atual != null : !novo.equals(atual);
+        if (mudou) {
+            prefs.edit().remove(KEY_LAST_SEQUENCE).remove(KEY_SEEN_JOBS).apply();
+        }
+        prefs.edit().putString(KEY_GATEWAY_SHARED_SECRET, novo).apply();
+    }
+
+    public String getE2ePrivateKey() {
+        return prefs.getString(KEY_E2E_PRIVATE, null);
+    }
+
+    public String getE2ePublicKey() {
+        return prefs.getString(KEY_E2E_PUBLIC, null);
+    }
+
+    public void setE2eKeys(String wrappedPrivateKey, String publicKey) {
+        prefs.edit()
+                .putString(KEY_E2E_PRIVATE, wrappedPrivateKey)
+                .putString(KEY_E2E_PUBLIC, publicKey)
+                .apply();
+    }
+
+    /** Consome uma unidade da cota local do dia; false quando o celular atingiu o teto. */
+    public synchronized boolean consumeSmsQuota() {
+        Calendar cal = Calendar.getInstance();
+        int hoje = cal.get(Calendar.YEAR) * 1000 + cal.get(Calendar.DAY_OF_YEAR);
+        int dia = prefs.getInt(KEY_QUOTA_DAY, 0);
+        int usados = dia == hoje ? prefs.getInt(KEY_QUOTA_COUNT, 0) : 0;
+        if (usados >= DAILY_LIMIT) {
+            return false;
+        }
+        prefs.edit().putInt(KEY_QUOTA_DAY, hoje).putInt(KEY_QUOTA_COUNT, usados + 1).commit();
+        return true;
+    }
+
+    public long getLastSequence() {
+        return prefs.getLong(KEY_LAST_SEQUENCE, 0L);
+    }
+
+    public void setLastSequence(long sequencia) {
+        if (sequencia > 0) {
+            prefs.edit().putLong(KEY_LAST_SEQUENCE, sequencia).apply();
+        }
+    }
+
+    /** True quando o identificador do pedido ja foi aceito por este celular. */
+    public synchronized boolean isKnownJobId(String id) {
+        String texto = id != null ? id.trim() : "";
+        if (texto.isEmpty()) {
+            return false;
+        }
+        for (String visto : readSeenJobs()) {
+            if (visto.equals(texto)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public synchronized void rememberJobId(String id) {
+        String texto = id != null ? id.trim() : "";
+        if (texto.isEmpty()) {
+            return;
+        }
+        ArrayList<String> ids = new ArrayList<>();
+        for (String visto : readSeenJobs()) {
+            if (!visto.equals(texto)) {
+                ids.add(visto);
+            }
+        }
+        ids.add(texto);
+        while (ids.size() > SEEN_JOBS_LIMIT) {
+            ids.remove(0);
+        }
+        prefs.edit().putString(KEY_SEEN_JOBS, TextUtils.join("|", ids)).apply();
+    }
+
+    private String[] readSeenJobs() {
+        String texto = prefs.getString(KEY_SEEN_JOBS, "");
+        if (texto == null || texto.isEmpty()) {
+            return new String[0];
+        }
+        return texto.split("\\|");
     }
 
     public String getPdvBaseUrl() {

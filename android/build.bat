@@ -62,9 +62,15 @@ if /i "%~1"=="clean" set "DO_CLEAN=1"
 if /i "%~2"=="clean" set "DO_CLEAN=1"
 set "MODE=debug"
 set "BUILD_DIR=build"
-set "APK=%BUILD_DIR%\outputs\apk\debug\pdv-sms-enviar-1.0.apk"
-if /i "%~1"=="release" set "MODE=release" & set "APK=%BUILD_DIR%\outputs\apk\release\pdv-sms-enviar-1.0-release.apk"
-if /i "%~2"=="release" set "MODE=release" & set "APK=%BUILD_DIR%\outputs\apk\release\pdv-sms-enviar-1.0-release.apk"
+set "APK_VERSION="
+for /f "tokens=2 delims='" %%V in ('findstr /c:"versionName" build.gradle') do if not defined APK_VERSION set "APK_VERSION=%%V"
+if not defined APK_VERSION (
+    echo [ERRO] versionName nao encontrado em build.gradle
+    exit /b 1
+)
+set "APK=%BUILD_DIR%\outputs\apk\debug\pdv-sms-enviar-%APK_VERSION%.apk"
+if /i "%~1"=="release" set "MODE=release" & set "APK=%BUILD_DIR%\outputs\apk\release\pdv-sms-enviar-%APK_VERSION%-release.apk"
+if /i "%~2"=="release" set "MODE=release" & set "APK=%BUILD_DIR%\outputs\apk\release\pdv-sms-enviar-%APK_VERSION%-release.apk"
 if /i "%~1"=="bundle" set "MODE=bundle" & set "APK=%BUILD_DIR%\outputs\bundle\release\pdv-sms-enviar-release.aab"
 if /i "%~2"=="bundle" set "MODE=bundle" & set "APK=%BUILD_DIR%\outputs\bundle\release\pdv-sms-enviar-release.aab"
 if /i "%~1"=="aab" set "MODE=bundle" & set "APK=%BUILD_DIR%\outputs\bundle\release\pdv-sms-enviar-release.aab"

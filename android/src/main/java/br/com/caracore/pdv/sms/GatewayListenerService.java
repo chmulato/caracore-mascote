@@ -69,6 +69,13 @@ public class GatewayListenerService extends Service {
             return START_NOT_STICKY;
         }
 
+        try {
+            E2ECrypto.ensureKeyPair(this);
+        } catch (Exception e) {
+            PdvSmsLogger.i("GatewayListener", "chave de ponta a ponta: " + e.getMessage());
+        }
+        new Thread(() -> E2EKeySender.send(this)).start();
+
         if (udpThread == null || !udpThread.isAlive()) {
             udpThread = new Thread(() -> runUdpDiscovery());
             udpThread.start();
@@ -179,19 +186,31 @@ public class GatewayListenerService extends Service {
             String message = null;
             String id = null;
             String base = null;
+            String envelope = null;
+            long seq = 0L;
             while (reader.hasNext()) {
                 String name = reader.nextName();
                 if ("action".equals(name)) action = reader.nextString();
                 else if ("number".equals(name)) number = reader.nextString();
                 else if ("message".equals(name)) message = reader.nextString();
+                else if ("envelope".equals(name)) envelope = reader.nextString();
                 else if ("id".equals(name)) id = reader.nextString();
                 else if ("base".equals(name)) base = reader.nextString();
+                else if ("seq".equals(name)) seq = reader.nextLong();
                 else reader.skipValue();
             }
             reader.endObject();
             reader.close();
-            if (id != null && !id.isEmpty()) {
-                ack.put("id", id);
+            if (id == null || id.trim().isEmpty()) {
+                ack.put("error", "pedido sem identificador");
+                return ack;
+            }
+            String jobId = id.trim();
+            ack.put("id", jobId);
+            try {
+                ack.put("key", E2ECrypto.ensureKeyPair(this));
+            } catch (Exception ignored) {
+                // sem chave o PDV trabalha no modo antigo
             }
             if (!"send_sms".equals(action)) {
                 ack.put("error", "acao desconhecida");
@@ -205,23 +224,51 @@ public class GatewayListenerService extends Service {
                 ack.put("error", "app inativo");
                 return ack;
             }
+            if (envelope != null && !envelope.isEmpty()) {
+                try {
+                    byte[] plain = E2ECrypto.open(this, envelope, jobId.getBytes(StandardCharsets.UTF_8));
+                    JSONObject inner = new JSONObject(new String(plain, StandardCharsets.UTF_8));
+                    number = inner.optString("number", null);
+                    message = inner.optString("message", null);
+                } catch (Exception e) {
+                    ack.put("error", "envelope invalido");
+                    PdvSmsLogger.i("GatewayListener", "envelope: " + e.getMessage());
+                    return ack;
+                }
+            }
             if (number == null || number.trim().isEmpty() || message == null) {
                 ack.put("error", "pedido incompleto");
                 return ack;
             }
             number = number.trim().replaceAll("[^+0-9]", "");
-            if (number.isEmpty()) {
+            if (number.length() < 10 || number.length() > 15) {
                 ack.put("error", "numero invalido");
+                return ack;
+            }
+            if (message.length() > 480) {
+                ack.put("error", "mensagem acima de 480 caracteres");
+                return ack;
+            }
+            if (prefs.isKnownJobId(jobId)) {
+                ack.put("ok", true);
+                ack.put("status", "repetido");
+                return ack;
+            }
+            if (seq > 0 && seq <= prefs.getLastSequence()) {
+                ack.put("error", "pedido repetido");
                 return ack;
             }
             if (!SetupDiagnosticHelper.checkSmsPermissions(this)) {
                 ack.put("error", "permissao de SMS negada");
                 return ack;
             }
+            if (!prefs.consumeSmsQuota()) {
+                ack.put("error", "limite diario do celular atingido");
+                return ack;
+            }
 
             SmsManager sms = SmsManager.getDefault();
             ArrayList<String> parts = sms.divideMessage(message);
-            String jobId = id == null ? "" : id;
             ArrayList<PendingIntent> sentIntents = new ArrayList<>();
             ArrayList<PendingIntent> deliveredIntents = new ArrayList<>();
             for (int i = 0; i < parts.size(); i++) {
@@ -235,6 +282,10 @@ public class GatewayListenerService extends Service {
             }
             ack.put("ok", true);
             ack.put("status", "aceito");
+            prefs.rememberJobId(jobId);
+            if (seq > 0) {
+                prefs.setLastSequence(seq);
+            }
             PdvSmsLogger.i("GatewayListener", "Pedido entregue ao radio do celular.");
         } catch (Exception e) {
             try {

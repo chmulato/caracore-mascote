@@ -3,16 +3,12 @@ setlocal EnableDelayedExpansion
 REM ============================================================================
 REM Verifica se o app PDV Enviar SMS esta OK no celular: dispositivo conectado,
 REM app instalado e permissao SEND_SMS concedida.
-REM   verificar-app.bat         -> apenas verifica
-REM   verificar-app.bat test NUMERO -> envia 1 SMS de teste para NUMERO (ex: 5541999999999)
+REM   verificar-app.bat -> apenas verifica
+REM O envio de teste e feito pelo Gaspar, na janela "Celular / SMS".
 REM Requer: ANDROID_HOME, celular via USB, depuracao USB, app instalado.
 REM ============================================================================
 
 cd /d "%~dp0"
-
-set "DO_TEST=0"
-set "TEST_NUM=%~2"
-if /i "%~1"=="test" if not "%~2"=="" set "DO_TEST=1"
 
 REM --- ANDROID_HOME e ADB (igual publicar-celular) ---
 if not defined ANDROID_HOME (
@@ -71,20 +67,8 @@ if "!PERM!"=="0" (
 
 echo.
 
-if "!DO_TEST!"=="1" (
-    echo === Teste: enviando 1 SMS para !TEST_NUM! ===
-    "%ADB%" shell am start -n br.com.caracore.pdv.sms/.SendSmsActivity -e number "!TEST_NUM!" -e body "Teste PDV Enviar SMS - verificar-app.bat"
-    if !ERRORLEVEL! equ 0 (
-        echo [OK] Intent enviado. Confira o celular: deve aparecer o toast e o SMS em !TEST_NUM!
-    ) else (
-        echo [FALHA] Nao foi possivel enviar o intent. Verifique o celular.
-    )
-    echo.
-    exit /b 0
-)
-
-echo === Resumo: app pronto para receber envios via ADB ===
-echo    Ex: adb shell am start -n br.com.caracore.pdv.sms/.SendSmsActivity -e number \"5541999999999\" -e body \"Sua mensagem\"
+echo === Resumo: verificacao concluida ===
+echo    O envio de teste e feito no Gaspar: janela "Celular / SMS" - botao "Enviar teste".
 echo.
 if "!PERM!"=="0" exit /b 1
 exit /b 0

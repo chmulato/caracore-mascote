@@ -55,7 +55,13 @@ public class ScanSetupActivity extends Activity {
 
         boolean smsOk = SetupDiagnosticHelper.checkSmsPermissions(this);
         boolean batteryOk = SetupDiagnosticHelper.checkBatteryOptimizationIgnored(this);
+        String publicKey = "";
         StringBuilder msg = new StringBuilder();
+        try {
+            publicKey = E2ECrypto.ensureKeyPair(this);
+        } catch (Exception e) {
+            msg.append("Chave de criptografia: este celular não conseguiu criar a chave. ");
+        }
         if (!smsOk) msg.append("Permissões SMS: conceda no app. ");
         if (!batteryOk) msg.append("Bateria: desative otimização para este app. ");
 
@@ -64,9 +70,10 @@ public class ScanSetupActivity extends Activity {
         final boolean sms = smsOk;
         final boolean battery = batteryOk;
         final String message = msg.toString().trim();
+        final String phoneKey = publicKey;
 
         new Thread(() -> {
-            final String err = SetupDiagnosticHelper.reportToPdv(baseUrl, token, sms, battery, message);
+            final String err = SetupDiagnosticHelper.reportToPdv(baseUrl, token, sms, battery, message, phoneKey);
             runOnUiThread(() -> {
                 startService(new Intent(ScanSetupActivity.this, GatewayListenerService.class));
                 if (err == null) {

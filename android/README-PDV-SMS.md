@@ -1,6 +1,16 @@
 # PDV Enviar SMS
 
-App Android mínimo que envia SMS diretamente via ADB, sem intervenção no celular. É o componente móvel do **Enlace de Contingência** (operação sem internet) do CaraCore-PDV: o PC dispara o envio pelo comando `adb shell am start`. Além do envio, o app recebe SMS de ativação de licença Premium (CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e o estado da licença.
+Aplicativo Android que serve de **celular de envio** para o PDV, por meio da
+ponte local do Gaspar. O app não aceita acionamento por outros aplicativos: ele
+fica ouvindo o Gaspar na rede Wi-Fi (`GatewayListenerService`), recebe o pedido
+**cifrado de ponta a ponta**, abre com a chave que só ele tem, dispara o SMS pelo
+chip e devolve o comprovante. Também recebe SMS de ativação de licença Premium
+(CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e
+o estado da licença.
+
+O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
+envio não é mais exportada e exige permissão interna de assinatura. O teste
+manual agora é feito pela janela **Celular / SMS** do Gaspar.
 
 ---
 
@@ -62,7 +72,7 @@ O script usa Gradle em GRADLE_7_5 (ex.: D:\dev\caracore-pdv\tools\gradle-7.5) se
 build.bat
 ```
 
-O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.2-debug.apk` para scripts como publicar-celular.bat.
+O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.3-debug.apk` para scripts como publicar-celular.bat.
 
 O script: aplica config.bat para JAVA_HOME; verifica ANDROID_HOME; chama instalar-gradle-wrapper.bat se o jar do wrapper não existir; executa gradlew --stop, gradlew assembleDebug --no-build-cache --max-workers=1 -Dorg.gradle.vfs.watch=false.
 
@@ -74,7 +84,7 @@ Exige `keystore.properties` com storeFile, storePassword, keyAlias e keyPassword
 build.bat release
 ```
 
-O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.2-release.apk`.
+O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.3-release.apk`.
 
 ### AAB para Play Store (bundle)
 
@@ -140,11 +150,9 @@ verificar-app.bat
 
 Verifica: dispositivo conectado e autorizado (adb devices com linha terminando em "device"); app br.com.caracore.pdv.sms instalado; permissão SEND_SMS concedida (dumpsys package). Encerra com código 0 se tudo OK, 1 se algo falhar.
 
-Para enviar 1 SMS de teste a um número:
-
-```batch
-verificar-app.bat test 5541999999999
-```
+O envio de teste **não** é mais feito por ADB. Abra o Gaspar, entre em
+**Celular / SMS** e use **Enviar teste**; o pedido chega cifrado ao celular e o
+resultado aparece na lista **Últimos envios**.
 
 Alternativa para conceder SEND_SMS sem abrir o app (em muitos dispositivos funciona):
 
@@ -156,13 +164,16 @@ adb shell pm grant br.com.caracore.pdv.sms android.permission.SEND_SMS
 
 ## Enviar SMS pelo PC
 
-Com o app instalado, permissão SEND_SMS concedida e celular conectado e autorizado:
+O acionamento externo por ADB foi desativado de propósito, para que o celular
+não vire máquina de SMS. O caminho normal é:
 
-```batch
-adb shell am start -n br.com.caracore.pdv.sms/.SendSmsActivity -e number "5541999999999" -e body "Sua mensagem"
-```
+1. O Gaspar está aberto no computador, com **Ponte ativa**.
+2. O celular está na mesma Wi-Fi e pareado (chave pública registrada).
+3. O PDV (ou o **Enviar teste** do painel) entrega o pedido ao Gaspar.
+4. O Gaspar cifra com a chave do celular e envia pela porta 49998.
 
-O `enviar-sms.bat` na raiz do caracore-pdv usa esse intent. Se o app não estiver instalado, abre o app de Mensagens (é preciso tocar em Enviar no celular).
+Não existe mais um comando para disparar SMS direto pelo PC: quem precisa testar
+o aparelho usa a janela **Celular / SMS** do Gaspar.
 
 ---
 
@@ -184,7 +195,35 @@ Colunas: `hardware_id` (ANDROID_ID), `chave`, `valida` (1 ou 0), `mes_ano` (YYYY
 
 ## Permissão de SMS
 
-Na primeira abertura o app solicita SEND_SMS, RECEIVE_SMS e READ_SMS. RECEIVE_SMS e READ_SMS são necessárias para receber a chave de licença por SMS (Android 6+). Toque em Permitir. Depois o envio via ADB é automático, sem nova confirmação.
+Na primeira abertura o app solicita SEND_SMS, RECEIVE_SMS e READ_SMS — o Android
+agrupa as três, então elas aparecem juntas na tela do sistema. O app usa
+SEND_SMS para enviar e RECEIVE_SMS para receber a chave de licença; **não
+consulta a caixa de entrada** nem lê mensagens antigas. Toque em Permitir.
+
+O envio normal vem do Gaspar pela rede Wi-Fi, não de outro aplicativo. Não é
+preciso liberar nada além dessas permissões.
+
+---
+
+## Segurança
+
+- **Envelope de ponta a ponta**: o app cria um par de chaves EC P-256 no primeiro
+  uso. A privada fica protegida pelo Android Keystore e nunca sai do aparelho; a
+  pública vai ao Gaspar no pareamento. Cada pedido é aberto com AES-256-GCM e só
+  vale para o `id` daquele pedido.
+- **Sem acionamento externo**: a activity de envio não é exportada e exige
+  permissão interna de assinatura; o serviço que escuta a rede também não é
+  exportado. Nenhum aplicativo instalado no celular consegue mandar SMS por ele.
+- **Limites no aparelho**: 300 SMS por dia, recusa de `id` repetido e de
+  sequência repetida, além de exigir o app **ativo**.
+- **Sem conteúdo nos logs**: o app registra estado e erros técnicos, sem número e
+  sem texto. O SMS enviado fica na caixa **Enviadas** do aplicativo de mensagens,
+  como qualquer SMS.
+- **Segredo de pareamento**: quem tem o QR pode parear um aparelho. Não tire foto
+  do QR nem compartilhe o código; se desconfiar, pareie de novo pelo Gaspar.
+
+O termo completo, com o que é guardado e os limites, está em
+[docs/seguranca-sms.md](../docs/seguranca-sms.md).
 
 ---
 
@@ -249,7 +288,7 @@ android-sms-enviar/
   verificar-keystore.bat        valida senha do keystore com keytool -list
   instalar-gradle-wrapper.bat   instala gradle-wrapper.jar (Gradle 7.5)
   publicar-celular.bat          instala APK via adb; valida dispositivo, API 24+
-  verificar-app.bat             verifica: dispositivo, app instalado, permissão SEND_SMS; opção test NUMERO
+  verificar-app.bat             verifica: dispositivo, app instalado, permissão SEND_SMS
   excluir-defender-e-build.ps1  adiciona pasta às exclusões do Defender e executa build.bat clean; executar como Admin
   baixar-dependencias-android.bat  chama script Python para baixar platform-tools, platforms, build-tools
   baixar-dependencias-android.py
@@ -260,13 +299,18 @@ android-sms-enviar/
   keystore.properties.example   copiar para keystore.properties e preencher
   gradle/wrapper/
   src/main/
-    AndroidManifest.xml         ConfigActivity (launcher), SendSmsActivity (intent ADB), SMSReceiver,
+    AndroidManifest.xml         ConfigActivity (launcher), ScanSetupActivity (QR),
+                                SendSmsActivity (interna), GatewayListenerService,
+                                SMSReceiver, SmsStatusReceiver, BootReceiver,
                                 BackupUpdateReceiver, LicencaContentProvider
     java/br/com/caracore/pdv/sms/
-      PdvSmsApp.java, ConfigActivity.java, SendSmsActivity.java
-      SMSReceiver.java, BackupUpdateReceiver.java, LicencaContentProvider.java
-      PdvSmsLogger.java, ErrorReporter.java, AppExceptionHandler.java
-      SmsPreferences.java, excecoes (SmsSendException, etc.)
+      PdvSmsApp.java, ConfigActivity.java, ScanSetupActivity.java
+      GatewayListenerService.java, GatewayCrypto.java, E2ECrypto.java, E2EKeySender.java
+      SmsReceiptSender.java, SmsStatusReceiver.java, SendSmsActivity.java
+      SetupPayload.java, SetupDiagnosticHelper.java, SmsPreferences.java
+      SMSReceiver.java, BootReceiver.java, BackupUpdateReceiver.java
+      LicencaContentProvider.java, PdvSmsLogger.java, ErrorReporter.java,
+      AppExceptionHandler.java, excecoes (SmsSendException, SmsValidationException, etc.)
     res/values/strings.xml, colors.xml
     res/layout/activity_config.xml
     res/drawable/bg_header.xml, bg_card.xml
@@ -290,12 +334,6 @@ android-sms-enviar/
 | INSTALL_FAILED_VERIFICATION_FAILURE | Desative Play Protect ou instale o APK manualmente (copiar para o aparelho e abrir o arquivo). |
 | AccessDeniedException em SendSmsActivity.dex | O build usa build\ no projeto. Rode build.bat clean e em seguida build.bat. Se persistir: adicione a pasta do projeto às Exclusões do Defender (interface ou Add-MpPreference -ExclusionPath "CAMINHO_PROJETO" em PowerShell como Admin), ou execute excluir-defender-e-build.ps1 como Administrador. |
 | APK vazio ou muito pequeno | Verifique ANDROID_HOME e se existem platforms e build-tools. Tente: gradlew clean assembleDebug --no-build-cache. |
-
----
-
-## Segurança
-
-O app só envia SMS quando recebe um intent (ADB ou outro app no aparelho). Quem tem acesso ADB ao celular (ex.: seu PC autorizado) pode disparar o envio. Evite uso em aparelhos com dados sensíveis se o ADB puder ser acessado por terceiros.
 
 ---
 

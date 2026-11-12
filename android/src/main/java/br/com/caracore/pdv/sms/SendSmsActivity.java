@@ -9,13 +9,9 @@ import android.telephony.SmsManager;
 import android.widget.Toast;
 
 /**
- * Activity que envia SMS quando acionada via ADB com os extras "number" e "body".
- * Respeita a configuração "App ativo" do painel. Se desativado, não envia.
- *
- * Exemplo:
- *   adb shell am start -n br.com.caracore.pdv.sms/.SendSmsActivity -e number "5541999999999" -e body "Mensagem"
- *
- * Na primeira execução o app solicita a permissão SEND_SMS. Após permitir, o envio é automático quando ativo.
+ * Activity interna de envio, sem acionamento por outros aplicativos.
+ * O caminho normal e o GatewayListenerService, que recebe o pedido cifrado do Gaspar.
+ * Mantida apenas para compatibilidade interna; o manifesto a declara como nao exportada.
  */
 public class SendSmsActivity extends Activity {
 
@@ -39,12 +35,17 @@ public class SendSmsActivity extends Activity {
             if (number == null || number.trim().isEmpty() || body == null) {
                 throw new SmsValidationException(
                         "Extras number e body obrigatórios",
-                        "Uso: am start -n ... -e number NUM -e body \"MSG\"");
+                        "Acionamento externo desativado");
             }
 
             number = number.trim().replaceAll("[^+0-9]", "");
-            if (number.isEmpty()) {
-                throw new SmsValidationException("Número vazio após limpeza", "Número inválido");
+            if (number.length() < 10 || number.length() > 15) {
+                throw new SmsValidationException("Número inválido", "Número inválido");
+            }
+            if (body.length() > 480) {
+                throw new SmsValidationException(
+                        "Mensagem acima de 480 caracteres",
+                        "Mensagem acima de 480 caracteres");
             }
 
             if (Build.VERSION.SDK_INT >= 23) {
@@ -97,9 +98,15 @@ public class SendSmsActivity extends Activity {
 
     private void enviar(String number, String body) {
         try {
+            if (!prefs.consumeSmsQuota()) {
+                ErrorReporter.show(this, "SendSms.enviar",
+                        new SmsValidationException("Limite diário do celular atingido",
+                                "Aguarde o próximo dia para enviar mais SMS"));
+                return;
+            }
             SmsManager.getDefault().sendTextMessage(number, null, body, null, null);
-            PdvSmsLogger.i("SendSms.enviar", "SMS enviado com sucesso para " + number);
-            Toast.makeText(this, "SMS enviado para " + number, Toast.LENGTH_SHORT).show();
+            PdvSmsLogger.i("SendSms.enviar", "SMS enviado com sucesso");
+            Toast.makeText(this, "SMS enviado", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             ErrorReporter.show(this, "SendSms.enviar", new SmsSendException(e));
         } finally {

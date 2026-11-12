@@ -37,8 +37,18 @@ if not exist "%ADB%" (
 )
 call :log "ADB=!ADB!"
 
+REM --- Versao do app (mesma origem do nome do APK gerado pelo Gradle) ---
+set "APK_VERSION="
+for /f "tokens=2 delims='" %%V in ('findstr /c:"versionName" build.gradle') do if not defined APK_VERSION set "APK_VERSION=%%V"
+if not defined APK_VERSION (
+    call :log "[ERRO] versionName nao encontrado em build.gradle"
+    call :log "=== Fim (ERRO) ==="
+    exit /b 1
+)
+call :log "APK_VERSION=!APK_VERSION!"
+
 REM --- APK: gerar se nao existir (Gradle: build\outputs\apk\debug\) ---
-set "APK=build\outputs\apk\debug\pdv-sms-enviar-1.0.apk"
+set "APK=build\outputs\apk\debug\pdv-sms-enviar-!APK_VERSION!.apk"
 if not exist "!APK!" (
     call :log "[INFO] APK nao encontrado. Executando build.bat..."
     call "%~dp0build.bat"
@@ -53,7 +63,7 @@ if not exist "!APK!" (
     )
 )
 call :log "APK=!APK!"
-set "APK_ABS=%~dp0build\outputs\apk\debug\pdv-sms-enviar-1.0.apk"
+set "APK_ABS=%~dp0!APK!"
 if "!APK_ABS!"=="" (
     call :log "[ERRO] APK_ABS vazio. Verifique %%~dp0."
     exit /b 1
@@ -155,7 +165,7 @@ call :log "Tentando desativar verifier_verify_adb_installs e package_verifier_en
 "%ADB%" shell "settings put global package_verifier_enable 0" >> "%LOG%" 2>&1
 
 REM --- 3. Instalar ---
-set "APK_FULL=%~dp0build\outputs\apk\debug\pdv-sms-enviar-1.0.apk"
+set "APK_FULL=%~dp0!APK!"
 call :log "Executando: adb install -r !APK_FULL!"
 "%ADB%" install -r "!APK_FULL!" > "%~dp0pdv_adb_install.txt" 2>&1
 set "INSTALL_ERR=!ERRORLEVEL!"

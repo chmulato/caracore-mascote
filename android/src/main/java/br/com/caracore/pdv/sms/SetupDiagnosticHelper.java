@@ -45,7 +45,8 @@ public final class SetupDiagnosticHelper {
      * Envia o resultado do diagnóstico para o PDV. Executar em background.
      * @return mensagem de sucesso ou erro
      */
-    public static String reportToPdv(String baseUrl, String setupToken, boolean smsOk, boolean batteryOk, String message) {
+    public static String reportToPdv(String baseUrl, String setupToken, boolean smsOk, boolean batteryOk,
+                                     String message, String phonePublicKey) {
         if (baseUrl == null || baseUrl.isEmpty() || setupToken == null || setupToken.isEmpty()) {
             return "Dados inválidos";
         }
@@ -64,6 +65,9 @@ public final class SetupDiagnosticHelper {
             body.put("sms_ok", smsOk);
             body.put("battery_ok", batteryOk);
             body.put("message", message != null ? message : "");
+            if (phonePublicKey != null && !phonePublicKey.isEmpty()) {
+                body.put("phone_public_key", phonePublicKey);
+            }
             byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
             conn.setFixedLengthStreamingMode(bytes.length);
             try (OutputStream os = conn.getOutputStream()) {
