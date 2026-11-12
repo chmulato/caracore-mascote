@@ -251,6 +251,10 @@ pareamento do celular.
 Estas melhorias já estão no código deste repositório, mas **ainda não estão nos
 instaladores publicados**:
 
+- **Gaspar 1.7.2 - canal com duas portas:** o aviso de versão nova passa a
+  consultar primeiro o endereço novo do canal e, se ele não responder, o
+  endereço atual. O arquivo é o mesmo, assinado e conferido do mesmo jeito nos
+  dois lugares. A versão está pronta e empacotada, aguardando liberação.
 - **Aplicativo do celular 1.3:** lê o pedido cifrado, guarda a chave no próprio
   aparelho e volta a atender sozinho depois de reiniciar. Com ele, a ponte de
   SMS volta a funcionar junto com o Gaspar 1.7.1.
@@ -369,8 +373,9 @@ código, compilação e empacotamento ficam no guia técnico.
 
 ## Para quem compila
 
-O código deste repositório corresponde ao Gaspar **1.7.1** publicado. Para usar
-a ponte de SMS, o celular também precisa do aplicativo **1.3** (pasta
+O código deste repositório já está na versão **1.7.2**, que ainda **não foi
+publicada**: o instalador disponível para download continua sendo o **1.7.1**.
+Para usar a ponte de SMS, o celular também precisa do aplicativo **1.3** (pasta
 `android/`), que lê o pedido cifrado; essa versão ainda não foi publicada. As
 instruções estão em [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md) e
 [android/README.md](android/README.md).

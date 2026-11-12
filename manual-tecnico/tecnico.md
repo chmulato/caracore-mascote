@@ -134,12 +134,13 @@ O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, tar
 │   ├── test_isolamento.py         # 2 testes de isolamento das integrações
 │   ├── test_channel.py            # 12 testes da rotina de release
 │   ├── test_sms.py                # 59 testes da ponte
-│   └── test_updates.py            # 27 testes do canal
+│   └── test_updates.py            # 41 testes do canal (atualizador e ferramenta)
 ├── tools/
-│   ├── gaspar_channel.py          # init-key, sign, prova, check e verify
+│   ├── gaspar_channel.py          # init-key, sign, prova, check, monitor e verify
 │   └── make_assets.py
 ├── .github/workflows/
 │   ├── android.yml
+│   ├── canal-monitor.yml
 │   ├── channel.yml
 │   └── gaspar.yml
 ├── run.py
@@ -500,6 +501,12 @@ conferir a assinatura. A mesma publicação serve a página de apresentação
 (`docs/index.html` e `docs/assets/`) na raiz do site, e o `latest.json` fica ao
 lado dela. Não existe servidor de aplicação, banco nem chave privada na nuvem.
 
+A fonte de publicação do Pages é **GitHub Actions**, então só essa esteira
+escreve no site: uma alteração em `docs/` chega ao ar na próxima publicação do
+canal, não a cada push. Antes dessa configuração, o Pages republicava a pasta
+`docs/` do `master` sozinho em cada push e apagava o `latest.json` do ar até a
+esteira do canal rodar de novo (medido em 12/11/2026).
+
 O gateway `api.caracore.com.br` serve o **mesmo arquivo** como espelho, em
 `/releases/gaspar/latest.json`. Ele baixa o `latest.json` da release `gaspar-v*`
 e entrega os bytes sem assinar de novo: a assinatura é conferida pelo aplicativo
@@ -613,6 +620,7 @@ O estado fica em `data_dir()/update.json`:
 | `python tools/gaspar_channel.py check --expect X.Y.Z` | Consulta o canal publicado e valida a assinatura. |
 | `python tools/gaspar_channel.py prova --tag gaspar-vX.Y.Z` | Repete o aceite da release no canal oficial e no espelho, baixa o instalador e confere o SHA-256. |
 | `python tools/gaspar_channel.py verify --file latest.json` | Valida um arquivo local (usado pela esteira). |
+| `python tools/gaspar_channel.py monitor` | Confere o canal publicado (oficial e espelho) contra a release mais nova e os pacotes no ar; é o que a esteira agendada roda. |
 
 A configuração do canal fica em `release/channel.json` (repositório, prefixo de
 etiqueta, `key_id`, `min_supported`, `notes_url`, endereço do canal, endereço do
@@ -669,6 +677,16 @@ Em cada versão:
    - a versão atual não recebe aviso;
    - o instalador baixado do endereço do manifesto tem o SHA-256 assinado;
    - um manifesto com a versão trocada sem assinar de novo é recusado.
+6. **Deixe a vigilância assumir:**
+
+   ```bash
+   python tools/gaspar_channel.py monitor
+   ```
+
+   Ele exige que o canal publicado seja o da release mais nova e que os pacotes
+   continuem no ar com o tamanho declarado. Daí em diante a esteira
+   `canal-monitor.yml` repete a checagem a cada 6 horas e falha alto se algo
+   mudar.
 
 Uma linha `mandatory: true` no texto da release marca a atualização como
 obrigatória; versões abaixo de `min_supported` também. Depois de publicar,
@@ -711,7 +729,7 @@ Os 59 testes unitários de `tests/test_sms.py` usam apenas biblioteca padrão (m
 - Privacidade: `sms_state.json` e `sms_audit.jsonl` não contêm número nem texto; a auditoria recusa campos de conteúdo; expurgo respeita a retenção; o expurgo manual apaga os dois.
 - Android: o manifesto mantém `SendSmsActivity` fechada e a permissão interna como `signature`.
 
-Os 27 testes de `tests/test_updates.py` também usam apenas biblioteca padrão
+Os 41 testes de `tests/test_updates.py` também usam apenas biblioteca padrão
 (mais `cryptography`) e não acessam a internet nem usam chave real. Eles cobrem:
 
 - Envelope assinado aceito; adulteração, outro `appId` e outro canal recusados.
@@ -725,6 +743,12 @@ Os 27 testes de `tests/test_updates.py` também usam apenas biblioteca padrão
   sem instalador recusados; o manifesto gerado passa pela verificação do app.
 - Roteiro PowerShell: espera o PID, argumentos silenciosos, marcador de
   resultado e escape de apóstrofo no caminho (sintaxe validada no PowerShell).
+- Canal com gateway principal e domínio antigo como reserva: ordem, reserva só
+  quando o gateway falha, assinatura exigida nos dois, falha dupla com os dois
+  endereços na mensagem e troca registrada uma vez no log.
+- Monitor: canal saudável passa; espelho com outra versão, espelho assinado por
+  outra chave, `key_id` inesperado, canal atrás da release e pacote com tamanho
+  divergente são recusados; a etiqueta esperada dispensa consultar a release.
 
 Os 12 testes de `tests/test_channel.py` provam a rotina de release sem rede e
 sem chave real: espelho com bytes diferentes recusado, manifesto de outra
@@ -816,8 +840,9 @@ O script remove o magenta, recorta o mascote, suaviza a borda, desconta a franja
 
 ## Estado de validação desta versão
 
-- Testes automáticos: **105 testes** — 59 da ponte de SMS, 27 do canal, 12 da rotina de release, 2 de isolamento e 5 do teste de fumaça —, aprovados na árvore local; a esteira `gaspar.yml` executa os 100 testes unitários no Linux e no Windows e o teste de fumaça no Linux.
-- Canal de atualização: **no ar**. O DNS `gaspar.caracore.com.br` aponta para o Pages, e o `latest.json` (2.882 bytes) foi assinado com a chave `gaspar-2026-11` e publicado na [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1). O gateway `api.caracore.com.br/releases/gaspar/latest.json` entrega os mesmos bytes. O comando `prova --tag gaspar-v1.7.1` repetiu o aceite nos dois endereços, conferiu o SHA-256 do instalador baixado do manifesto e recusou um manifesto adulterado. A chave privada fica só no HD removível do responsável; a pública está versionada em `assets/gaspar-update-public.pem` e dentro dos dois pacotes. A 1.7.2 (na árvore, ainda não publicada) inverte a ordem: consulta o gateway primeiro e deixa o domínio antigo como reserva.
+- Testes automáticos: **119 testes** — 59 da ponte de SMS, 41 do canal, 12 da rotina de release, 2 de isolamento e 5 do teste de fumaça —, aprovados na árvore local; a esteira `gaspar.yml` executa os 114 testes unitários no Linux e no Windows e o teste de fumaça no Linux.
+- Canal de atualização: **no ar**. O DNS `gaspar.caracore.com.br` aponta para o Pages, e o `latest.json` (2.882 bytes) foi assinado com a chave `gaspar-2026-11` e publicado na [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1). O gateway `api.caracore.com.br/releases/gaspar/latest.json` entrega os mesmos bytes. O comando `prova --tag gaspar-v1.7.1` repetiu o aceite nos dois endereços, conferiu o SHA-256 do instalador baixado do manifesto e recusou um manifesto adulterado. A chave privada fica só no HD removível do responsável; a pública está versionada em `assets/gaspar-update-public.pem` e dentro dos dois pacotes. A 1.7.2 está etiquetada (`gaspar-v1.7.2`) e **em rascunho**, ainda não publicada: ela inverte a ordem do canal, consultando o gateway primeiro e deixando o domínio antigo como reserva.
+- Vigilância do canal: a esteira `canal-monitor.yml` roda a cada 6 horas e falha quando o canal sai do ar, perde a assinatura, diverge do espelho, fica atrás da release mais nova ou aponta para pacote ausente ou com tamanho diferente. O comando equivalente é `python tools/gaspar_channel.py monitor`; medido no ar e na esteira em 12/11/2026.
 - Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não executada**. O roteiro PowerShell foi validado por análise sintática, não por uma atualização disparada pelo app. O ciclo 1.7.0 → 1.7.1 foi medido em 12/11/2026 como reinstalação manual por cima: versão final 1.7.1, preferências e token preservados, canal consultado no primeiro minuto e desinstalação limpa. O caminho automático 1.7.1 → N depende da primeira versão publicada depois da 1.7.1.
 - Janela **Celular / SMS**: validada no teste de fumaça com a ponte desligada; o pareamento real depende de um celular Android.
 - Botão **Tirar o Gaspar da tela**: validado no teste de fumaça; o mascote some, o botão vira **Trazer o Gaspar de volta** e a simulação e a ponte continuam ativas.
