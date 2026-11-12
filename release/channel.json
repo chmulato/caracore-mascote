@@ -1,0 +1,14 @@
+{
+  "repo": "chmulato/caracore-mascote",
+  "tag_prefix": "gaspar-v",
+  "app_id": "gaspar",
+  "channel": "stable",
+  "key_id": "gaspar-2026-11",
+  "min_supported": "1.7.0",
+  "notes_url": "https://gaspar.caracore.com.br/",
+  "channel_url": "https://gaspar.caracore.com.br/latest.json",
+  "assets": {
+    "windows-setup": "^GasparSetup-.*[.]exe$",
+    "linux-deb": "^gaspar_.*_amd64[.]deb$"
+  }
+}

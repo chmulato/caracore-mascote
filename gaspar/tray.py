@@ -35,6 +35,17 @@ def create_tray(app):
             checked=lambda _item: app.overlay_visible,
         ),
         pystray.Menu.SEPARATOR,
+        pystray.MenuItem(
+            "Gaspar BlackBox",
+            lambda _icon, _item: app.ui(app.open_blackbox),
+        ),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem(
+            "Atualizacao disponivel",
+            lambda _icon, _item: app.ui(app.show_update),
+            visible=lambda _item: getattr(app, "update_info", None) is not None,
+        ),
+        pystray.Menu.SEPARATOR,
         pystray.MenuItem("Sair", lambda _icon, _item: app.ui(app.quit)),
     )
 

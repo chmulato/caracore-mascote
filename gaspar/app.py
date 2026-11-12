@@ -14,7 +14,7 @@ from tkinter import messagebox, ttk
 from PIL import Image, ImageTk
 
 from . import COMPANY, __version__
-from . import autostart
+from . import autostart, updates
 from .config import (
     KEY_CHOICES,
     MAX_INTERVAL,
@@ -30,12 +30,13 @@ from .presence import PresenceEngine
 from .tray import create_tray
 
 try:
+    from .sms.audit import AuditLog
     from .sms.bridge import InvalidMessage, QueueFull, RateLimited, SmsBridge
     from .sms.config import load_config as load_sms_config
     from .sms.network import lan_ip
     from .sms.qr import make_qr
     from .sms.server import SmsHttpServer
-    from .sms.store import SmsStore, mask_number
+    from .sms.store import SmsStore
 
     SMS_AVAILABLE = True
     SMS_IMPORT_ERROR = ""
@@ -60,6 +61,7 @@ class GasparApp:
         self._logo = None
         self._opacity_job = None
         self.sms_config = None
+        self.sms_audit = None
         self.sms_store = None
         self.sms_bridge = None
         self.sms_server = None
@@ -69,6 +71,14 @@ class GasparApp:
         self._sms_window = None
         self._sms_qr_window = None
         self._sms_qr_image_label = None
+        self._logs_window = None
+        self.events_text = None
+        self.system_text = None
+        self._events_backlog: list[str] = []
+        self._system_backlog: list[str] = []
+        self.update_info = None
+        self._update_vigia = None
+        self._update_worker = None
 
         self.engine = PresenceEngine(
             settings_provider=lambda: self.settings,
@@ -85,6 +95,7 @@ class GasparApp:
         self.root.after(700, self._maybe_auto_start)
         self.root.after(500, self._tick)
         self.root.after(450, self._init_sms)
+        self.root.after(1200, self._init_updates)
 
         self.log_event("Aplicacao iniciada.")
 
@@ -241,7 +252,7 @@ class GasparApp:
         ttk.Checkbutton(options, text="Sinal sonoro", variable=self.var_sound, command=self._on_sound_toggle).grid(row=0, column=1, sticky=tk.W)
         ttk.Checkbutton(options, text="Gaspar flutuante", variable=self.var_overlay, command=self._on_overlay_toggle).grid(row=1, column=0, sticky=tk.W, padx=(0, 24), pady=(4, 0))
         ttk.Checkbutton(options, text="Manter Teams/Slack ativo", variable=self.var_keep, command=self._on_keep_toggle).grid(row=1, column=1, sticky=tk.W, pady=(4, 0))
-        ttk.Checkbutton(options, text="Registrar telemetria do sistema", variable=self.var_system, command=self._on_system_toggle).grid(row=2, column=0, sticky=tk.W, padx=(0, 24), pady=(4, 0))
+        ttk.Checkbutton(options, text="Registrar uso de CPU e memoria (local)", variable=self.var_system, command=self._on_system_toggle).grid(row=2, column=0, sticky=tk.W, padx=(0, 24), pady=(4, 0))
         ttk.Checkbutton(options, text="Iniciar simulacao ao abrir", variable=self.var_auto, command=self._on_auto_toggle).grid(row=2, column=1, sticky=tk.W, pady=(4, 0))
         ttk.Checkbutton(options, text="Agir somente quando eu estiver ausente", variable=self.var_idle, command=self._on_idle_toggle).grid(row=3, column=0, sticky=tk.W, padx=(0, 24), pady=(4, 0))
         ttk.Checkbutton(options, text="Pausar em tela cheia", variable=self.var_fullscreen, command=self._on_fullscreen_toggle).grid(row=3, column=1, sticky=tk.W, pady=(4, 0))
@@ -268,6 +279,51 @@ class GasparApp:
         )
         self.opacity_label.pack(side=tk.LEFT)
 
+        self.update_anchor = settings_frame
+        self.update_frame = ttk.LabelFrame(container, text="Atualizacao", padding=10)
+        self.update_text_var = tk.StringVar()
+        ttk.Label(
+            self.update_frame,
+            textvariable=self.update_text_var,
+            wraplength=470,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W)
+        self.update_status_var = tk.StringVar()
+        ttk.Label(
+            self.update_frame,
+            textvariable=self.update_status_var,
+            style="Hint.TLabel",
+            wraplength=470,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W)
+        update_buttons = ttk.Frame(self.update_frame)
+        update_buttons.pack(anchor=tk.W, pady=(8, 0))
+        self.update_now_button = ttk.Button(
+            update_buttons,
+            text="Atualizar agora",
+            style="Accent.TButton",
+            command=self._on_update_now,
+        )
+        self.update_now_button.pack(side=tk.LEFT)
+        self.update_later_button = ttk.Button(
+            update_buttons,
+            text="Depois",
+            command=self._on_update_later,
+        )
+        self.update_later_button.pack(side=tk.LEFT, padx=(8, 0))
+        self.update_skip_button = ttk.Button(
+            update_buttons,
+            text="Pular esta versao",
+            command=self._on_update_skip,
+        )
+        self.update_skip_button.pack(side=tk.LEFT, padx=(8, 0))
+        self.update_notes_button = ttk.Button(
+            update_buttons,
+            text="Ver novidades",
+            command=self._on_update_notes,
+        )
+        self.update_notes_button.pack(side=tk.LEFT, padx=(8, 0))
+
         actions = ttk.Frame(container)
         actions.pack(fill=tk.X, pady=8)
         self.action_button = ttk.Button(
@@ -278,14 +334,8 @@ class GasparApp:
         )
         self.action_button.pack(side=tk.LEFT)
         ttk.Button(actions, text="Ocultar", command=self.hide_window).pack(side=tk.LEFT, padx=(8, 0))
-        ttk.Button(actions, text="BlackBox", command=self.open_blackbox).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(actions, text="Celular / SMS", command=self.open_sms_panel).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(actions, text="Abrir logs", command=self.open_logs).pack(side=tk.LEFT, padx=(8, 0))
-
-        notebook = ttk.Notebook(container)
-        notebook.pack(fill=tk.BOTH, expand=True)
-        self.events_text = self._make_log_tab(notebook, "Eventos")
-        self.system_text = self._make_log_tab(notebook, "Sistema")
 
         footer = ttk.Frame(container)
         footer.pack(fill=tk.X, pady=(8, 0))
@@ -408,6 +458,13 @@ class GasparApp:
         ttk.Entry(token_row, textvariable=self.sms_token_var, state="readonly").grid(row=0, column=0, sticky=tk.EW)
         ttk.Button(token_row, text="Copiar", command=self._on_copy_token).grid(row=0, column=1, padx=(6, 0))
         ttk.Button(token_row, text="Gerar novo", command=self._on_rotate_token).grid(row=0, column=2, padx=(6, 0))
+        ttk.Label(
+            api,
+            text="Somente este computador pode pedir SMS, e cada pedido leva uma assinatura.",
+            style="Hint.TLabel",
+            wraplength=520,
+            justify=tk.LEFT,
+        ).grid(row=3, column=0, sticky=tk.W, pady=(6, 0))
 
         recent = ttk.LabelFrame(outer, text="Ultimos envios  |  ok entregue  + aceito pelo celular  ! falha", padding=8)
         recent.grid(row=4, column=0, sticky=tk.NSEW, pady=(10, 0))
@@ -430,10 +487,11 @@ class GasparApp:
         footer.grid(row=5, column=0, sticky=tk.EW, pady=(10, 0))
         ttk.Label(
             footer,
-            text="O PDV chama o endereco acima; o Gaspar entrega ao celular.",
+            text="O conteudo vai cifrado de ponta a ponta; a auditoria guarda so metadados.",
             style="Hint.TLabel",
         ).pack(side=tk.LEFT)
-        ttk.Button(footer, text="Fechar", command=self._close_sms_window).pack(side=tk.RIGHT)
+        ttk.Button(footer, text="Apagar historico", command=self._on_sms_erase).pack(side=tk.RIGHT)
+        ttk.Button(footer, text="Fechar", command=self._close_sms_window).pack(side=tk.RIGHT, padx=(0, 8))
 
         if not SMS_AVAILABLE:
             self.sms_status_var.set("Ponte de SMS indisponivel")
@@ -446,7 +504,8 @@ class GasparApp:
         try:
             base = data_dir()
             self.sms_config = load_sms_config()
-            self.sms_store = SmsStore(base / "sms_state.json", base / "sms_log.jsonl")
+            self.sms_audit = AuditLog(base / "sms_audit.jsonl", self.sms_config.audit_retention_days)
+            self.sms_store = SmsStore(base / "sms_state.json", self.sms_audit)
             self.sms_bridge = SmsBridge(self.sms_config, self.sms_store, on_log=self._on_sms_log)
             if self.sms_config.enabled:
                 self._start_sms_services()
@@ -499,14 +558,13 @@ class GasparApp:
         self._update_sms_api()
 
     def _sms_api_url(self) -> str:
-        host = lan_ip() or "127.0.0.1"
         if self.sms_server is not None:
             port = self.sms_server.port
         elif self.sms_config is not None:
             port = self.sms_config.http_port
         else:
             port = 0
-        return f"http://{host}:{port}"
+        return f"http://127.0.0.1:{port}"
 
     def _update_sms_api(self) -> None:
         if not hasattr(self, "sms_api_var"):
@@ -519,7 +577,7 @@ class GasparApp:
         if self.sms_server is None or not self.sms_config.enabled:
             self.sms_api_var.set("Servidor local desligado")
             return
-        self.sms_api_var.set(f"Endereco para o PDV: {self._sms_api_url()}/api/sms")
+        self.sms_api_var.set(f"Endereco para o PDV (somente este computador): {self._sms_api_url()}/api/sms")
 
     def _on_sms_enabled(self) -> None:
         if self.sms_config is None:
@@ -591,7 +649,12 @@ class GasparApp:
         body.pack(fill=tk.BOTH, expand=True)
         ttk.Label(
             body,
-            text="1. No celular, abra o aplicativo.\n2. Toque no botao de leitura de QR.\n3. Aponte para o codigo abaixo.",
+            text=(
+                "1. No celular, abra o aplicativo.\n"
+                "2. Toque no botao de leitura de QR.\n"
+                "3. Aponte para o codigo abaixo.\n"
+                "O celular cria a propria chave e o conteudo passa a ir cifrado."
+            ),
             justify=tk.LEFT,
         ).pack(anchor=tk.W)
         self._sms_qr_image_label = ttk.Label(body, text="Gerando QR...")
@@ -642,7 +705,7 @@ class GasparApp:
             messagebox.showinfo("Envio de teste", "Ligue a ponte de SMS primeiro.", parent=self.root)
             return
         try:
-            job = self.sms_bridge.enqueue(self.sms_number_var.get(), self.sms_message_var.get())
+            job = self.sms_bridge.enqueue(self.sms_number_var.get(), self.sms_message_var.get(), manual=True)
         except (InvalidMessage, RateLimited, QueueFull) as exc:
             messagebox.showwarning("Envio de teste", str(exc), parent=self.root)
             return
@@ -650,6 +713,22 @@ class GasparApp:
             messagebox.showerror("Envio de teste", str(exc), parent=self.root)
             return
         self.log_event(f"Teste de SMS enfileirado ({job.id[:8]}).")
+        self._refresh_sms_ui()
+
+    def _on_sms_erase(self) -> None:
+        if self.sms_bridge is None:
+            return
+        confirmar = messagebox.askyesno(
+            "Apagar historico",
+            "Apagar os envios e a trilha de auditoria de SMS deste computador?\n\n"
+            "Um pedido que ja estava saindo ainda pode ser concluido pelo celular. "
+            "Esta acao nao pode ser desfeita.",
+            parent=self.root,
+        )
+        if not confirmar:
+            return
+        self.sms_bridge.erase_history()
+        self._sms_signature = None
         self._refresh_sms_ui()
 
     def _on_copy_token(self) -> None:
@@ -701,6 +780,12 @@ class GasparApp:
             sms = "SMS ok" if self.sms_config.last_diagnostic_sms_ok else "SMS negado"
             battery = "bateria ok" if self.sms_config.last_diagnostic_battery_ok else "bateria otimizada"
             details.insert(0, f"pareado {when} ({sms}, {battery})")
+        crypto = stats.get("e2e", {})
+        if crypto.get("required"):
+            if crypto.get("phone_key"):
+                details.append(f"cifrado ponta a ponta ({str(crypto.get('fingerprint', ''))[:8]})")
+            else:
+                details.append("sem chave do celular")
         self.sms_detail_var.set(" - ".join(details))
         self._update_sms_api()
         recent = self.sms_bridge.store.recent(8)
@@ -718,7 +803,9 @@ class GasparApp:
                     mark = "+"
                 else:
                     mark = " "
-                lines.append(f"{when} {job.status:<9}{mark} {mask_number(job.number):<16} {job.message[:40]}")
+                destino = job.recipient_tag[:8] if job.recipient_tag else "--------"
+                rotulo = job.template or job.actor or ""
+                lines.append(f"{when} {job.status:<9}{mark} #{destino:<8} {rotulo}")
             self._set_sms_text(lines)
 
     def _set_sms_text(self, lines: list[str]) -> None:
@@ -813,7 +900,7 @@ class GasparApp:
     def _on_system_toggle(self) -> None:
         self.settings.system_telemetry = bool(self.var_system.get())
         self._persist()
-        self.log_system("Telemetria do sistema " + ("ativada." if self.settings.system_telemetry else "desativada."))
+        self.log_system("Registro de CPU e memoria " + ("ativado." if self.settings.system_telemetry else "desativado."))
 
     def _on_auto_toggle(self) -> None:
         self.settings.auto_start = bool(self.var_auto.get())
@@ -952,6 +1039,193 @@ class GasparApp:
         self._set_status()
         self.root.after(500, self._tick)
 
+    def _init_updates(self) -> None:
+        if self.closing:
+            return
+        resultado = updates.ler_resultado_instalacao()
+        if resultado is not None:
+            pendente = str(updates.carregar_estado().get("pending_version") or "")
+            updates.salvar_estado(pending_version="")
+            if resultado.get("code") == 0:
+                self.log_event(
+                    f"Atualizacao para {pendente} concluida." if pendente else "Atualizacao concluida."
+                )
+            else:
+                self.log_system(
+                    f"A instalacao{f' de {pendente}' if pendente else ''} nao concluiu "
+                    f"(codigo {resultado.get('code')}). O canal sera consultado de novo."
+                )
+        chave = updates.chave_publica()
+        if chave is None:
+            self.log_system("Canal de atualizacao desativado: chave publica ausente em assets/.")
+            return
+        self._update_vigia = updates.Vigia(self, chave)
+        self._update_vigia.iniciar()
+
+    def mostrar_atualizacao(self, info: updates.Disponivel) -> None:
+        if self.closing:
+            return
+        pulada = str(updates.carregar_estado().get("skipped_version") or "")
+        if pulada and pulada == info.versao and not info.mandatory:
+            return
+        self.update_info = info
+        adiada = str(updates.carregar_estado().get("deferred_version") or "")
+        if adiada == info.versao and not info.mandatory:
+            if self.tray_icon is not None:
+                try:
+                    self.tray_icon.update_menu()
+                except Exception:
+                    pass
+            return
+        if info.mandatory:
+            self.update_text_var.set(
+                f"Versao {info.versao} necessaria para continuar recebendo correcoes. "
+                "Voce escolhe quando instalar; a simulacao segue funcionando."
+            )
+        else:
+            self.update_text_var.set(
+                f"Versao {info.versao} disponivel. Voce escolhe quando instalar; "
+                "a simulacao segue funcionando."
+            )
+        self.update_status_var.set("")
+        if sys.platform != "win32":
+            self.update_now_button.configure(text="Abrir download")
+        self.update_skip_button.configure(state=tk.DISABLED if info.mandatory else tk.NORMAL)
+        self.update_notes_button.configure(state=tk.NORMAL if info.notes_url else tk.DISABLED)
+        self._pack_update_banner()
+        self.log_event(
+            f"Atualizacao {info.versao} disponivel "
+            f"({'obrigatoria' if info.mandatory else 'opcional'})."
+        )
+        self._notificar_atualizacao(info)
+
+    def _pack_update_banner(self) -> None:
+        try:
+            if self.update_frame.winfo_manager() != "pack":
+                self.update_frame.pack(fill=tk.X, pady=(0, 8), before=self.update_anchor)
+        except tk.TclError:
+            pass
+
+    def _notificar_atualizacao(self, info: updates.Disponivel) -> None:
+        if str(updates.carregar_estado().get("notified_version") or "") == info.versao:
+            return
+        if self.tray_icon is not None:
+            try:
+                self.tray_icon.notify(f"Versao {info.versao} pronta para instalar.", "Gaspar")
+            except Exception:
+                pass
+            try:
+                self.tray_icon.update_menu()
+            except Exception:
+                pass
+            updates.salvar_estado(notified_version=info.versao)
+
+    def show_update(self) -> None:
+        if self.update_info is None:
+            return
+        self.show_panel()
+        self._pack_update_banner()
+
+    def _on_update_notes(self) -> None:
+        info = self.update_info
+        if info is None:
+            return
+        if updates.abrir_pagina(info.notes_url):
+            self.log_event(f"Pagina de novidades da versao {info.versao} aberta.")
+
+    def _on_update_later(self) -> None:
+        info = self.update_info
+        if info is not None:
+            updates.salvar_estado(deferred_version=info.versao)
+        try:
+            self.update_frame.pack_forget()
+        except tk.TclError:
+            pass
+
+    def _on_update_skip(self) -> None:
+        info = self.update_info
+        if info is None or info.mandatory:
+            return
+        updates.salvar_estado(skipped_version=info.versao, deferred_version="")
+        self.update_info = None
+        try:
+            self.update_frame.pack_forget()
+        except tk.TclError:
+            pass
+        if self.tray_icon is not None:
+            try:
+                self.tray_icon.update_menu()
+            except Exception:
+                pass
+        self.log_event(f"Atualizacao {info.versao} pulada.")
+
+    def _on_update_now(self) -> None:
+        info = self.update_info
+        if info is None:
+            return
+        if sys.platform != "win32":
+            if updates.abrir_pagina(info.notes_url or info.url):
+                self.log_event(f"Pagina de download da versao {info.versao} aberta.")
+            else:
+                self.update_status_var.set(f"Baixe a versao {info.versao} em: {info.url}")
+            return
+        if self._update_worker is not None and self._update_worker.is_alive():
+            return
+        self._update_busy(True)
+        self.update_status_var.set("Baixando e conferindo a atualizacao...")
+        self._update_worker = threading.Thread(
+            target=self._baixar_atualizacao,
+            args=(info,),
+            name="gaspar-update-download",
+            daemon=True,
+        )
+        self._update_worker.start()
+
+    def _baixar_atualizacao(self, info: updates.Disponivel) -> None:
+        try:
+            instalador = updates.baixar_instalador(info.url, info.sha256, data_dir() / "updates")
+        except updates.FalhaAtualizacao as exc:
+            self.ui(self._update_falhou, info.versao, str(exc))
+            return
+        except Exception as exc:
+            self.ui(self._update_falhou, info.versao, f"erro inesperado ({exc.__class__.__name__})")
+            return
+        self.ui(self._aplicar_atualizacao, instalador, info)
+
+    def _aplicar_atualizacao(self, instalador: Path, info: updates.Disponivel) -> None:
+        if self.closing:
+            return
+        if self.update_info is None or self.update_info.versao != info.versao:
+            self._update_busy(False)
+            return
+        updates.salvar_estado(pending_version=info.versao, deferred_version="")
+        self.update_status_var.set("Instalando... o Gaspar vai reabrir sozinho.")
+        app_exe = Path(sys.executable) if getattr(sys, "frozen", False) else None
+        try:
+            updates.aplicar_windows(instalador, app_exe, info.versao)
+        except Exception as exc:
+            self._update_falhou(info.versao, f"nao foi possivel iniciar o instalador ({exc.__class__.__name__})")
+            return
+        self.log_event(f"Instalacao da versao {info.versao} iniciada; o Gaspar vai reabrir.")
+        self.quit()
+
+    def _update_falhou(self, versao: str, motivo: str) -> None:
+        if self.closing:
+            return
+        self._update_busy(False)
+        updates.salvar_estado(deferred_version="")
+        self.update_status_var.set(f"Nao foi possivel atualizar agora: {motivo}. Tente novamente.")
+        self.log_system(f"Atualizacao {versao}: {motivo}.")
+
+    def _update_busy(self, ocupado: bool) -> None:
+        estado = tk.DISABLED if ocupado else tk.NORMAL
+        self.update_now_button.configure(state=estado)
+        self.update_later_button.configure(state=estado)
+        if self.update_info is not None and self.update_info.mandatory:
+            self.update_skip_button.configure(state=tk.DISABLED)
+        else:
+            self.update_skip_button.configure(state=estado)
+
     def _maybe_auto_start(self) -> None:
         if self.closing or self.engine.is_running or not self.settings.auto_start:
             return
@@ -980,13 +1254,21 @@ class GasparApp:
 
     def log_event(self, message: str) -> None:
         line = self.log.write("EVENTO", message)
-        if hasattr(self, "events_text"):
+        self._remember(self._events_backlog, line)
+        if self.events_text is not None:
             self.ui(self._append, self.events_text, line)
 
     def log_system(self, message: str) -> None:
         line = self.log.write("SISTEMA", message)
-        if hasattr(self, "system_text"):
+        self._remember(self._system_backlog, line)
+        if self.system_text is not None:
             self.ui(self._append, self.system_text, line)
+
+    @staticmethod
+    def _remember(backlog: list[str], line: str) -> None:
+        backlog.append(line)
+        if len(backlog) > 500:
+            del backlog[:100]
 
     @staticmethod
     def _append(widget: tk.Text, line: str) -> None:
@@ -1033,6 +1315,46 @@ class GasparApp:
             self.overlay.set_panel_visible(True)
 
     def open_logs(self) -> None:
+        if self._logs_window is not None and self._logs_window.winfo_exists():
+            self._logs_window.deiconify()
+            self._logs_window.lift()
+            self._logs_window.focus_force()
+            return
+        window = tk.Toplevel(self.root)
+        window.title("Gaspar - Registros")
+        window.geometry("640x420")
+        window.minsize(520, 320)
+        window.transient(self.root)
+        window.protocol("WM_DELETE_WINDOW", self._close_logs_window)
+        self._logs_window = window
+
+        outer = ttk.Frame(window, padding=10)
+        outer.pack(fill=tk.BOTH, expand=True)
+        notebook = ttk.Notebook(outer)
+        notebook.pack(fill=tk.BOTH, expand=True)
+        self.events_text = self._make_log_tab(notebook, "Eventos")
+        self.system_text = self._make_log_tab(notebook, "Sistema")
+        for line in self._events_backlog:
+            self._append(self.events_text, line)
+        for line in self._system_backlog:
+            self._append(self.system_text, line)
+
+        actions = ttk.Frame(outer)
+        actions.pack(fill=tk.X, pady=(8, 0))
+        ttk.Button(actions, text="Abrir pasta de dados", command=self._open_data_folder).pack(side=tk.LEFT)
+        ttk.Button(actions, text="Fechar", command=self._close_logs_window).pack(side=tk.RIGHT)
+
+    def _close_logs_window(self) -> None:
+        window, self._logs_window = self._logs_window, None
+        self.events_text = None
+        self.system_text = None
+        if window is not None:
+            try:
+                window.destroy()
+            except tk.TclError:
+                pass
+
+    def _open_data_folder(self) -> None:
         target = data_dir()
         try:
             if sys.platform == "win32":
@@ -1084,7 +1406,10 @@ class GasparApp:
             self._sms_poll_job = None
         self._close_qr_window()
         self._close_sms_window()
+        self._close_logs_window()
         self._stop_sms_services()
+        if self._update_vigia is not None:
+            self._update_vigia.parar()
         try:
             self.engine.stop()
         except Exception:

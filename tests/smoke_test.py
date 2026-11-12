@@ -229,6 +229,23 @@ def test_gui() -> None:
         check(app.sms_status_var.get() == "Ponte de SMS desligada", "sms: ponte desligada no teste")
         app._close_sms_window()
 
+        app.open_logs()
+        root.update_idletasks()
+        check(
+            app._logs_window is not None and app._logs_window.winfo_exists(),
+            "app: janela de registros abre",
+        )
+        check(
+            app.events_text is not None and app.system_text is not None,
+            "app: abas Eventos e Sistema na janela de registros",
+        )
+        app._close_logs_window()
+        root.update_idletasks()
+        check(
+            app._logs_window is None and app.events_text is None,
+            "app: registros fecham sem encerrar o app",
+        )
+
         app.overlay_button.invoke()
         root.update_idletasks()
         check(not app.overlay_visible and not app.var_overlay.get(), "app: botao tira o Gaspar da tela")

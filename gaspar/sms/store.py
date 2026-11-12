@@ -8,16 +8,15 @@ import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass, fields
-from datetime import datetime
 from pathlib import Path
+
+from .audit import AuditLog
 
 STATUS_QUEUED = "fila"
 STATUS_SENDING = "enviando"
 STATUS_SENT = "enviado"
 STATUS_DELIVERED = "entregue"
 STATUS_FAILED = "falhou"
-
-LOG_MAX_BYTES = 1_000_000
 
 
 def mask_number(number: str) -> str:
@@ -42,6 +41,13 @@ class SmsJob:
     sent_at: float = 0.0
     delivered_at: float = 0.0
     receipt_detail: str = ""
+    recipient_tag: str = ""
+    content_tag: str = ""
+    template: str = ""
+    actor: str = ""
+    sealed: bool = False
+    envelope: str = ""
+    reason: str = ""
 
     @classmethod
     def create(cls, number: str, message: str, venda_id: str = "") -> "SmsJob":
@@ -58,11 +64,18 @@ class SmsJob:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    def to_public_dict(self) -> dict:
+        """Versao para o PDV: sem numero, sem texto e sem o envelope cifrado."""
+        data = asdict(self)
+        for key in ("number", "message", "envelope", "receipt_detail"):
+            data.pop(key, None)
+        return data
+
 
 class SmsStore:
-    def __init__(self, state_path: Path, log_path: Path, max_jobs: int = 500):
+    def __init__(self, state_path: Path, audit: AuditLog, max_jobs: int = 500):
         self.state_path = Path(state_path)
-        self.log_path = Path(log_path)
+        self.audit = audit
         self.max_jobs = max_jobs
         self._lock = threading.RLock()
         self._jobs: dict[str, SmsJob] = {}
@@ -94,26 +107,20 @@ class SmsStore:
         tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         os.replace(tmp, self.state_path)
 
-    def _append_log(self, job: SmsJob) -> None:
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            if self.log_path.exists() and self.log_path.stat().st_size >= LOG_MAX_BYTES:
-                backup = self.log_path.with_suffix(self.log_path.suffix + ".1")
-                os.replace(self.log_path, backup)
-        except OSError:
-            pass
-        line = {
-            "ts": datetime.now().isoformat(timespec="seconds"),
-            "id": job.id,
-            "status": job.status,
-            "number": mask_number(job.number),
-            "error": job.error,
-        }
-        try:
-            with self.log_path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(line, ensure_ascii=False) + "\n")
-        except OSError:
-            pass
+    def _audit(self, job: SmsJob) -> None:
+        self.audit.record(
+            job.status,
+            id=job.id,
+            venda=job.venda_id,
+            modelo=job.template,
+            destino=job.recipient_tag,
+            conteudo=job.content_tag,
+            status=job.status,
+            motivo=job.reason,
+            tentativa=job.attempts,
+            selado=job.sealed,
+            origem=job.actor or "pdv",
+        )
 
     def add(self, job: SmsJob) -> SmsJob:
         with self._lock:
@@ -123,7 +130,7 @@ class SmsStore:
                 old = self._order.pop(0)
                 self._jobs.pop(old, None)
             self._persist()
-            self._append_log(job)
+            self._audit(job)
         return job
 
     def update(self, job_id: str, **changes) -> SmsJob | None:
@@ -136,8 +143,17 @@ class SmsStore:
                     setattr(job, key, value)
             job.updated_at = time.time()
             self._persist()
-            self._append_log(job)
+            self._audit(job)
             return job
+
+    def clear(self) -> int:
+        """Apaga os pedidos guardados (o historico de auditoria e apagado a parte)."""
+        with self._lock:
+            removed = len(self._jobs)
+            self._jobs.clear()
+            self._order.clear()
+            self._persist()
+            return removed
 
     def get(self, job_id: str) -> SmsJob | None:
         with self._lock:

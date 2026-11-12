@@ -42,13 +42,23 @@ class PhoneClient:
 
     def send(
         self,
-        number: str,
-        message: str,
+        envelope: str = "",
         msg_id: str = "",
         timestamp: float | None = None,
         base_url: str = "",
+        sequence: int = 0,
+        number: str = "",
+        message: str = "",
     ) -> SendResult:
-        payload = build_command(number, message, msg_id, timestamp, base_url)
+        payload = build_command(
+            envelope,
+            msg_id,
+            timestamp,
+            base_url,
+            sequence,
+            number=number,
+            message=message,
+        )
         blob = encrypt(self.key, payload)
         try:
             with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:

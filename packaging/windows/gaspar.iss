@@ -55,4 +55,6 @@ Name: "{autodesktop}\Gaspar"; Filename: "{app}\gaspar\{#MyAppExeName}"; WorkingD
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "GasparCaraCore"; ValueData: """{app}\gaspar\{#MyAppExeName}"" --minimized"; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
+; A atualizacao silenciosa e reaberta pelo proprio Gaspar, depois que a
+; instalacao termina; por isso nao ha entrada de [Run] para o modo silencioso.
 Filename: "{app}\gaspar\{#MyAppExeName}"; Description: "Abrir o Gaspar agora"; Flags: nowait postinstall skipifsilent runasoriginaluser

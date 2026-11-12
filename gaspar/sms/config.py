@@ -6,11 +6,13 @@ import base64
 import json
 import os
 import secrets
+import threading
 import time
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 from ..paths import data_dir
+from . import e2e
 from .protocol import COMMAND_PORT
 
 CONFIG_FILENAME = "sms_config.json"
@@ -22,6 +24,19 @@ MIN_PER_MINUTE = 1
 MAX_PER_MINUTE = 120
 MIN_PER_DAY = 1
 MAX_PER_DAY = 5000
+MIN_PER_NUMBER_HOUR = 1
+MAX_PER_NUMBER_HOUR = 10
+MIN_PER_NUMBER_DAY = 1
+MAX_PER_NUMBER_DAY = 50
+MIN_DUPLICATE_WINDOW = 0
+MAX_DUPLICATE_WINDOW = 1440
+MIN_CLOCK_SKEW = 30
+MAX_CLOCK_SKEW = 300
+MIN_NONCE_TTL = 60
+MAX_NONCE_TTL = 3600
+MIN_AUDIT_RETENTION_DAYS = 1
+MAX_AUDIT_RETENTION_DAYS = 3650
+_SAVE_LOCK = threading.Lock()
 
 
 @dataclass
@@ -37,6 +52,19 @@ class SmsConfig:
     license_token: str = ""
     max_per_minute: int = 20
     max_per_day: int = 300
+    per_number_per_hour: int = 1
+    per_number_per_day: int = 3
+    duplicate_window_minutes: int = 30
+    require_signed_requests: bool = True
+    only_templates: bool = True
+    request_clock_skew_seconds: int = 60
+    nonce_ttl_seconds: int = 600
+    command_sequence: int = 0
+    e2e_required: bool = True
+    phone_public_key_b64: str = ""
+    phone_key_updated_at: float = 0.0
+    audit_key_b64: str = ""
+    audit_retention_days: int = 90
     last_diagnostic_at: float = 0.0
     last_diagnostic_sms_ok: bool = False
     last_diagnostic_battery_ok: bool = False
@@ -48,10 +76,55 @@ class SmsConfig:
             self.shared_secret_b64 = base64.b64encode(os.urandom(32)).decode("ascii")
         if not self.api_token:
             self.api_token = secrets.token_urlsafe(24)
+        if not self.audit_key_b64:
+            self.audit_key_b64 = base64.b64encode(os.urandom(32)).decode("ascii")
+
+    def audit_key(self) -> bytes:
+        try:
+            raw = base64.b64decode(self.audit_key_b64 or "", validate=True)
+        except Exception:
+            raw = b""
+        if len(raw) < 16:
+            self.audit_key_b64 = base64.b64encode(os.urandom(32)).decode("ascii")
+            raw = base64.b64decode(self.audit_key_b64)
+        return raw
+
+    def phone_public_key(self) -> str:
+        return str(self.phone_public_key_b64 or "").strip()
+
+    def has_phone_key(self) -> bool:
+        return e2e.is_valid_public_key_b64(self.phone_public_key())
+
+    def set_phone_public_key(self, value: object, allow_replace: bool = False) -> bool:
+        """Guarda a chave publica do celular.
+
+        Trocar uma chave ja registrada so vale com o token de pareamento; assim
+        ninguem que descubra o segredo da rede troca o celular por outro.
+        """
+        if not e2e.is_valid_public_key_b64(value):
+            return False
+        normalized = str(value).strip()
+        current = self.phone_public_key()
+        if current == normalized:
+            return True
+        if current and not allow_replace:
+            return False
+        self.phone_public_key_b64 = normalized
+        self.phone_key_updated_at = time.time()
+        return True
+
+    def phone_key_fingerprint(self) -> str:
+        return e2e.fingerprint_b64(self.phone_public_key())
 
     def rotate_api_token(self) -> str:
         self.api_token = secrets.token_urlsafe(24)
         return self.api_token
+
+    def next_command_sequence(self) -> int:
+        """Contador que so avanca; o celular recusa sequencia repetida."""
+        self.command_sequence = max(0, int(self.command_sequence)) + 1
+        self.save()
+        return self.command_sequence
 
     def new_setup_token(self) -> str:
         self.setup_token = secrets.token_hex(8)
@@ -90,8 +163,9 @@ class SmsConfig:
         target.parent.mkdir(parents=True, exist_ok=True)
         data = {item.name: getattr(self, item.name) for item in fields(self) if item.name != "path"}
         tmp = target.with_suffix(target.suffix + ".tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(tmp, target)
+        with _SAVE_LOCK:
+            tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(tmp, target)
         try:
             os.chmod(target, 0o600)
         except OSError:
@@ -126,6 +200,30 @@ def _clamp(config: SmsConfig) -> None:
     config.phone_port = max(1, min(65535, config.phone_port or COMMAND_PORT))
     config.max_per_minute = max(MIN_PER_MINUTE, min(MAX_PER_MINUTE, config.max_per_minute or 20))
     config.max_per_day = max(MIN_PER_DAY, min(MAX_PER_DAY, config.max_per_day or 300))
+    config.per_number_per_hour = max(
+        MIN_PER_NUMBER_HOUR, min(MAX_PER_NUMBER_HOUR, config.per_number_per_hour or 1)
+    )
+    config.per_number_per_day = max(
+        config.per_number_per_hour,
+        max(MIN_PER_NUMBER_DAY, min(MAX_PER_NUMBER_DAY, config.per_number_per_day or 3)),
+    )
+    config.duplicate_window_minutes = max(
+        MIN_DUPLICATE_WINDOW, min(MAX_DUPLICATE_WINDOW, config.duplicate_window_minutes or 0)
+    )
+    config.request_clock_skew_seconds = max(
+        MIN_CLOCK_SKEW, min(MAX_CLOCK_SKEW, config.request_clock_skew_seconds or 60)
+    )
+    config.nonce_ttl_seconds = max(
+        MIN_NONCE_TTL, min(MAX_NONCE_TTL, config.nonce_ttl_seconds or 600)
+    )
+    config.command_sequence = max(0, config.command_sequence or 0)
+    config.audit_retention_days = max(
+        MIN_AUDIT_RETENTION_DAYS,
+        min(MAX_AUDIT_RETENTION_DAYS, config.audit_retention_days or 90),
+    )
+    if not e2e.is_valid_public_key_b64(config.phone_public_key_b64):
+        config.phone_public_key_b64 = ""
+        config.phone_key_updated_at = 0.0
 
 
 def load_config(path: Path | None = None) -> SmsConfig:

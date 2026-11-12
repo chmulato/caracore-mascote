@@ -1,0 +1,97 @@
+# Publica no GitHub Pages o manifesto JA ASSINADO da release indicada.
+# A chave privada nao entra aqui: a esteira so aceita um latest.json cuja
+# assinatura confere com a chave publica versionada em assets/.
+name: Canal de atualizacao
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Etiqueta publicada (gaspar-vX.Y.Z)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: canal-gaspar
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    name: Publicar canal
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Baixar o repositorio
+        uses: actions/checkout@v4
+
+      - name: Conferir a release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          case "$TAG" in
+            gaspar-v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::Etiqueta fora do padrao gaspar-vX.Y.Z: $TAG"; exit 1 ;;
+          esac
+          estado="$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft,isPrerelease -q '.isDraft or .isPrerelease')"
+          if [ "$estado" != "false" ]; then
+            echo "::error::A release $TAG e rascunho ou pre-release; publique-a antes."
+            exit 1
+          fi
+
+      - name: Baixar o manifesto assinado
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p site
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" --pattern latest.json --dir site
+          test -s site/latest.json
+
+      - name: Conferir a assinatura com a chave publica do repositorio
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet cryptography
+          python3 tools/gaspar_channel.py verify --file site/latest.json --expect "${TAG#gaspar-v}"
+
+      - name: Montar o site
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -R docs/. site/
+          find site -maxdepth 1 -type f -name '*.md' -delete
+          test -f site/index.html
+          test -d site/assets
+          echo gaspar.caracore.com.br > site/CNAME
+          : > site/.nojekyll
+          ls -la site
+
+      - name: Preparar o Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+          cname: gaspar.caracore.com.br
+
+      - name: Empacotar o site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Publicar
+        id: deploy
+        uses: actions/deploy-pages@v4

@@ -21,19 +21,29 @@ def frame(payload: bytes) -> bytes:
 
 
 def build_command(
-    number: str,
-    message: str,
+    envelope: str = "",
     msg_id: str = "",
     timestamp: float | None = None,
     base_url: str = "",
+    sequence: int = 0,
+    number: str = "",
+    message: str = "",
 ) -> bytes:
-    data = {"action": "send_sms", "number": number, "message": message}
+    """Envelope fechado (ponta a ponta) ou, no modo antigo, numero e texto."""
+    data = {"action": "send_sms"}
+    if envelope:
+        data["envelope"] = envelope
+    elif number:
+        data["number"] = number
+        data["message"] = message
     if msg_id:
         data["id"] = msg_id
     if timestamp is not None:
         data["ts"] = int(timestamp)
     if base_url:
         data["base"] = base_url
+    if sequence > 0:
+        data["seq"] = int(sequence)
     return json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
