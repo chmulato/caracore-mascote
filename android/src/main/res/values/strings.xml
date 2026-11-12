@@ -32,6 +32,12 @@
     <string name="config_secao_licenca">Status da licença</string>
     <string name="config_licenca_inativa">Licença Gratuita / Inativa</string>
     <string name="config_licenca_ativa">Licença Premium Ativa</string>
+    <string name="config_numero_oficial_label">Número que envia a licença</string>
+    <string name="config_numero_oficial_ajuda">Só um SMS vindo deste número ativa a licença. Enquanto ele não estiver salvo, o app ignora qualquer SMS de licença.</string>
+    <string name="config_numero_oficial_hint">DDD + número (ex.: 11999998888)</string>
+    <string name="config_numero_oficial_salvar">Salvar número</string>
+    <string name="config_numero_oficial_salvo">Número salvo. Só SMS deste número ativam a licença.</string>
+    <string name="config_numero_oficial_invalido">Número inválido. Informe DDD + número, com 10 a 13 dígitos.</string>
 
     <!-- Backup do banco de dados -->
     <string name="config_secao_backup">Backup do banco de dados</string>

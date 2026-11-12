@@ -8,8 +8,8 @@ chip e devolve o comprovante. Também recebe SMS de ativação de licença Premi
 (CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e
 o estado da licença.
 
-> Este código é o **1.3**, ainda não publicado. O aplicativo disponível para
-> instalação é o **1.2**, sem o envelope de ponta a ponta.
+> Este código é o **1.4**, ainda não publicado. O aplicativo disponível para
+> instalação é o **1.3**, com o envelope de ponta a ponta.
 
 O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
 envio não é mais exportada e exige permissão interna de assinatura. O teste
@@ -75,7 +75,7 @@ O script usa Gradle em GRADLE_7_5 (ex.: D:\dev\caracore-pdv\tools\gradle-7.5) se
 build.bat
 ```
 
-O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.3-debug.apk` para scripts como publicar-celular.bat.
+O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.4.apk` para scripts como publicar-celular.bat.
 
 O script: aplica config.bat para JAVA_HOME; verifica ANDROID_HOME; chama instalar-gradle-wrapper.bat se o jar do wrapper não existir; executa gradlew --stop, gradlew assembleDebug --no-build-cache --max-workers=1 -Dorg.gradle.vfs.watch=false.
 
@@ -87,7 +87,7 @@ Exige `keystore.properties` com storeFile, storePassword, keyAlias e keyPassword
 build.bat release
 ```
 
-O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.3-release.apk`.
+O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.4-release.apk`.
 
 ### AAB para Play Store (bundle)
 

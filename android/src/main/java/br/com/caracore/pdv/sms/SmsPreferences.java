@@ -69,7 +69,7 @@ public final class SmsPreferences {
 
     /**
      * Número oficial da Cara Core para filtrar SMS de licença.
-     * Vazio ou null = aceita qualquer remetente.
+     * Vazio ou null = nenhum SMS de licença é aceito (a tela de configuração preenche).
      */
     public String getNumeroOficialLicenca() {
         return prefs.getString(KEY_NUMERO_OFICIAL_LICENCA, null);

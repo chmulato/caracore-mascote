@@ -4,11 +4,9 @@ Este diretório guarda o aplicativo que roda no celular Android e dispara os SMS
 pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
 
-> O código deste diretório corresponde ao **1.3**, ainda sem release. O
-> aplicativo publicado é o **1.2**, que não abre o envelope cifrado.
-> O Gaspar **1.7.1** exige o celular no **1.3**: sem a chave pública do
-> aparelho ele recusa o envio. Até o 1.3 sair, quem usa SMS fica no Gaspar
-> **1.7.0** com o aplicativo **1.2**.
+> O código deste diretório corresponde ao **1.4**, ainda sem release. O
+> aplicativo publicado é o **1.3**, que abre o envelope cifrado. O Gaspar
+> **1.7.1** usa o 1.3 normalmente.
 
 ## Para que serve
 
@@ -65,7 +63,7 @@ verificar-keystore.bat   :: confere a senha do keystore
 - No código deste repositório, o Gaspar não guarda o número nem o texto: a
   auditoria e o histórico registram só metadados. O Gaspar **1.7.1** publicado
   já funciona assim. O **1.7.0** ainda grava o número completo e o texto no
-  histórico local, e é a versão recomendada enquanto o aplicativo 1.3 não sai.
+  histórico local; o **1.7.1** é a versão recomendada.
   O termo completo está em
   [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 

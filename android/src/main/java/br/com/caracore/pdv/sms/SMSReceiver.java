@@ -6,18 +6,12 @@ import android.content.Intent;
 import android.provider.Telephony;
 import android.telephony.SmsMessage;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 /**
- * BroadcastReceiver que filtra SMS do remetente oficial da Cara Core.
+ * BroadcastReceiver que recebe o SMS de licença da Cara Core.
  * Ao receber "CC-LICENSE:[CHAVE]", extrai a chave e salva de forma segura em SharedPreferences.
- * Ignora SMS de outros remetentes quando o número oficial estiver definido.
+ * A regra de aceitação fica em {@link LicenseSms}: sem número oficial configurado, nada é aceito.
  */
 public class SMSReceiver extends BroadcastReceiver {
-
-    /** Aceita CC-LICENSE: ou CARACORE-KEY: (compatível com o PDV) para extrair [CHAVE]. */
-    private static final Pattern PREFIX_CHAVE = Pattern.compile("(?:CC-LICENSE|CARACORE-KEY):\\s*(.+)", Pattern.CASE_INSENSITIVE);
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -30,40 +24,18 @@ public class SMSReceiver extends BroadcastReceiver {
         }
         SmsPreferences prefs = new SmsPreferences(context);
         String numeroOficial = prefs.getNumeroOficialLicenca();
-        String numeroOficialDigitos = numeroOficial != null && !numeroOficial.isEmpty()
-                ? numeroOficial.replaceAll("\\D", "") : null;
 
         for (SmsMessage msg : msgs) {
-            String sender = msg.getDisplayOriginatingAddress();
-            if (sender == null) sender = "";
-            String body = msg.getMessageBody();
-            if (body == null) body = "";
-
-            // Filtrar por número oficial (quando configurado)
-            if (numeroOficialDigitos != null && !numeroOficialDigitos.isEmpty()) {
-                String senderDigitos = sender.replaceAll("\\D", "");
-                if (senderDigitos.isEmpty() || !(senderDigitos.endsWith(numeroOficialDigitos) || numeroOficialDigitos.endsWith(senderDigitos) || senderDigitos.equals(numeroOficialDigitos))) {
-                    continue;
-                }
-            }
-
-            String chave = extrairChave(body);
-            if (chave != null && !chave.isEmpty()) {
-                prefs.setChaveLicenca(chave);
+            LicenseSms.Resultado resultado =
+                    LicenseSms.avaliar(msg.getDisplayOriginatingAddress(), msg.getMessageBody(), numeroOficial);
+            if (resultado.isAceita()) {
+                prefs.setChaveLicenca(resultado.getChave());
                 PdvSmsLogger.i("SMSReceiver", "Chave de licença recebida e salva.");
-                break;
+                return;
+            }
+            if (resultado.getMotivo() != LicenseSms.Motivo.CHAVE_AUSENTE) {
+                PdvSmsLogger.i("SMSReceiver", "SMS de licença ignorado: " + resultado.getMotivo() + ".");
             }
         }
-    }
-
-    /**
-     * Extrai [CHAVE] de "CC-LICENSE:[CHAVE]" ou "CARACORE-KEY: [CHAVE]".
-     */
-    private String extrairChave(String body) {
-        if (body == null) return null;
-        Matcher m = PREFIX_CHAVE.matcher(body.trim());
-        if (!m.find()) return null;
-        String s = m.group(1).trim();
-        return s.isEmpty() ? null : s;
     }
 }

@@ -86,6 +86,17 @@ public class ConfigActivity extends Activity {
             if (btnBateria != null) {
                 btnBateria.setOnClickListener(v -> pedirBateriaLivre());
             }
+            EditText editNumeroOficial = findViewById(R.id.editNumeroOficial);
+            if (editNumeroOficial != null) {
+                String numeroOficial = prefs.getNumeroOficialLicenca();
+                if (numeroOficial != null) {
+                    editNumeroOficial.setText(numeroOficial);
+                }
+            }
+            Button btnSalvarNumeroOficial = findViewById(R.id.btnSalvarNumeroOficial);
+            if (btnSalvarNumeroOficial != null) {
+                btnSalvarNumeroOficial.setOnClickListener(v -> salvarNumeroOficial());
+            }
 
             TextView textVersao = findViewById(R.id.textVersao);
             try {
@@ -177,6 +188,20 @@ public class ConfigActivity extends Activity {
         } catch (Exception e) {
             startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
         }
+    }
+
+    private void salvarNumeroOficial() {
+        EditText edit = findViewById(R.id.editNumeroOficial);
+        if (edit == null) return;
+        String digitos = LicenseSms.somenteDigitos(edit.getText().toString());
+        if (!LicenseSms.numeroValido(digitos)) {
+            Toast.makeText(this, R.string.config_numero_oficial_invalido, Toast.LENGTH_LONG).show();
+            return;
+        }
+        prefs.setNumeroOficialLicenca(digitos);
+        edit.setText(digitos);
+        Toast.makeText(this, R.string.config_numero_oficial_salvo, Toast.LENGTH_LONG).show();
+        PdvSmsLogger.i("Config.numeroOficial", "Número oficial de licença salvo.");
     }
 
     private void verificarConexaoUsb() {

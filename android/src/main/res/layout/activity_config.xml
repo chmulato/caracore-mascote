@@ -179,6 +179,39 @@
                     android:textStyle="bold"
                     android:text="@string/config_licenca_inativa" />
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_numero_oficial_label"
+                    android:textSize="14sp"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:layout_marginTop="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_numero_oficial_ajuda"
+                    android:textSize="12sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp" />
+
+                <EditText
+                    android:id="@+id/editNumeroOficial"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="phone"
+                    android:hint="@string/config_numero_oficial_hint"
+                    android:importantForAutofill="no"
+                    android:layout_marginTop="8dp" />
+
+                <Button
+                    android:id="@+id/btnSalvarNumeroOficial"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_numero_oficial_salvar"
+                    android:layout_marginTop="8dp" />
+
                 <Button
                     android:id="@+id/btnVerificarUsb"
                     android:layout_width="match_parent"

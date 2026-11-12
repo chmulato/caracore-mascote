@@ -30,11 +30,12 @@ envio não é exportada e exige permissão interna de assinatura.
   `SmsReceiptSender` envia ao Gaspar cifrado com o segredo do pareamento.
 - Painel de controle (launcher): `ConfigActivity` exibe a marca "CaraCore PDV -
   Envio SMS", texto em linguagem simples, switch para ativar/pausar o envio,
-  status da licença (vermelho/verde) e botão "Verificar Conexão USB".
-- Licença Premium via SMS: `SMSReceiver` escuta `SMS_RECEIVED`, filtra por
-  número oficial, extrai "CC-LICENSE:[CHAVE]" ou "CARACORE-KEY:[CHAVE]" e grava
-  em `SmsPreferences`; `isLicencaValida()` exige CC-YYYYMM-{hex8} com mês atual
-  ou futuro.
+  status da licença (vermelho/verde), botão "Verificar Conexão USB" e o campo
+  "Número que envia a licença" (número oficial do SMS de ativação).
+- Licença Premium via SMS: `SMSReceiver` escuta `SMS_RECEIVED` e usa a regra de
+  `LicenseSms`: exige o número oficial salvo no painel (sem ele, ignora o SMS),
+  remetente que confere e chave no formato CC-YYYYMM-{hex8}; grava em
+  `SmsPreferences`; `isLicencaValida()` exige mês atual ou futuro.
 - Exposição para o PDV: `LicencaContentProvider` (authority
   `br.com.caracore.pdv.sms.licenca`) com `hardware_id` (ANDROID_ID), `chave`,
   `valida` e `mes_ano`.
@@ -79,7 +80,7 @@ envio não é exportada e exige permissão interna de assinatura.
 ## Build e implantação
 
 - Desenvolvimento: `build.bat` (debug), `build.bat release` (com keystore.properties). `build.bat bundle` ou `build.bat aab` (AAB para Play Store). `build.bat clean` para limpar e evitar AccessDenied em .dex. Combinações: `build.bat clean release`, `build.bat clean bundle`.
-- APK debug: `build\outputs\apk\debug\pdv-sms-enviar-1.3-debug.apk`. APK release: `build\outputs\apk\release\pdv-sms-enviar-1.3-release.apk`. AAB: `build\outputs\bundle\release\pdv-sms-enviar-release.aab`.
+- APK debug: `build\outputs\apk\debug\pdv-sms-enviar-1.4.apk`. APK release: `build\outputs\apk\release\pdv-sms-enviar-1.4-release.apk`. AAB: `build\outputs\bundle\release\pdv-sms-enviar-release.aab`.
 - Instalação em dispositivo: `publicar-celular.bat`. Requer ANDROID_HOME, adb, dispositivo em state=device, API >= 24.
 - Assinatura release e AAB: `criar-keystore.bat` gera `pdv-sms-release.keystore` e alias `pdv-sms`. `keystore.properties` (storeFile, storePassword, keyAlias, keyPassword). `verificar-keystore.bat` valida a senha com keytool -list. `recriar-keystore.bat` renomeia o keystore antigo para .bak e chama `criar-keystore.bat`; usar apenas para app novo, não para atualização na loja.
 
@@ -111,6 +112,13 @@ envio não é exportada e exige permissão interna de assinatura.
 ---
 
 ## Histórico de alterações (resumo)
+
+- **1.4 (código 5, sem release):** filtro do SMS de licença corrigido. Antes o
+  número oficial nunca era preenchido, então qualquer SMS com o prefixo gravava
+  a chave; agora `LicenseSms` recusa tudo enquanto o número não for salvo no
+  painel, confere o remetente e exige o formato da chave. `ConfigActivity`
+  ganhou o campo "Número que envia a licença". Primeiros testes automatizados do
+  app (`LicenseSmsTest`, 8 casos, JUnit 4).
 
 - **Ponte com o Gaspar + ponta a ponta (versão em desenvolvimento):**
   `GatewayListenerService` (UDP/TCP), `GatewayCrypto`, `E2ECrypto`,
