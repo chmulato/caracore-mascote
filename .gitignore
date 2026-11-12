@@ -2,7 +2,7 @@
 # GASPAR - MASCOTE CARA CORE - .GITIGNORE
 # Stack: Python 3.10+ (Tkinter/Pillow) | PyInstaller | Inno Setup
 #        Debian/AppImage | Android (Gradle 7.5 / AGP 7.4.2)
-# Atualizado: 2026-11-11
+# Atualizado: 2026-11-12
 # ============================================================================
 # Regras por ferramenta. O detalhamento do app Android fica em
 # android/.gitignore; as regras de segredo e artefato repetidas aqui são
@@ -25,6 +25,11 @@ keystore.properties
 .env
 .env.*
 !.env.example
+
+# Exceção nominal da chave pública do canal de atualização do Gaspar. Não é
+# segredo: vai dentro do pacote para o app conferir a assinatura. A privada
+# continua barrada por `*.pem` e mora fora do repositório.
+!assets/gaspar-update-public.pem
 
 # ============================================================================
 # PYTHON
