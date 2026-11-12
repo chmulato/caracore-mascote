@@ -14,17 +14,17 @@ você está usando o computador.
 | --- | --- |
 | Branch oficial | **master** |
 | Versão publicada do Gaspar | **1.7.1** |
-| Aplicativo do celular publicado | **1.2** |
+| Aplicativo do celular publicado | **1.3** |
 | Download | [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1) |
 | Licença | **MIT** |
 | Plataformas | **Windows 10/11** e **Linux (X11/XWayland)** |
 | Empresa | **Cara Core Informática** |
 
 > **O que você baixa hoje.** Os arquivos de instalação publicados são o Gaspar
-> **1.7.1** e o aplicativo do celular **1.2**. O aplicativo **1.3**, que
-> completa a proteção do SMS, ainda está em preparação: quem usa a ponte de SMS
-> deve continuar com o Gaspar **1.7.0** e o aplicativo **1.2** até o 1.3 sair.
-> O resumo está em
+> **1.7.1** e o aplicativo do celular **1.3**. O aplicativo **1.3**, que
+> completa a proteção do SMS, acompanha o Gaspar **1.7.1** ou mais novo; quem
+> continua no Gaspar **1.7.0** fica com o aplicativo **1.2**. O que ainda está
+> por vir está em
 > [O que vem na próxima versão](#o-que-vem-na-próxima-versão).
 
 ## Se você só quer usar
@@ -42,10 +42,10 @@ Escolha o arquivo do sistema que você usa. O download começa ao clicar no link
 | Debian, Ubuntu, Mint e derivados | `gaspar_1.7.1_amd64.deb` (41 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.1/gaspar_1.7.1_amd64.deb) |
 | Outras distribuições Linux | `Gaspar-1.7.1-amd64.AppImage` (30 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.1/Gaspar-1.7.1-amd64.AppImage) |
 
-Para o **celular**, baixe o aplicativo `pdv-sms-enviar-1.2-release.apk` (694 KB)
-na [Release do aplicativo Android 1.2](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2).
-Para SMS, ele acompanha o Gaspar 1.7.0; o Gaspar 1.7.1 exige o aplicativo 1.3,
-que ainda está em preparação.
+Para o **celular**, baixe o aplicativo `pdv-sms-enviar-1.3-release.apk` (700 KB)
+na [Release do aplicativo Android 1.3](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.3).
+Ele acompanha o Gaspar 1.7.1 ou mais novo; o aplicativo 1.2 só atende quem
+continua no Gaspar 1.7.0.
 
 Todos os arquivos ficam na página da [Release 1.7.1](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.1). O arquivo [SHA256SUMS.txt](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.1/SHA256SUMS.txt) serve para conferir se o download chegou completo; se você não sabe o que fazer com ele, pode ignorar.
 
@@ -148,18 +148,17 @@ chip aceitou) e **entregue** (a operadora confirmou).
 
 O Gaspar **1.7.1** já recusa pedidos que não vêm do próprio computador, exige
 que o pedido do PDV venha assinado e aplica limites de envio por número. A
-proteção de ponta a ponta do texto, porém, depende do aplicativo **1.3** do
-celular, que ainda está em preparação: com o aplicativo **1.2** publicado, o
-Gaspar 1.7.1 recusa o envio de SMS. Por isso, quem usa a ponte de SMS deve
-continuar com o Gaspar **1.7.0** e o aplicativo **1.2** até o 1.3 ser publicado.
+proteção de ponta a ponta do texto depende do aplicativo **1.3** do celular,
+que já está publicado: use o aplicativo **1.3** com o Gaspar **1.7.1** ou mais
+novo, e o aplicativo **1.2** só com o Gaspar **1.7.0**.
 Detalhes em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html) e [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 
 Para usar, você precisa de três coisas:
 
 1. **O Gaspar instalado** no computador (passos acima).
-2. **O aplicativo do celular instalado** (APK `pdv-sms-enviar-1.2-release.apk`,
-   publicado na [Release do aplicativo](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.2);
+2. **O aplicativo do celular instalado** (APK `pdv-sms-enviar-1.3-release.apk`,
+   publicado na [Release do aplicativo](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.3);
    o guia de instalação mostra o passo a passo). No primeiro uso, toque em
    **Liberar o app da economia de bateria**.
 3. **Celular e computador na mesma Wi-Fi**, com o Gaspar aberto.
@@ -167,10 +166,9 @@ Para usar, você precisa de três coisas:
 Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
 **Parear celular** e leia o QR com o aplicativo do celular.
 
-> A ponte de SMS está no Gaspar **1.7.1**, mas o envio exige o aplicativo
-> Android **1.3**, que ainda está em preparação. Com o aplicativo **1.2**
-> publicado, use o Gaspar **1.7.0** para enviar SMS. Instaladores 1.6.0 não têm
-> a ponte; atualize os dois lados.
+> A ponte de SMS está no Gaspar **1.7.1** e o envio exige o aplicativo Android
+> **1.3**, já publicado. Instaladores 1.6.0 não têm a ponte; atualize os dois
+> lados.
 
 O passo a passo completo dos dois lados, com a lista de arquivos de instalação,
 está em [wiki.caracore.com.br/gaspar/instalacao.html](https://wiki.caracore.com.br/gaspar/instalacao.html). O uso no dia a dia e os
@@ -255,9 +253,6 @@ instaladores publicados**:
   consultar primeiro o endereço novo do canal e, se ele não responder, o
   endereço atual. O arquivo é o mesmo, assinado e conferido do mesmo jeito nos
   dois lugares. A versão está pronta e empacotada, aguardando liberação.
-- **Aplicativo do celular 1.3:** lê o pedido cifrado, guarda a chave no próprio
-  aparelho e volta a atender sozinho depois de reiniciar. Com ele, a ponte de
-  SMS volta a funcionar junto com o Gaspar 1.7.1.
 - **Chamada automática do PDV:** o PDV pede a mensagem ao Gaspar ao fechar a
   venda. Hoje o envio parte do painel do Gaspar ou de quem integra o PDV.
 
@@ -376,7 +371,7 @@ código, compilação e empacotamento ficam no guia técnico.
 O código deste repositório já está na versão **1.7.2**, que ainda **não foi
 publicada**: o instalador disponível para download continua sendo o **1.7.1**.
 Para usar a ponte de SMS, o celular também precisa do aplicativo **1.3** (pasta
-`android/`), que lê o pedido cifrado; essa versão ainda não foi publicada. As
+`android/`), que lê o pedido cifrado e já está publicado. As
 instruções estão em [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md) e
 [android/README.md](android/README.md).
 
