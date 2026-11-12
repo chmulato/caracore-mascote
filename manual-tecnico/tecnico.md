@@ -74,10 +74,10 @@ O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, tar
 │   ├── gaspar.png                 # imagem oficial (512 px, transparência real)
 │   ├── gaspar.ico                 # ícone 16..256 px
 │   └── gaspar_flutuando.gif       # animação de flutuação (220x220)
-├── docs/
-│   ├── blackbox.md                # guia do ambiente black-box
-│   ├── instalacao.md              # instalação do Gaspar e do aplicativo do celular
-│   ├── sms.md                     # guia da ponte de SMS
+├── docs/                          # loja publicada (só o comercial)
+│   ├── index.html
+│   └── atualizacao.html
+├── manual-tecnico/
 │   └── tecnico.md                 # este guia
 ├── gaspar/
 │   ├── __init__.py
@@ -322,7 +322,7 @@ O Gaspar não abre conexão com o Mercado Pago (`api.mercadopago.com`) nem com o
 
 O BlackBox altera somente o arquivo `hosts`, com domínios exatos de telemetria da Microsoft. Nenhum endereço de pagamento ou nota está na lista, e não há regra de proxy, DNS ou firewall. O teste `tests/test_isolamento.py` falha se um domínio protegido aparecer na lista de bloqueio ou no código do pacote.
 
-Atenção: o bloqueio inclui domínios de login e marketplace da Microsoft (`login.microsoftonline.com`, `vscode.dev`, `marketplace.visualstudio.com`). Isso pode impedir autenticação ou instalação de extensões enquanto o bloqueio estiver ativo. O guia completo, com configurações de telemetria do VS Code/Cursor, extensões e firewall, está em [docs/blackbox.md](blackbox.md).
+Atenção: o bloqueio inclui domínios de login e marketplace da Microsoft (`login.microsoftonline.com`, `vscode.dev`, `marketplace.visualstudio.com`). Isso pode impedir autenticação ou instalação de extensões enquanto o bloqueio estiver ativo. O guia completo, com configurações de telemetria do VS Code/Cursor, extensões e firewall, está em [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html).
 
 ## Ponte local de SMS
 
@@ -454,7 +454,7 @@ O PDV deve tratar `sem resposta`, `401`, `403`, `429` e `507` como "não enviado
 | `sms_state.json` | Até 500 pedidos, com status, horários, o envelope cifrado e os rótulos HMAC; sem número nem texto. |
 | `sms_audit.jsonl` | Trilha de uma linha por mudança de estado, só com metadados; retenção padrão de 90 dias. |
 
-Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HOME`. O guia do usuário e o passo a passo do celular estão em [docs/sms.md](sms.md); o termo de segurança e o tratamento de dados estão em [docs/seguranca-sms.md](seguranca-sms.md).
+Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HOME`. O guia do usuário e o passo a passo do celular estão em [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html); o termo de privacidade está em [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 
 ## Canal de atualização
 
@@ -608,7 +608,7 @@ manifesto assinado.
 
 Quem está na 1.7.0 instala a primeira versão com atualizador **uma vez, à mão**.
 A partir dela o aviso passa a funcionar sozinho. O passo a passo para quem usa o
-Gaspar está em [atualizacao.html](atualizacao.html).
+Gaspar está em [atualizacao.html](../docs/atualizacao.html).
 
 ### Repositório misto
 
@@ -707,7 +707,7 @@ Verifique a pasta de dados do usuário e a permissão de escrita. Em testes, def
 
 **O celular não aparece em Procurar celular**
 
-Confirme que o celular e o computador estão na mesma rede Wi-Fi, que o aplicativo Android está aberto e que a rede não isola os dispositivos (redes de visitante costumam bloquear). O pareamento por QR funciona mesmo sem a descoberta. Mais casos em [docs/sms.md](sms.md).
+Confirme que o celular e o computador estão na mesma rede Wi-Fi, que o aplicativo Android está aberto e que a rede não isola os dispositivos (redes de visitante costumam bloquear). O pareamento por QR funciona mesmo sem a descoberta. Mais casos em [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
 
 ## Migração da versão anterior
 
@@ -722,7 +722,7 @@ Confirme que o celular e o computador estão na mesma rede Wi-Fi, que o aplicati
 | `mascote.gif` / `mascote.ico` / `boneco.ico` | `assets/gaspar_flutuando.gif` / `assets/gaspar.ico` / `assets/gaspar.png` |
 | `README.txt` | `README.md` |
 | `PIP_CONFIGURACAO.txt` | seção de solução de problemas do guia técnico |
-| `BLACKBOX_AMBIENTE_DESENVOLVIMENTO.txt` | `docs/blackbox.md` |
+| `BLACKBOX_AMBIENTE_DESENVOLVIMENTO.txt` | [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html) |
 
 ## Regenerar os ativos
 

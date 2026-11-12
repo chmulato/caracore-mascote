@@ -293,6 +293,7 @@
       <a href="index.html#sms">SMS pelo celular</a>
       <a href="index.html#pdv">Para o PDV</a>
       <a href="atualizacao.html" aria-current="page">Atualização</a>
+      <a href="https://wiki.caracore.com.br/gaspar/index.html">Ajuda</a>
       <a href="index.html#baixar" class="btn btn-primary">Baixar grátis</a>
     </div>
   </nav>
@@ -355,7 +356,7 @@
               <span class="num" aria-hidden="true">2</span>
               <div>
                 <h4>Baixe o instalador novo</h4>
-                <p>Na <a href="index.html#baixar">página de downloads</a>, baixe o <code>GasparSetup-X.Y.Z.exe</code> da versão atual. O arquivo fica na pasta <strong>Downloads</strong>.</p>
+                <p>Na <a href="index.html#baixar">página de downloads</a>, baixe o instalador do Windows da versão atual. O arquivo fica na pasta <strong>Downloads</strong>.</p>
               </div>
             </li>
             <li>
@@ -381,17 +382,16 @@
           <h3>No Linux</h3>
           <div class="os-block">
             <h4>Pacote .deb (Debian, Ubuntu, Mint)</h4>
-            <p>Baixe o <code>gaspar_X.Y.Z_amd64.deb</code> novo e instale por cima do anterior:</p>
-            <p><code>sudo apt install ./gaspar_X.Y.Z_amd64.deb</code></p>
-            <p>O <code>apt</code> atualiza o pacote e resolve as dependências. Suas preferências e o histórico ficam em <code>~/.config/caracore/gaspar/</code>.</p>
+            <p>Baixe o pacote <strong>.deb</strong> novo e instale por cima do anterior, do mesmo jeito que na primeira vez: dê dois cliques e confirme no aplicativo de pacotes.</p>
+            <p>Suas preferências e o histórico ficam guardados.</p>
           </div>
           <div class="os-block">
             <h4>AppImage</h4>
-            <p>Baixe a <code>Gaspar-X.Y.Z-amd64.AppImage</code> nova e substitua o arquivo antigo. Se o duplo clique não abrir, abra as propriedades do arquivo e marque <strong>Permitir execução</strong>.</p>
+            <p>Baixe a versão nova do <strong>AppImage</strong> e substitua o arquivo antigo. Se o duplo clique não abrir, abra as propriedades do arquivo e marque <strong>Permitir execução</strong>.</p>
           </div>
           <div class="os-block">
             <h4>Conferir a versão</h4>
-            <p>Abra o painel e olhe o rodapé, ao lado do botão <strong>Sair</strong>. Também é possível rodar <code>gaspar --version</code> no terminal.</p>
+            <p>Abra o painel e olhe o rodapé, ao lado do botão <strong>Sair</strong>.</p>
           </div>
         </article>
       </div>
@@ -425,7 +425,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
           </div>
           <h3>3. Baixa, confere e reabre</h3>
-          <p>No Windows, o Gaspar baixa o instalador, confere o SHA-256, instala em silêncio e volta minimizado. No Linux, o botão abre a página de download.</p>
+          <p>No Windows, o Gaspar baixa o instalador, confere se o arquivo chegou completo e é autêntico, instala em silêncio e volta minimizado. No Linux, o botão abre a página de download.</p>
         </article>
       </div>
       <div class="note">
@@ -459,7 +459,7 @@
             </li>
             <li>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>
-              <span><strong>Windows:</strong> <code>%APPDATA%\CaraCore\Gaspar\</code> · <strong>Linux:</strong> <code>~/.config/caracore/gaspar/</code></span>
+              <span><strong>Windows e Linux:</strong> na pasta do usuário, no computador da loja.</span>
             </li>
           </ul>
         </article>
@@ -480,7 +480,7 @@
             </li>
             <li>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg>
-              <span><strong>Não pede administrador para o Gaspar</strong> — no Windows, a instalação é por usuário. Só o BlackBox, ferramenta opcional que altera o arquivo <code>hosts</code>, pede elevação.</span>
+              <span><strong>Não pede administrador para o Gaspar</strong> — no Windows, a instalação é por usuário. Só o BlackBox, ferramenta opcional que mexe numa configuração de rede do Windows, pede elevação.</span>
             </li>
           </ul>
         </article>
@@ -497,11 +497,11 @@
       <div class="faq">
         <details>
           <summary>Preciso desinstalar o Gaspar antes?</summary>
-          <p>Não. O instalador do Windows atualiza a mesma pasta e mantém as preferências, o histórico e o pareamento do celular. No Linux, o <code>apt install</code> também instala por cima da versão anterior.</p>
+          <p>Não. O instalador do Windows atualiza a mesma pasta e mantém as preferências, o histórico e o pareamento do celular. No Linux, o instalador também atualiza por cima da versão anterior.</p>
         </details>
         <details>
           <summary>Perco o pareamento do celular ou as configurações de SMS?</summary>
-          <p>Não. A configuração fica na pasta do usuário (<code>%APPDATA%\CaraCore\Gaspar\</code> no Windows e <code>~/.config/caracore/gaspar/</code> no Linux) e não é apagada pela atualização. Se o celular estiver offline no momento, a ponte volta a funcionar quando ele reconectar.</p>
+          <p>Não. A configuração fica na pasta do usuário, no computador da loja, e não é apagada pela atualização. Se o celular estiver offline no momento, a ponte volta a funcionar quando ele reconectar.</p>
         </details>
         <details>
           <summary>O Gaspar já se atualiza sozinho na 1.7.0?</summary>
@@ -509,7 +509,7 @@
         </details>
         <details>
           <summary>O aviso automático baixa qualquer arquivo?</summary>
-          <p>Na próxima versão, o Gaspar só mostra o aviso depois de conferir a assinatura digital do comunicado com a chave pública que acompanha o programa. Antes de instalar, confere também o SHA-256 do instalador. Se algo não bater, ele não instala e registra o motivo.</p>
+          <p>Na próxima versão, o Gaspar só mostra o aviso depois de conferir a assinatura digital do comunicado. Antes de instalar, confere também se o instalador chegou completo e é autêntico. Se algo não bater, ele não instala e registra o motivo.</p>
         </details>
         <details>
           <summary>Como volto para a versão anterior?</summary>
@@ -521,7 +521,7 @@
         </details>
         <details>
           <summary>O instalador tem assinatura de código?</summary>
-          <p>Ainda não. Por isso o Windows pode exibir o aviso do SmartScreen. Confirme que o arquivo veio de <strong>gaspar.caracore.com.br</strong> ou da página oficial de versões antes de liberar. O guia técnico do canal assinado está em <a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/tecnico.md">docs/tecnico.md</a>.</p>
+          <p>Ainda não. Por isso o Windows pode exibir o aviso do SmartScreen. Confirme que o arquivo veio de <strong>gaspar.caracore.com.br</strong> ou da página oficial de versões antes de liberar.</p>
         </details>
       </div>
     </div>
@@ -555,12 +555,14 @@
         </ul>
       </div>
       <div>
-        <h3>Guias e suporte</h3>
+        <h3>Ajuda e suporte (Wiki)</h3>
         <ul>
-          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/instalacao.md">Instalação completa</a></li>
-          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/sms.md">SMS no dia a dia</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/index.html">Central de ajuda do Gaspar</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/instalacao.html">Instalação completa</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/sms.html">SMS no dia a dia</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/privacidade.html">Privacidade do SMS</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/blackbox.html">BlackBox</a></li>
           <li><a href="atualizacao.html">Atualização do Gaspar</a></li>
-          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/tecnico.md">Guia técnico</a></li>
           <li><a href="mailto:suporte@caracore.com.br">suporte@caracore.com.br</a></li>
         </ul>
       </div>

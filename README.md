@@ -29,7 +29,7 @@ você está usando o computador.
 ## Se você só quer usar
 
 > Vai usar também o SMS pelo celular? O passo a passo dos dois lados, com a
-> lista de arquivos, está em [docs/instalacao.md](docs/instalacao.md).
+> lista de arquivos, está em [wiki.caracore.com.br/gaspar/instalacao.html](https://wiki.caracore.com.br/gaspar/instalacao.html).
 
 ### Baixar agora
 
@@ -82,7 +82,7 @@ isso é esperado em programas distribuídos diretamente pela Cara Core.
 > Quer outra versão ou conferir os checksums? Todas ficam na página de
 > [Releases](https://github.com/chmulato/caracore-mascote/releases). Para gerar
 > os instaladores a partir do código-fonte, veja o
-> [guia técnico](docs/tecnico.md).
+> [guia técnico](manual-tecnico/tecnico.md).
 
 > O Gaspar precisa de uma sessão **X11 ou XWayland**. Em Wayland puro, o mascote
 > pode aparecer com um fundo quadrado e o clique pode não atravessar.
@@ -148,7 +148,7 @@ apenas dentro da sua rede local. A **próxima versão** acrescenta três proteç
 o pedido passa a viajar cifrado de ponta a ponta (só o celular pareado consegue
 abrir), o Gaspar aplica limites de envio por número e o histórico passa a
 guardar só data, venda, modelo e estado, sem o número e sem o texto. Detalhes em
-[docs/sms.md](docs/sms.md) e [docs/seguranca-sms.md](docs/seguranca-sms.md).
+[wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html) e [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 
 Para usar, você precisa de três coisas:
 
@@ -167,8 +167,8 @@ Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
 > Instaladores 1.6.0 não têm a ponte; atualize os dois lados.
 
 O passo a passo completo dos dois lados, com a lista de arquivos de instalação,
-está em [docs/instalacao.md](docs/instalacao.md). O uso no dia a dia e os
-limites estão em [docs/sms.md](docs/sms.md).
+está em [wiki.caracore.com.br/gaspar/instalacao.html](https://wiki.caracore.com.br/gaspar/instalacao.html). O uso no dia a dia e os
+limites estão em [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
 
 ## Conhecendo o painel
 
@@ -296,7 +296,7 @@ porque altera o arquivo `hosts` do sistema.
 É uma ferramenta opcional que bloqueia domínios de telemetria da Microsoft, do
 VS Code/Cursor, do Azure e do Application Insights. O bloqueio é reversível, mas
 pode impedir login na Microsoft e instalação de extensões enquanto estiver
-ativo. Leia o guia completo em [docs/blackbox.md](docs/blackbox.md).
+ativo. Leia o guia completo em [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html).
 
 **Funciona no Linux?**
 Sim, em sessões X11 ou XWayland. Em Wayland puro, o recorte do mascote e o
@@ -341,22 +341,25 @@ aparece no menu iniciar e pode ser aberto por lá.
 
 **O celular não aparece na janela Celular / SMS**
 Confirme a Wi-Fi, o aplicativo aberto e a bateria otimizada desativada. O passo
-a passo está em [docs/instalacao.md](docs/instalacao.md).
+a passo está em [wiki.caracore.com.br/gaspar/instalacao.html](https://wiki.caracore.com.br/gaspar/instalacao.html).
 
 **Preciso de ajuda com algum erro**
-Veja os guias de [instalação](docs/instalacao.md), [SMS](docs/sms.md) e
-[BlackBox](docs/blackbox.md). Se o problema for no funcionamento interno, o
-[guia técnico](docs/tecnico.md) tem a seção de solução de problemas.
+Veja os guias de
+[instalação](https://wiki.caracore.com.br/gaspar/instalacao.html),
+[SMS](https://wiki.caracore.com.br/gaspar/sms.html) e
+[BlackBox](https://wiki.caracore.com.br/gaspar/blackbox.html). Se o problema for
+no funcionamento interno, o [guia técnico](manual-tecnico/tecnico.md) tem a seção
+de solução de problemas.
 
 ## Documentação
 
 - **Site oficial:** [gaspar.caracore.com.br](https://gaspar.caracore.com.br/)
-- **Instalação completa (computador e celular):** [docs/instalacao.md](docs/instalacao.md)
-- **SMS no dia a dia:** [docs/sms.md](docs/sms.md)
-- **Segurança e privacidade do SMS:** [docs/seguranca-sms.md](docs/seguranca-sms.md)
+- **Instalação completa (computador e celular):** [wiki.caracore.com.br/gaspar/instalacao.html](https://wiki.caracore.com.br/gaspar/instalacao.html)
+- **SMS no dia a dia:** [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html)
+- **Segurança e privacidade do SMS:** [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html)
 - **Atualização do Gaspar:** [página oficial](https://gaspar.caracore.com.br/atualizacao.html)
-- **BlackBox e telemetria:** [docs/blackbox.md](docs/blackbox.md)
-- **Guia técnico (código, build, protocolo e testes):** [docs/tecnico.md](docs/tecnico.md)
+- **BlackBox e telemetria:** [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html)
+- **Guia técnico (código, build, protocolo e testes):** [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md)
 
 Este README foi feito para quem instala e usa o Gaspar. As instruções de
 código, compilação e empacotamento ficam no guia técnico.
@@ -366,7 +369,7 @@ código, compilação e empacotamento ficam no guia técnico.
 O código deste repositório está **à frente** dos instaladores publicados. Se
 você compilar o Gaspar a partir daqui, o celular também precisa do aplicativo
 **1.3** (pasta `android/`), que lê o pedido cifrado; essa versão ainda não foi
-publicada. As instruções estão em [docs/tecnico.md](docs/tecnico.md) e
+publicada. As instruções estão em [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md) e
 [android/README.md](android/README.md).
 
 ## Licença e créditos

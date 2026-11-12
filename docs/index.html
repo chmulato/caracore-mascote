@@ -439,6 +439,7 @@
       <a href="#sms">SMS pelo celular</a>
       <a href="#pdv">Para o PDV</a>
       <a href="#atualizacao">Atualização</a>
+      <a href="https://wiki.caracore.com.br/gaspar/index.html">Ajuda</a>
       <a href="#baixar" class="btn btn-primary">Baixar grátis</a>
     </div>
   </nav>
@@ -488,7 +489,7 @@
       <div class="facts">
         <span>Presença e mascote</span>
         <span>SMS opcional</span>
-        <span>Atualização assinada (em preparação)</span>
+        <span>Aviso de versão nova (em preparação)</span>
       </div>
       <a href="#baixar">Ver downloads</a>
     </div>
@@ -533,7 +534,7 @@
           </div>
           <h3>Atualização tranquila</h3>
           <p>Quando existe versão nova, o Gaspar avisa e espera a sua decisão. Nada é instalado no meio de um atendimento.</p>
-          <span class="tag">Assinatura digital · na próxima versão</span>
+          <span class="tag">Aviso antes de instalar · na próxima versão</span>
         </article>
       </div>
     </div>
@@ -639,7 +640,7 @@
       <div>
         <p class="pixel kicker">SMS opcional</p>
         <h2 id="titulo-sms" style="font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:800;letter-spacing:-.02em;margin-bottom:.8rem">O comprovante sai pelo celular da loja.</h2>
-        <p style="font-size:1.02rem">O Gaspar conversa com o aplicativo Android pela rede Wi-Fi local. O SMS usa o chip e o plano do celular — não depende de internet, gateway na nuvem nem de pacote extra de SMS.</p>
+        <p style="font-size:1.02rem">O Gaspar conversa com o aplicativo Android pela rede Wi-Fi local. O SMS usa o chip e o plano do celular — não depende de internet, serviço na nuvem nem de pacote extra de SMS.</p>
         <div class="sms-steps">
           <div class="sms-step">
             <span class="num" aria-hidden="true">1</span>
@@ -654,10 +655,10 @@
             <div><h3>Envie e acompanhe</h3><p>O envio parte do painel do Gaspar e sai com confirmação de envio e entrega. Se o celular estiver offline, o Gaspar avisa em vez de repetir para sempre.</p></div>
           </div>
         </div>
-        <p style="font-size:.94rem;margin-top:1rem">Hoje o pedido é feito pelo painel do Gaspar ou por quem integrar a API local. O envio automático quando o PDV fecha a venda entra na próxima versão do PDV.</p>
+        <p style="font-size:.94rem;margin-top:1rem">Hoje o pedido é feito pelo painel do Gaspar ou por quem integra o PDV ao Gaspar. O envio automático quando o PDV fecha a venda entra na próxima versão do PDV.</p>
         <div class="privacy-note">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-          <span>Na versão publicada (1.7.0), o histórico mostra o número mascarado, mas o número completo e o texto ficam no computador da loja. Na próxima versão, o texto vai cifrado de ponta a ponta e a auditoria guarda só data, venda e estado; a fila de reenvio mantém número e texto até o envio concluir, e o botão Apagar histórico remove tudo.</span>
+          <span>Na versão publicada (1.7.0), o número completo e o texto ficam guardados no computador da loja. Na próxima versão, o texto vai protegido de ponta a ponta e a auditoria guarda só data, venda e estado; o botão Apagar histórico remove tudo.</span>
         </div>
       </div>
     </div>
@@ -691,7 +692,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
           </div>
           <h3>3. Instala e reabre</h3>
-          <p>Na próxima versão, no Windows, o Gaspar baixa, confere o SHA-256, instala em silêncio e volta minimizado. No Linux, abre a página de download.</p>
+          <p>Na próxima versão, no Windows, o Gaspar baixa o instalador, confere se o arquivo chegou completo e é autêntico, instala em silêncio e volta minimizado. No Linux, abre a página de download.</p>
         </article>
       </div>
       <div class="note">
@@ -737,7 +738,7 @@
         </article>
       </div>
       <p class="download-foot">
-        Passo a passo em <a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/instalacao.md">docs/instalacao.md</a> ·
+        Passo a passo em <a href="https://wiki.caracore.com.br/gaspar/instalacao.html">instalação</a> ·
         todas as versões em <a href="https://github.com/chmulato/caracore-mascote/releases">GitHub Releases</a>.
         O executável não tem assinatura de código; se o SmartScreen avisar, confirme a origem antes de liberar.
       </p>
@@ -762,23 +763,23 @@
         </details>
         <details>
           <summary>Preciso de internet ou de uma conta?</summary>
-          <p>Não. O Gaspar funciona no computador da loja. A única conexão é a verificação de versão no canal oficial, e ela não envia dados de venda nem de SMS. O SMS usa a rede Wi-Fi local entre o computador e o celular. O Gaspar também não conversa com as APIs de pagamento nem de nota fiscal do PDV.</p>
+          <p>Não. O Gaspar funciona no computador da loja e, nesta versão, não consulta nada pela internet. A verificação de versão que avisa quando há novidade chega na próxima versão e também não envia dados de venda nem de SMS. O SMS usa a rede Wi-Fi local entre o computador e o celular. O Gaspar não conversa com os sistemas de pagamento nem de nota fiscal do PDV.</p>
         </details>
         <details>
           <summary>O Gaspar já envia o SMS sozinho quando o PDV fecha a venda?</summary>
-          <p>Ainda não. A ponte com o celular e a API local estão prontas e testadas; o que falta é o PDV chamar o Gaspar, e isso entra na próxima versão do PDV. Até lá, o envio é feito pelo painel do Gaspar ou por quem integrar a API local.</p>
+          <p>Ainda não. A ponte com o celular está pronta e testada; o que falta é o PDV pedir a mensagem ao Gaspar, e isso entra na próxima versão do PDV. Até lá, o envio é feito pelo painel do Gaspar.</p>
         </details>
         <details>
           <summary>Onde ficam os meus dados?</summary>
-          <p>No Windows, em <code>%APPDATA%\CaraCore\Gaspar\</code>; no Linux, em <code>~/.config/caracore/gaspar/</code>. Ficam ali as preferências, o histórico de ciclos e os arquivos da ponte de SMS. Nada é enviado para a nuvem.</p>
+          <p>Ficam na pasta do seu usuário, no computador da loja: as preferências, o histórico de ciclos e os arquivos da ponte de SMS. Na versão publicada (1.7.0), o número completo do destinatário e o texto da mensagem também ficam gravados nesse histórico local. Nada é enviado para a nuvem.</p>
         </details>
         <details>
           <summary>Preciso ser administrador?</summary>
-          <p>Para o mascote e a simulação, não. A instalação do Gaspar no Windows é por usuário. Somente o <a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/blackbox.md">BlackBox</a>, ferramenta opcional que bloqueia domínios de telemetria, pede elevação porque altera o arquivo <code>hosts</code>.</p>
+          <p>Para o mascote e a simulação, não. A instalação do Gaspar no Windows é por usuário. Somente o <a href="https://wiki.caracore.com.br/gaspar/blackbox.html">BlackBox</a>, ferramenta opcional que bloqueia a telemetria, pede elevação porque mexe numa configuração de rede do Windows.</p>
         </details>
         <details>
           <summary>Como desinstalo?</summary>
-          <p>No Windows, use <strong>Aplicativos instalados</strong> e remova <strong>Gaspar - Mascote Cara Core</strong>. No Linux com .deb, use <code>sudo apt remove gaspar</code>. No AppImage, basta apagar o arquivo.</p>
+          <p>No Windows, use <strong>Aplicativos instalados</strong> e remova <strong>Gaspar - Mascote Cara Core</strong>. No Linux, remova pelo gerenciador de aplicativos ou apague o arquivo do AppImage.</p>
         </details>
       </div>
     </div>
@@ -796,7 +797,7 @@
         <a class="btn btn-primary" href="https://pdv.caracore.com.br/index.html">Conhecer o PDV</a>
         <a class="btn btn-outline" href="mailto:suporte@caracore.com.br?subject=Gaspar%20e%20PDV">Falar com o suporte</a>
       </div>
-      <p style="text-align:center;margin-top:1rem;font-size:.9rem;color:#475569">A chamada automática do PDV ao Gaspar está em preparação. Hoje o envio de SMS parte do painel do Gaspar ou de quem integrar a API local.</p>
+      <p style="text-align:center;margin-top:1rem;font-size:.9rem;color:#475569">A chamada automática do PDV ao Gaspar está em preparação. Hoje o envio de SMS parte do painel do Gaspar ou de quem integra o PDV ao Gaspar.</p>
     </div>
   </section>
 
@@ -830,12 +831,14 @@
         </ul>
       </div>
       <div>
-        <h3>Guias e suporte</h3>
+        <h3>Ajuda e suporte (Wiki)</h3>
         <ul>
-          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/instalacao.md">Instalação completa</a></li>
-          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/sms.md">SMS no dia a dia</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/index.html">Central de ajuda do Gaspar</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/instalacao.html">Instalação completa</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/sms.html">SMS no dia a dia</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/privacidade.html">Privacidade do SMS</a></li>
+          <li><a href="https://wiki.caracore.com.br/gaspar/blackbox.html">BlackBox</a></li>
           <li><a href="atualizacao.html">Atualização do Gaspar</a></li>
-          <li><a href="https://github.com/chmulato/caracore-mascote/blob/master/docs/tecnico.md">Guia técnico</a></li>
           <li><a href="mailto:suporte@caracore.com.br">suporte@caracore.com.br</a></li>
         </ul>
       </div>
