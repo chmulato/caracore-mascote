@@ -15,6 +15,7 @@ Fluxo:
     python tools/gaspar_channel.py sign --tag gaspar-v1.7.1 --publish
     python tools/gaspar_channel.py prova --tag gaspar-v1.7.1
     python tools/gaspar_channel.py check --expect 1.7.1
+    python tools/gaspar_channel.py monitor
 """
 
 from __future__ import annotations
@@ -589,6 +590,92 @@ def prova(config: dict, tag: str | None, url: str, espelho: str, tentativas: int
     print(f"OK  instalador do Windows baixado do manifesto: sha256 {sha}")
 
 
+def _tamanho_remoto(url: str) -> int | None:
+    if urllib.parse.urlsplit(url).scheme != "https":
+        raise Falha(f"pacote com endereco fora do HTTPS: {url[:60]}")
+    pedido = urllib.request.Request(
+        url, method="HEAD", headers={"User-Agent": "Gaspar-canal"}
+    )
+    try:
+        with urllib.request.urlopen(pedido, timeout=30) as resposta:
+            if resposta.status != 200:
+                raise Falha(f"pacote respondeu HTTP {resposta.status}")
+            tamanho = resposta.headers.get("Content-Length")
+    except urllib.error.HTTPError as exc:
+        raise Falha(f"pacote respondeu HTTP {exc.code}") from exc
+    except (urllib.error.URLError, OSError) as exc:
+        raise Falha(f"pacote inacessivel ({exc.__class__.__name__})") from exc
+    try:
+        return int(tamanho) if tamanho is not None else None
+    except ValueError:
+        return None
+
+
+def _conferir_assets(manifesto) -> list[str]:
+    linhas = []
+    for nome, dados in sorted(manifesto.assets.items()):
+        url = str(dados.get("url") or "")
+        if not url:
+            raise Falha(f"pacote {nome} sem endereco no manifesto")
+        declarado = int(dados.get("size") or 0)
+        real = _tamanho_remoto(url)
+        if real is not None and declarado and real != declarado:
+            raise Falha(f"pacote {nome}: {real} bytes no ar, {declarado} no manifesto")
+        linhas.append(f"pacote {nome}: no ar ({real if real is not None else 'tamanho nao informado'} bytes)")
+    return linhas
+
+
+def monitor(config: dict, url: str, espelho: str, tag: str | None = None) -> None:
+    """Confere o canal ja publicado, sem exigir uma release nova.
+
+    Roda agendado: falha alto quando o canal sai do ar, perde a assinatura, o
+    espelho diverge ou o canal fica atras da release mais nova publicada.
+    """
+    chave = updates.chave_publica(CHAVE_PUBLICA)
+    if chave is None:
+        raise Falha(f"chave publica ausente em {CHAVE_PUBLICA}")
+    corpo_oficial = _buscar_canal(url, "canal oficial")
+    corpo_espelho = _buscar_canal(espelho, "espelho no gateway")
+    try:
+        oficial = updates.verificar_envelope(corpo_oficial, chave)
+        espelhado = updates.verificar_envelope(corpo_espelho, chave)
+    except updates.FalhaAtualizacao as exc:
+        raise Falha(str(exc)) from exc
+    if oficial.key_id != config["key_id"]:
+        raise Falha(f"key_id publicado {oficial.key_id}, esperado {config['key_id']}")
+    if espelhado.versao != oficial.versao:
+        raise Falha(
+            f"canal oficial publica {oficial.versao} e o espelho publica {espelhado.versao}"
+        )
+    if corpo_oficial != corpo_espelho:
+        raise Falha(
+            "o espelho no gateway nao entrega os mesmos bytes do canal oficial "
+            f"({_sha256(corpo_oficial)[:12]} x {_sha256(corpo_espelho)[:12]})"
+        )
+    if tag:
+        esperado = versao_da_tag(tag)
+        if not esperado:
+            raise Falha(f"etiqueta fora do padrao: {tag}")
+    else:
+        publicadas = tags_publicadas(config["repo"])
+        candidatas = [item for item in publicadas if item[0].startswith(config["tag_prefix"])]
+        if not candidatas:
+            raise Falha(f"nenhuma release {config['tag_prefix']}* publicada")
+        esperado = _mais_nova(candidatas)[1]
+    if oficial.versao != esperado:
+        raise Falha(
+            f"o canal publica {oficial.versao}; a release mais nova publicada e {esperado}"
+        )
+    linhas = _conferir_assets(oficial)
+    print(f"canal oficial: {url}")
+    print(f"espelho: {espelho}")
+    print(f"OK  versao {oficial.versao}, key_id {oficial.key_id}, assinatura OK nos dois")
+    print(f"OK  espelho entrega os mesmos bytes ({_sha256(corpo_oficial)})")
+    print(f"OK  canal igual a release mais nova publicada ({esperado})")
+    for linha in linhas:
+        print(f"OK  {linha}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Canal de atualizacao do Gaspar.")
     sub = parser.add_subparsers(dest="comando", required=True)
@@ -622,6 +709,13 @@ def main(argv: list[str] | None = None) -> int:
         help="tentativas com 10 s entre elas, para esperar o cache do canal",
     )
 
+    monitor_cmd = sub.add_parser(
+        "monitor", help="confere o canal ja publicado (uso agendado, sem release nova)"
+    )
+    monitor_cmd.add_argument("--tag", help="etiqueta esperada no canal (padrao: a mais nova publicada)")
+    monitor_cmd.add_argument("--url", help="canal oficial (padrao: o da configuracao)")
+    monitor_cmd.add_argument("--mirror", help="espelho no gateway (padrao: o da configuracao)")
+
     try:
         args = parser.parse_args(argv)
         config = ler_config()
@@ -630,6 +724,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.comando == "check":
             conferir_url(args.url or config["channel_url"], args.expect)
+            return 0
+        if args.comando == "monitor":
+            espelho = args.mirror or str(config.get("mirror_url") or "").strip()
+            if not espelho:
+                raise Falha("mirror_url ausente em release/channel.json; use --mirror")
+            monitor(config, args.url or config["channel_url"], espelho, args.tag)
             return 0
         if args.comando == "prova":
             espelho = args.mirror or str(config.get("mirror_url") or "").strip()

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import hashlib
+import io
 import json
 import os
 import sys
@@ -519,6 +521,107 @@ class VigiaTest(unittest.TestCase):
         self.assertIn(
             "Canal de atualizacao: de volta ao endereco principal.", app.logs
         )
+
+
+def _capturar(funcao, *args) -> str:
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        funcao(*args)
+    return buffer.getvalue()
+
+
+class MonitorTest(unittest.TestCase):
+    def setUp(self):
+        self.privada, self.publica = chave_teste()
+        self.config = gaspar_channel.ler_config()
+        self.corpo = json.dumps(
+            envelope(payload_teste(), self.privada, key_id=self.config["key_id"])
+        ).encode("utf-8")
+        self.corpos = {updates.CANAL_RESERVA: self.corpo, updates.CANAL_URL: self.corpo}
+        self.tamanhos = {".exe": 123, ".deb": 456}
+        patchers = [
+            mock.patch.object(updates, "chave_publica", return_value=self.publica),
+            mock.patch.object(updates, "buscar_manifesto", side_effect=self._buscar),
+            mock.patch.object(
+                gaspar_channel,
+                "tags_publicadas",
+                return_value=[("gaspar-v1.7.1", "1.7.1")],
+            ),
+            mock.patch.object(gaspar_channel, "_tamanho_remoto", side_effect=self._tamanho),
+        ]
+        for patcher in patchers:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def _buscar(self, url, timeout=updates.TIMEOUT):
+        return self.corpos[url]
+
+    def _tamanho(self, url):
+        for sufixo, tamanho in self.tamanhos.items():
+            if url.endswith(sufixo):
+                return tamanho
+        return None
+
+    def _rodar(self, tag=None):
+        return gaspar_channel.monitor(
+            self.config, updates.CANAL_RESERVA, updates.CANAL_URL, tag
+        )
+
+    def test_canal_saudavel_passa(self):
+        saida = _capturar(self._rodar)
+        self.assertIn("versao 1.7.1", saida)
+        self.assertIn("mesmos bytes", saida)
+        self.assertIn("release mais nova publicada (1.7.1)", saida)
+        self.assertIn("pacote linux-deb: no ar (456 bytes)", saida)
+
+    def test_espelho_com_outra_versao_e_recusado(self):
+        outro = json.dumps(
+            envelope(payload_teste("1.8.0"), self.privada, key_id=self.config["key_id"])
+        ).encode("utf-8")
+        self.corpos[updates.CANAL_URL] = outro
+        with self.assertRaises(gaspar_channel.Falha) as erro:
+            self._rodar()
+        self.assertIn("espelho publica 1.8.0", str(erro.exception))
+
+    def test_espelho_assinado_por_outra_chave_e_recusado(self):
+        intrusa, _ = chave_teste()
+        self.corpos[updates.CANAL_URL] = json.dumps(
+            envelope(payload_teste(), intrusa, key_id=self.config["key_id"])
+        ).encode("utf-8")
+        with self.assertRaises(gaspar_channel.Falha) as erro:
+            self._rodar()
+        self.assertIn("assinatura do manifesto nao confere", str(erro.exception))
+
+    def test_canal_atras_da_release_e_recusado(self):
+        with mock.patch.object(
+            gaspar_channel,
+            "tags_publicadas",
+            return_value=[("gaspar-v1.7.1", "1.7.1"), ("gaspar-v1.8.0", "1.8.0")],
+        ):
+            with self.assertRaises(gaspar_channel.Falha) as erro:
+                self._rodar()
+        self.assertIn("release mais nova publicada e 1.8.0", str(erro.exception))
+
+    def test_key_id_fora_do_esperado_e_recusado(self):
+        self.corpos[updates.CANAL_RESERVA] = json.dumps(
+            envelope(payload_teste(), self.privada, key_id="gaspar-2030-01")
+        ).encode("utf-8")
+        with self.assertRaises(gaspar_channel.Falha) as erro:
+            self._rodar()
+        self.assertIn("gaspar-2030-01", str(erro.exception))
+
+    def test_pacote_de_tamanho_diferente_e_recusado(self):
+        self.tamanhos[".exe"] = 999
+        with self.assertRaises(gaspar_channel.Falha) as erro:
+            self._rodar()
+        self.assertIn("999 bytes no ar, 123 no manifesto", str(erro.exception))
+
+    def test_etiqueta_esperada_dispensa_consulta_da_release(self):
+        with mock.patch.object(
+            gaspar_channel, "tags_publicadas", side_effect=AssertionError("nao deveria consultar")
+        ):
+            saida = _capturar(self._rodar, "gaspar-v1.7.1")
+        self.assertIn("release mais nova publicada (1.7.1)", saida)
 
 
 if __name__ == "__main__":

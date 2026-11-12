@@ -508,6 +508,17 @@ também é separado do produto CSO Transporte, que usa o mesmo host com regras
 próprias. Ele guarda a resposta por até 5 minutos, por isso uma versão recém
 publicada pode demorar alguns minutos para aparecer aos aplicativos.
 
+A esteira [`canal-monitor.yml`](../.github/workflows/canal-monitor.yml) confere o
+canal publicado a cada 6 horas, sem publicar nada: baixa os dois endereços,
+valida a assinatura em cada um, exige bytes iguais, exige que a versão publicada
+seja a da release mais nova (rascunhos e pré-releases não contam) e confere se os
+pacotes do manifesto continuam no ar com o tamanho declarado. Qualquer desvio
+falha a execução. O mesmo comando roda na mão:
+
+```bash
+python tools/gaspar_channel.py monitor
+```
+
 ### Contrato do `latest.json`
 
 O arquivo é um envelope com o manifesto em base64 e a assinatura Ed25519:
