@@ -4,13 +4,19 @@ Este diretório guarda o aplicativo que roda no celular Android e dispara os SMS
 pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
 
-> O código deste diretório corresponde ao **1.5**, já publicado na
-> [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5).
-> Ele abre o envelope cifrado, só aceita SMS de licença do número oficial
-> configurado na tela e fecha o provedor de licença com `readPermission` de
-> assinatura. O **1.4**, também publicado, não tem essa trava; instale o 1.5 por
-> cima, com o mesmo certificado. O Gaspar **1.7.1** ou mais novo usa o 1.5; o
-> aplicativo **1.2** só atende o Gaspar **1.7.0**.
+> O código deste diretório está na **1.6 (código 7), em desenvolvimento e ainda
+> não publicado**. Ele mantém o envelope cifrado, o filtro do SMS de licença pelo
+> número oficial e a trava do provedor de licença do 1.5, e acrescenta o ícone e
+> o skin do Gaspar, o painel da senha do Wi‑Fi da loja e a confirmação de
+> operações do PDV no celular. O **1.5** continua sendo a versão publicada na
+> [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5);
+> o **1.4**, também publicado, não tem a trava do provedor. O Gaspar **1.7.1** ou
+> mais novo usa o 1.5; o aplicativo **1.2** só atende o Gaspar **1.7.0**.
+>
+> A 1.6 foi verificada por build, 21 testes unitários, lint e em execução num
+> emulador Android 13 (painel, Wi‑Fi com PIN e QR, confirmação pelo Pedido de
+> teste). Ainda não foi exercitada em celular físico (SMS com chip, biometria e
+> tela bloqueada), e o Gaspar/PDV ainda não envia pedidos de confirmação.
 
 ## Para que serve
 
@@ -20,6 +26,10 @@ pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
 - Devolve ao Gaspar o "aceito" do chip e o "entregue" da operadora.
 - Responde na rede local para o Gaspar encontrar o aparelho automaticamente.
 - Lê o QR de pareamento gerado pelo Gaspar para guardar a chave e o endereço.
+- Guarda a senha do Wi‑Fi da loja, mostra/copia/gera QR depois da confirmação do
+  dono e testa se o computador responde.
+- Pede aprovação de desconto, cancelamento e sangria no celular, com digital,
+  rosto ou PIN, prazo e histórico.
 
 O envio por cabo USB (ADB) foi **retirado**: a activity de envio não é mais
 exportada e exige permissão interna de assinatura. O teste manual é feito pela
@@ -81,3 +91,6 @@ verificar-keystore.bat   :: confere a senha do keystore
 - O pareamento usa HTTP na rede local para o diagnóstico inicial; não há TLS.
 - O SMS enviado fica na caixa **Enviadas** do aplicativo de mensagens, como
   qualquer SMS; o Gaspar não controla essa cópia.
+- A 1.6 (ícone/skin, painel Wi‑Fi e confirmação) foi exercitada em emulador
+  Android 13, mas ainda não em celular físico; o lado do computador da
+  confirmação ainda não existe.

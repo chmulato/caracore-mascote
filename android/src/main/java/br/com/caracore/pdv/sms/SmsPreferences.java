@@ -29,6 +29,8 @@ public final class SmsPreferences {
     private static final String KEY_QUOTA_COUNT = "quota_count";
     private static final String KEY_LAST_SEQUENCE = "last_sequence";
     private static final String KEY_SEEN_JOBS = "seen_jobs";
+    /** Permite que o PDV peça confirmação de operações sensíveis neste celular. */
+    private static final String KEY_CONFIRMACAO_ATIVA = "confirmacao_ativa";
     /** Par de chaves da criptografia de ponta a ponta (privada protegida pelo Keystore). */
     private static final String KEY_E2E_PRIVATE = "e2e_private";
     private static final String KEY_E2E_PUBLIC = "e2e_public";
@@ -55,6 +57,14 @@ public final class SmsPreferences {
 
     public void setAtivo(boolean ativo) {
         prefs.edit().putBoolean(KEY_ATIVO, ativo).apply();
+    }
+
+    public boolean isConfirmacaoAtiva() {
+        return prefs.getBoolean(KEY_CONFIRMACAO_ATIVA, true);
+    }
+
+    public void setConfirmacaoAtiva(boolean ativa) {
+        prefs.edit().putBoolean(KEY_CONFIRMACAO_ATIVA, ativa).apply();
     }
 
     // --- Licença Premium (recepção via SMS CC-LICENSE:[CHAVE]) ---

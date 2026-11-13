@@ -8,11 +8,19 @@ chip e devolve o comprovante. Também recebe SMS de ativação de licença Premi
 (CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e
 o estado da licença.
 
-> Este código é o **1.5**, já publicado na
-> [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5),
-> com o envelope de ponta a ponta, o filtro do SMS de licença pelo número
-> oficial e a trava do provedor de licença (`readPermission` de assinatura), que
-> o **1.4** publicado não tem.
+> Este diretório guarda o código da próxima versão, o **1.6 (código 7), ainda
+> em desenvolvimento e não publicado**. Ele mantém o envelope de ponta a ponta,
+> o filtro do SMS de licença pelo número oficial e a trava do provedor de
+> licença do 1.5 publicado, e acrescenta o ícone/skin do Gaspar, o painel da
+> senha do Wi‑Fi da loja e a confirmação de operações do PDV no celular.
+>
+> O **1.5** continua sendo a versão publicada na
+> [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5).
+> O gate local do 1.6 está verde (build, 21 testes unitários e lint) e as telas
+> novas foram exercitadas em emulador Android 13 (painel, Wi‑Fi com PIN e QR,
+> confirmação pelo Pedido de teste); falta o teste em celular físico (SMS com
+> chip, biometria e tela bloqueada). O computador (Gaspar/PDV) ainda não envia
+> pedido de confirmação; o fluxo local se testa pelo botão **Pedido de teste**.
 
 O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
 envio não é mais exportada e exige permissão interna de assinatura. O teste
@@ -78,7 +86,7 @@ O script usa Gradle em GRADLE_7_5 (ex.: D:\dev\caracore-pdv\tools\gradle-7.5) se
 build.bat
 ```
 
-O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.5.apk` para scripts como publicar-celular.bat.
+O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.6.apk` para scripts como publicar-celular.bat.
 
 O script: aplica config.bat para JAVA_HOME; verifica ANDROID_HOME; chama instalar-gradle-wrapper.bat se o jar do wrapper não existir; executa gradlew --stop, gradlew assembleDebug --no-build-cache --max-workers=1 -Dorg.gradle.vfs.watch=false.
 
@@ -90,7 +98,7 @@ Exige `keystore.properties` com storeFile, storePassword, keyAlias e keyPassword
 build.bat release
 ```
 
-O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.5-release.apk`.
+O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.6-release.apk`.
 
 ### AAB para Play Store (bundle)
 
@@ -183,6 +191,61 @@ o aparelho usa a janela **Celular / SMS** do Gaspar.
 
 ---
 
+## Wi‑Fi da loja (1.6)
+
+No painel, o cartão **Wi‑Fi da loja** guarda o nome e a senha da rede da loja no
+próprio celular, cifrados com uma chave do Android Keystore
+(`WifiCredentialStore`). O painel **Abrir painel do Wi‑Fi** permite:
+
+1. **Guardar** o nome (SSID) e a senha do roteador (8 a 63 caracteres). O app
+   não altera o roteador.
+2. **Mostrar** ou **copiar** a senha somente depois da confirmação do dono
+   (digital, rosto ou PIN/senha do celular). A senha na tela some em 30 segundos
+   e a cópia em 60 segundos. Em celular sem trava, o app recusa revelar.
+3. **Gerar QR** no formato `WIFI:` para outro aparelho entrar na rede; o QR some
+   em 60 segundos.
+4. **Testar ligação** com o computador do PDV (conexão TCP ao host/porta do
+   pareamento), mostrando o tempo de resposta ou a orientação quando não há
+   resposta.
+
+O recurso depende de o celular ter trava (PIN, senha ou biometria). A senha não
+sai do aparelho: não há envio para servidor nenhum.
+
+---
+
+## Confirmação de operações no celular (1.6)
+
+Com o switch **Receber pedidos de confirmação** ligado, o computador pode pedir
+ao celular a aprovação de **desconto**, **cancelamento** ou **sangria**. O
+pedido chega pela porta 49998, já cifrado pelo segredo do pareamento, no comando:
+
+```json
+{"action":"confirmar_operacao","id":"c-001","tipo":"desconto",
+ "referencia":"VENDA-1234","valor":1500,"motivo":"cliente pediu",
+ "prazo":120}
+```
+
+- `valor` em centavos, até R$ 100.000,00; `prazo` em segundos, de 30 a 900.
+- O celular recusa pedido repetido (`id` já visto), fora das regras ou com o
+  switch desligado, e responde no ack com o motivo.
+- Aceito o pedido, o celular mostra a notificação de alta prioridade (tela cheia
+  com o aparelho bloqueado) ou abre a tela de confirmação.
+- **Aprovar** exige digital, rosto ou PIN/senha do celular. **Negar** pede uma
+  confirmação simples. O prazo aparece em contagem regressiva; vencido, o pedido
+  é registrado como expirado.
+- A decisão fica no histórico do aparelho (**Ver histórico**) e é devolvida
+  cifrada em `POST /api/mobile/confirmacao` com `{"id","status","metodo"}`.
+  Se o computador estiver desligado, a decisão fica guardada e é reenviada
+  quando ele voltar a responder.
+- **Pedido de teste** cria um pedido local (marcado como teste) para exercitar a
+  tela sem o computador; nada é enviado.
+
+O lado do computador — enviar o pedido e receber a decisão — faz parte da
+próxima etapa do Gaspar/PDV e ainda não está implementado. O histórico do
+celular guarda as últimas 100 decisões.
+
+---
+
 ## Licença Premium e exposição para o PDV
 
 Recepção de licença por SMS: o `SMSReceiver` escuta SMS com "CC-LICENSE:[CHAVE]" ou "CARACORE-KEY:[CHAVE]" no corpo e aplica a regra de `LicenseSms`. Com o número oficial gravado em `SmsPreferences` (campo "Número que envia a licença"), só SMS desse remetente são aceitos; **sem esse número, nenhum SMS de licença é aceito**. A chave é guardada e validada no formato CC-YYYYMM-{hex8} (YYYYMM deve ser maior ou igual ao mês atual).
@@ -223,6 +286,13 @@ preciso liberar nada além dessas permissões.
   como qualquer SMS.
 - **Segredo de pareamento**: quem tem o QR pode parear um aparelho. Não tire foto
   do QR nem compartilhe o código; se desconfiar, pareie de novo pelo Gaspar.
+- **Senha do Wi‑Fi (1.6)**: guardada cifrada com chave do Android Keystore; só é
+  mostrada/copiada/convertida em QR depois da confirmação do dono, some da tela
+  e da área de transferência sozinha, e o app recusa revelar em celular sem
+  trava.
+- **Confirmação de operações (1.6)**: o pedido chega cifrado pelo segredo do
+  pareamento, com prazo curto, valor máximo e recusa de repetição; aprovar exige
+  digital, rosto ou PIN/senha do próprio celular, e a decisão volta cifrada.
 
 O termo completo, com o que é guardado e os limites, está em
 [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
@@ -301,7 +371,8 @@ android-sms-enviar/
   keystore.properties.example   copiar para keystore.properties e preencher
   gradle/wrapper/
   src/main/
-    AndroidManifest.xml         ConfigActivity (launcher), ScanSetupActivity (QR),
+    AndroidManifest.xml         ConfigActivity (launcher), WifiActivity,
+                                ConfirmationActivity, ScanSetupActivity (QR),
                                 SendSmsActivity (interna), GatewayListenerService,
                                 SMSReceiver, SmsStatusReceiver, BootReceiver,
                                 BackupUpdateReceiver, LicencaContentProvider
@@ -313,9 +384,13 @@ android-sms-enviar/
       SMSReceiver.java, BootReceiver.java, BackupUpdateReceiver.java
       LicencaContentProvider.java, PdvSmsLogger.java, ErrorReporter.java,
       AppExceptionHandler.java, excecoes (SmsSendException, SmsValidationException, etc.)
-    res/values/strings.xml, colors.xml
-    res/layout/activity_config.xml
-    res/drawable/bg_header.xml, bg_card.xml
+      WifiActivity.java, WifiCredentialStore.java, WifiQr.java, DeviceAuth.java
+      ConfirmationActivity.java, ConfirmationRequest.java, ConfirmationStore.java,
+      ConfirmationNotifier.java, ConfirmationResponder.java
+    res/values/strings.xml, colors.xml, styles.xml
+    res/layout/activity_config.xml, activity_wifi.xml, activity_confirmation.xml
+    res/drawable/bg_header.xml, bg_card.xml, bg_chip.xml, gaspar_mascote.png
+    res/mipmap-*/ic_launcher*.png, res/mipmap-anydpi-v26/ic_launcher*.xml
   README.md
   STATUS_ATUAL.md
 ```

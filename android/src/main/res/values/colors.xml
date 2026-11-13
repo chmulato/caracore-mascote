@@ -1,14 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Marca CaraCore PDV (alinhado ao portal) -->
-    <color name="brand_primary">#059669</color>
-    <color name="brand_primary_dark">#047857</color>
+    <!-- Identidade do Gaspar (mascote + verde da marca) -->
+    <color name="brand_primary">#3F6B00</color>
+    <color name="brand_primary_dark">#2F5200</color>
+    <color name="brand_accent">#65A30D</color>
+    <color name="brand_lime">#A3E635</color>
     <color name="brand_header_text">#FFFFFF</color>
-    <color name="brand_header_subtitle">#D1FAE5</color>
-    <!-- Painel -->
-    <color name="panel_card_background">#FAFAFA</color>
-    <color name="panel_divider">#E0E0E0</color>
-    <!-- Status da licença -->
-    <color name="licenca_inativa">#C62828</color>
-    <color name="licenca_ativa">#2E7D32</color>
+    <color name="brand_header_subtitle">#EAF7C9</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Superfícies -->
+    <color name="app_background">#F8FAFC</color>
+    <color name="panel_card_background">#FFFFFF</color>
+    <color name="panel_divider">#E2E8F0</color>
+    <color name="card_stroke">#E2E8F0</color>
+    <!-- Texto -->
+    <color name="text_primary">#1F2937</color>
+    <color name="text_secondary">#4B5563</color>
+    <color name="text_hint">#6B7280</color>
+    <!-- Estado -->
+    <color name="status_on">#15803D</color>
+    <color name="status_off">#6B7280</color>
+    <color name="licenca_inativa">#B91C1C</color>
+    <color name="licenca_ativa">#15803D</color>
+    <color name="chip_background">#ECFCCB</color>
+    <color name="chip_text">#3F6212</color>
 </resources>

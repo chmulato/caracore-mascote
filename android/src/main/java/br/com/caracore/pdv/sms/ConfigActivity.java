@@ -82,6 +82,27 @@ public class ConfigActivity extends Activity {
             if (btnSetupQr != null) {
                 btnSetupQr.setOnClickListener(v -> startActivity(new Intent(ConfigActivity.this, ScanSetupActivity.class)));
             }
+            Button btnWifiManage = findViewById(R.id.btnWifiManage);
+            if (btnWifiManage != null) {
+                btnWifiManage.setOnClickListener(v -> startActivity(new Intent(ConfigActivity.this, WifiActivity.class)));
+            }
+            Switch switchConfirmacao = findViewById(R.id.switchConfirmacao);
+            if (switchConfirmacao != null) {
+                switchConfirmacao.setChecked(prefs.isConfirmacaoAtiva());
+                switchConfirmacao.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    prefs.setConfirmacaoAtiva(isChecked);
+                    atualizarStatusConfirmacao();
+                });
+            }
+            Button btnHistorico = findViewById(R.id.btnConfirmacaoHistorico);
+            if (btnHistorico != null) {
+                btnHistorico.setOnClickListener(v -> mostrarHistoricoConfirmacao());
+            }
+            Button btnTeste = findViewById(R.id.btnConfirmacaoTeste);
+            if (btnTeste != null) {
+                btnTeste.setOnClickListener(v -> abrirPedidoDeTeste());
+            }
+            atualizarStatusConfirmacao();
             Button btnBateria = findViewById(R.id.btnBateria);
             if (btnBateria != null) {
                 btnBateria.setOnClickListener(v -> pedirBateriaLivre());
@@ -116,6 +137,8 @@ public class ConfigActivity extends Activity {
     protected void onResume() {
         super.onResume();
         atualizarStatusLicenca();
+        atualizarStatusWifi();
+        atualizarStatusConfirmacao();
         if (prefs.getGatewaySharedSecret() != null && !prefs.getGatewaySharedSecret().isEmpty()) {
             startService(new Intent(this, GatewayListenerService.class));
         }
@@ -208,5 +231,53 @@ public class ConfigActivity extends Activity {
         int v = Settings.Global.getInt(getContentResolver(), "adb_enabled", 0);
         boolean adbAtiva = (v == 1);
         Toast.makeText(this, adbAtiva ? R.string.config_usb_ativa : R.string.config_usb_inativa, Toast.LENGTH_LONG).show();
+    }
+
+    private void atualizarStatusWifi() {
+        TextView textWifiRede = findViewById(R.id.textWifiRede);
+        if (textWifiRede == null) return;
+        String ssid = WifiCredentialStore.ssid(this);
+        if (ssid == null) {
+            textWifiRede.setText(R.string.config_wifi_rede_nenhuma);
+        } else {
+            textWifiRede.setText(getString(R.string.config_wifi_rede_guardada, ssid));
+        }
+    }
+
+    private void atualizarStatusConfirmacao() {
+        TextView text = findViewById(R.id.textConfirmacaoStatus);
+        if (text == null) return;
+        boolean ativa = prefs.isConfirmacaoAtiva();
+        text.setText(ativa ? R.string.config_confirmacao_status_on : R.string.config_confirmacao_status_off);
+        text.setTextColor(getResources().getColor(ativa ? R.color.status_on : R.color.status_off, getTheme()));
+    }
+
+    private void mostrarHistoricoConfirmacao() {
+        java.util.List<String> linhas = ConfirmationStore.historicoFormatado(this);
+        String texto = linhas.isEmpty()
+                ? getString(R.string.config_confirmacao_historico_vazio)
+                : android.text.TextUtils.join("\n\n", linhas);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.config_confirmacao_historico_titulo)
+                .setMessage(texto)
+                .setPositiveButton(R.string.confirm_fechar, null)
+                .show();
+    }
+
+    private void abrirPedidoDeTeste() {
+        if (!prefs.isConfirmacaoAtiva()) {
+            Toast.makeText(this, R.string.config_confirmacao_status_off, Toast.LENGTH_LONG).show();
+            return;
+        }
+        long agora = System.currentTimeMillis();
+        String id = "teste" + agora;
+        ConfirmationRequest pedido = new ConfirmationRequest(id,
+                ConfirmationRequest.TIPO_DESCONTO, "TESTE-0001", 1500L,
+                "Pedido de teste gerado no próprio celular", agora + 120_000L, agora, "teste");
+        ConfirmationStore.enfileirar(this, pedido);
+        ConfirmationNotifier.notificar(this, pedido);
+        Intent intent = new Intent(this, ConfirmationActivity.class);
+        intent.putExtra(ConfirmationActivity.EXTRA_ID, id);
+        startActivity(intent);
     }
 }

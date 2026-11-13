@@ -3,44 +3,60 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/app_background">
 
-    <!-- Header: marca CaraCore PDV - Envio SMS -->
+    <!-- Cabeçalho com a identidade do Gaspar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:background="@drawable/bg_header"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
-        android:paddingTop="20dp"
-        android:paddingBottom="20dp">
+        android:paddingTop="18dp"
+        android:paddingBottom="18dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/config_marca_titulo"
-            android:textSize="22sp"
-            android:textColor="@color/brand_header_text"
-            android:textStyle="bold"
-            android:letterSpacing="0.02" />
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@drawable/gaspar_mascote"
+            android:contentDescription="@string/config_marca_mascote"
+            android:scaleType="fitCenter" />
 
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="@string/config_marca_subtitulo"
-            android:textSize="14sp"
-            android:textColor="@color/brand_header_subtitle"
-            android:layout_marginTop="2dp" />
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="14dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/config_marca_slogan"
-            android:textSize="12sp"
-            android:textColor="@color/brand_header_subtitle"
-            android:alpha="0.9"
-            android:layout_marginTop="6dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/config_marca_titulo"
+                android:textSize="22sp"
+                android:textColor="@color/brand_header_text"
+                android:textStyle="bold"
+                android:letterSpacing="0.02" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/config_marca_subtitulo"
+                android:textSize="14sp"
+                android:textColor="@color/brand_header_subtitle"
+                android:layout_marginTop="2dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/config_marca_slogan"
+                android:textSize="12sp"
+                android:textColor="@color/brand_header_subtitle"
+                android:alpha="0.9"
+                android:layout_marginTop="6dp" />
+        </LinearLayout>
     </LinearLayout>
 
     <ScrollView
@@ -56,54 +72,26 @@
             android:orientation="vertical"
             android:padding="20dp">
 
-            <!-- O que este app faz? -->
+            <!-- Controle: ponte de SMS -->
             <TextView
+                style="@style/SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/config_secao_o_que_faz"
-                android:textSize="16sp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/config_o_que_faz_desc"
-                android:textSize="14sp"
-                android:textColor="?android:attr/textColorSecondary"
-                android:lineSpacingExtra="4dp"
-                android:layout_marginTop="8dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/panel_divider"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="20dp" />
-
-            <!-- Controle: card com status e switch -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/config_secao_controle"
-                android:textSize="16sp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textStyle="bold" />
+                android:layout_marginTop="0dp"
+                android:text="@string/config_secao_controle" />
 
             <LinearLayout
+                style="@style/Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/bg_card"
-                android:padding="16dp"
-                android:layout_marginTop="12dp">
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/textStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp"
-                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="15sp"
+                    android:textColor="@color/text_primary"
                     android:textStyle="bold" />
 
                 <LinearLayout
@@ -112,7 +100,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
                     android:baselineAligned="false"
-                    android:layout_marginTop="16dp">
+                    android:layout_marginTop="14dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -125,16 +113,14 @@
                             android:layout_height="wrap_content"
                             android:text="@string/config_switch_label"
                             android:textSize="16sp"
-                            android:textColor="?android:attr/textColorPrimary" />
+                            android:textColor="@color/text_primary" />
 
                         <TextView
+                            style="@style/HintText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/config_switch_summary"
-                            android:textSize="12sp"
-                            android:textColor="?android:attr/textColorSecondary"
-                            android:layout_marginTop="4dp"
-                            android:lineSpacingExtra="2dp" />
+                            android:layout_marginTop="4dp" />
                     </LinearLayout>
 
                     <Switch
@@ -149,27 +135,134 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/config_btn_bateria"
-                    android:layout_marginTop="12dp" />
+                    android:layout_marginTop="10dp" />
             </LinearLayout>
 
-            <!-- Status da licença Premium -->
+            <!-- Wi-Fi da loja -->
             <TextView
+                style="@style/SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/config_secao_licenca"
-                android:textSize="16sp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textStyle="bold"
-                android:layout_marginTop="24dp" />
+                android:text="@string/config_secao_wifi" />
+
+            <LinearLayout
+                style="@style/Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textWifiRede"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:text="@string/config_wifi_rede_nenhuma" />
+
+                <TextView
+                    style="@style/HintText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_wifi_ajuda"
+                    android:layout_marginTop="6dp" />
+
+                <Button
+                    android:id="@+id/btnWifiManage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_wifi_btn"
+                    android:layout_marginTop="10dp" />
+            </LinearLayout>
+
+            <!-- Confirmação pelo celular -->
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/config_secao_confirmacao" />
+
+            <LinearLayout
+                style="@style/Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textConfirmacaoStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/status_on"
+                    android:text="@string/config_confirmacao_status_on" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:baselineAligned="false"
+                    android:layout_marginTop="14dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/config_confirmacao_switch"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_primary" />
+
+                    <Switch
+                        android:id="@+id/switchConfirmacao"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/HintText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_confirmacao_ajuda"
+                    android:layout_marginTop="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp">
+
+                    <Button
+                        android:id="@+id/btnConfirmacaoHistorico"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/config_confirmacao_btn_historico" />
+
+                    <Button
+                        android:id="@+id/btnConfirmacaoTeste"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/config_confirmacao_btn_teste" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Licença Premium -->
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/config_secao_licenca" />
 
             <LinearLayout
                 android:id="@+id/cardStatusLicenca"
+                style="@style/Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/bg_card"
-                android:padding="16dp"
-                android:layout_marginTop="12dp">
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/textStatusLicenca"
@@ -184,17 +277,15 @@
                     android:layout_height="wrap_content"
                     android:text="@string/config_numero_oficial_label"
                     android:textSize="14sp"
-                    android:textColor="?android:attr/textColorPrimary"
+                    android:textColor="@color/text_primary"
                     android:layout_marginTop="12dp" />
 
                 <TextView
+                    style="@style/HintText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/config_numero_oficial_ajuda"
-                    android:textSize="12sp"
-                    android:textColor="?android:attr/textColorSecondary"
-                    android:layout_marginTop="4dp"
-                    android:lineSpacingExtra="2dp" />
+                    android:layout_marginTop="4dp" />
 
                 <EditText
                     android:id="@+id/editNumeroOficial"
@@ -210,32 +301,29 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/config_numero_oficial_salvar"
-                    android:layout_marginTop="8dp" />
+                    android:layout_marginTop="6dp" />
 
                 <Button
                     android:id="@+id/btnVerificarUsb"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/config_btn_verificar_usb"
-                    android:layout_marginTop="12dp" />
+                    android:layout_marginTop="6dp" />
             </LinearLayout>
 
-            <!-- Gateway Wi‑Fi -->
+            <!-- Gateway Wi-Fi (pareamento) -->
             <TextView
+                style="@style/SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/config_secao_gateway"
-                android:textSize="16sp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textStyle="bold"
-                android:layout_marginTop="24dp" />
+                android:text="@string/config_secao_gateway" />
+
             <LinearLayout
+                style="@style/Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/bg_card"
-                android:padding="16dp"
-                android:layout_marginTop="12dp">
+                android:orientation="vertical">
+
                 <EditText
                     android:id="@+id/editGatewaySecret"
                     android:layout_width="match_parent"
@@ -243,38 +331,35 @@
                     android:hint="@string/config_gateway_hint"
                     android:inputType="textMultiLine"
                     android:minLines="2" />
+
                 <Button
                     android:id="@+id/btnGatewayStart"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/config_gateway_btn"
-                    android:layout_marginTop="8dp" />
+                    android:layout_marginTop="6dp" />
+
                 <Button
                     android:id="@+id/btnSetupQr"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/config_setup_qr_btn"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="6dp"
                     style="?android:attr/buttonBarButtonStyle" />
             </LinearLayout>
 
             <!-- Backup do banco de dados -->
             <TextView
+                style="@style/SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/config_secao_backup"
-                android:textSize="16sp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textStyle="bold"
-                android:layout_marginTop="24dp" />
+                android:text="@string/config_secao_backup" />
 
             <LinearLayout
+                style="@style/Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/bg_card"
-                android:padding="16dp"
-                android:layout_marginTop="12dp">
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/textStatusBackupCard"
@@ -282,6 +367,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="15sp"
                     android:textStyle="bold"
+                    android:textColor="@color/text_primary"
                     android:text="@string/config_backup_status_nenhum" />
 
                 <TextView
@@ -289,7 +375,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginTop="4dp"
                     android:text="@string/config_backup_data_hora_nd" />
             </LinearLayout>
@@ -307,16 +393,14 @@
                 android:layout_height="wrap_content"
                 android:text="@string/config_ajuda_titulo"
                 android:textSize="16sp"
-                android:textColor="?android:attr/textColorPrimary"
+                android:textColor="@color/text_primary"
                 android:textStyle="bold" />
 
             <TextView
+                style="@style/BodyText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/config_ajuda_desc"
-                android:textSize="14sp"
-                android:textColor="?android:attr/textColorSecondary"
-                android:lineSpacingExtra="4dp"
                 android:layout_marginTop="8dp" />
 
             <TextView
@@ -325,7 +409,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:textSize="12sp"
-                android:textColor="?android:attr/textColorSecondary" />
+                android:textColor="@color/text_hint" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

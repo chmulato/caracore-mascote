@@ -9,15 +9,12 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
 import android.telephony.SmsManager;
-import android.util.JsonReader;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import org.json.JSONObject;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -34,7 +31,8 @@ import java.util.Enumeration;
 /**
  * Serviço em primeiro plano que escuta o PDV na rede Wi‑Fi (Soberania Digital).
  * UDP 49999: responde a CARACORE-PDV-DISCOVER com CARACORE-APK|ip|49998.
- * TCP 49998: recebe comando JSON criptografado (AES), ex.: {"action":"send_sms","number":"...","message":"..."}.
+ * TCP 49998: recebe comando JSON criptografado (AES), ex.: {"action":"send_sms","number":"...","message":"..."}
+ * ou {"action":"confirmar_operacao","tipo":"desconto","referencia":"...","valor":1234,"prazo":120}.
  */
 public class GatewayListenerService extends Service {
 
@@ -75,6 +73,7 @@ public class GatewayListenerService extends Service {
             PdvSmsLogger.i("GatewayListener", "chave de ponta a ponta: " + e.getMessage());
         }
         new Thread(() -> E2EKeySender.send(this)).start();
+        new Thread(() -> ConfirmationResponder.reenviarPendentes(this)).start();
 
         if (udpThread == null || !udpThread.isAlive()) {
             udpThread = new Thread(() -> runUdpDiscovery());
@@ -179,28 +178,14 @@ public class GatewayListenerService extends Service {
         JSONObject ack = new JSONObject();
         try {
             ack.put("ok", false);
-            JsonReader reader = new JsonReader(new InputStreamReader(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
-            reader.beginObject();
-            String action = null;
-            String number = null;
-            String message = null;
-            String id = null;
-            String base = null;
-            String envelope = null;
-            long seq = 0L;
-            while (reader.hasNext()) {
-                String name = reader.nextName();
-                if ("action".equals(name)) action = reader.nextString();
-                else if ("number".equals(name)) number = reader.nextString();
-                else if ("message".equals(name)) message = reader.nextString();
-                else if ("envelope".equals(name)) envelope = reader.nextString();
-                else if ("id".equals(name)) id = reader.nextString();
-                else if ("base".equals(name)) base = reader.nextString();
-                else if ("seq".equals(name)) seq = reader.nextLong();
-                else reader.skipValue();
-            }
-            reader.endObject();
-            reader.close();
+            JSONObject entrada = new JSONObject(json);
+            String action = texto(entrada, "action");
+            String number = texto(entrada, "number");
+            String message = texto(entrada, "message");
+            String id = texto(entrada, "id");
+            String base = texto(entrada, "base");
+            String envelope = texto(entrada, "envelope");
+            long seq = entrada.optLong("seq", 0L);
             if (id == null || id.trim().isEmpty()) {
                 ack.put("error", "pedido sem identificador");
                 return ack;
@@ -212,13 +197,16 @@ public class GatewayListenerService extends Service {
             } catch (Exception ignored) {
                 // sem chave o PDV trabalha no modo antigo
             }
-            if (!"send_sms".equals(action)) {
-                ack.put("error", "acao desconhecida");
-                return ack;
-            }
             SmsPreferences prefs = new SmsPreferences(this);
             if (base != null && !base.isEmpty()) {
                 prefs.setPdvBaseUrl(base);
+            }
+            if ("confirmar_operacao".equals(action)) {
+                return dispatchConfirmacao(ack, jobId, entrada, prefs);
+            }
+            if (!"send_sms".equals(action)) {
+                ack.put("error", "acao desconhecida");
+                return ack;
             }
             if (!prefs.isAtivo()) {
                 ack.put("error", "app inativo");
@@ -308,6 +296,54 @@ public class GatewayListenerService extends Service {
                 request,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** Entrega o pedido de confirmação à tela do celular; a decisão volta por /api/mobile/confirmacao. */
+    private JSONObject dispatchConfirmacao(JSONObject ack, String jobId, JSONObject entrada, SmsPreferences prefs) {
+        try {
+            if (!prefs.isConfirmacaoAtiva()) {
+                ack.put("error", "confirmacao desligada neste celular");
+                return ack;
+            }
+            long agora = System.currentTimeMillis();
+            long prazoSegundos = entrada.optLong("prazo", 0L);
+            ConfirmationRequest pedido = new ConfirmationRequest(
+                    jobId,
+                    texto(entrada, "tipo"),
+                    texto(entrada, "referencia"),
+                    entrada.optLong("valor", -1L),
+                    texto(entrada, "motivo"),
+                    agora + prazoSegundos * 1000L,
+                    agora,
+                    texto(entrada, "origem"));
+            String recusa = pedido.validar(agora);
+            if (recusa != null) {
+                ack.put("error", "pedido de confirmacao recusado: " + recusa);
+                return ack;
+            }
+            if (!ConfirmationStore.enfileirar(this, pedido)) {
+                ack.put("ok", true);
+                ack.put("status", "repetido");
+                return ack;
+            }
+            ConfirmationNotifier.notificar(this, pedido);
+            ack.put("ok", true);
+            ack.put("status", "aguardando");
+            PdvSmsLogger.i("GatewayListener", "Pedido de confirmacao entregue a tela.");
+        } catch (Exception e) {
+            try {
+                ack.put("ok", false);
+                ack.put("error", "falha ao preparar a confirmacao");
+            } catch (Exception ignored) {
+            }
+            PdvSmsLogger.i("GatewayListener", "dispatchConfirmacao: " + e.getMessage());
+        }
+        return ack;
+    }
+
+    private static String texto(JSONObject objeto, String campo) {
+        if (objeto == null || !objeto.has(campo) || objeto.isNull(campo)) return null;
+        return objeto.optString(campo, null);
     }
 
     private void writeAck(Socket client, GatewayCrypto crypto, JSONObject ack) {

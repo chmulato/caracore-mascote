@@ -62,4 +62,80 @@
     <string name="setup_scan_invalid">QR Code inválido. Use o QR da tela de setup do PDV.</string>
     <string name="setup_success">Configurado. PDV foi notificado.</string>
     <string name="setup_report_error">Configuração salva, mas o PC não recebeu o diagnóstico: %1$s</string>
+
+    <!-- Marca -->
+    <string name="config_marca_mascote">Gaspar, o mascote do CaraCore</string>
+
+    <!-- Wi‑Fi da loja -->
+    <string name="config_secao_wifi">Wi‑Fi da loja</string>
+    <string name="config_wifi_rede_nenhuma">Nenhuma rede guardada</string>
+    <string name="config_wifi_rede_guardada">Rede guardada: %1$s</string>
+    <string name="config_wifi_ajuda">Guarde aqui a senha do Wi‑Fi da loja. O celular mostra, copia e gera um QR para outros aparelhos entrarem. Nada é enviado para fora.</string>
+    <string name="config_wifi_btn">Abrir painel do Wi‑Fi</string>
+
+    <!-- Confirmação pelo celular -->
+    <string name="config_secao_confirmacao">Confirmação pelo celular</string>
+    <string name="config_confirmacao_status_on">Ativa — o computador pode pedir sua confirmação.</string>
+    <string name="config_confirmacao_status_off">Desligada — nenhum pedido será mostrado.</string>
+    <string name="config_confirmacao_switch">Receber pedidos de confirmação</string>
+    <string name="config_confirmacao_ajuda">O computador pode pedir sua confirmação antes de aplicar desconto, cancelamento ou sangria. A decisão é tomada aqui, com digital, rosto ou senha do celular, e o computador é avisado.</string>
+    <string name="config_confirmacao_btn_historico">Ver histórico</string>
+    <string name="config_confirmacao_btn_teste">Pedido de teste</string>
+    <string name="config_confirmacao_historico_vazio">Nenhuma decisão registrada ainda.</string>
+    <string name="config_confirmacao_historico_titulo">Histórico de decisões</string>
+
+    <!-- Painel Wi‑Fi -->
+    <string name="wifi_titulo">Wi‑Fi da loja</string>
+    <string name="wifi_card_dados">Dados da rede</string>
+    <string name="wifi_ssid_label">Nome da rede (SSID)</string>
+    <string name="wifi_ssid_hint">Ex.: Loja_Centro</string>
+    <string name="wifi_senha_label">Senha da rede</string>
+    <string name="wifi_senha_hint">Senha do roteador</string>
+    <string name="wifi_salvar">Guardar com segurança</string>
+    <string name="wifi_salvo">Rede guardada neste celular, protegida pela trava do aparelho.</string>
+    <string name="wifi_invalido">Preencha o nome da rede e uma senha de 8 a 63 caracteres.</string>
+    <string name="wifi_card_guardada">Senha guardada</string>
+    <string name="wifi_nenhuma_senha">Nenhuma senha guardada ainda.</string>
+    <string name="wifi_senha_mascarada">••••••••••  (toque em Mostrar)</string>
+    <string name="wifi_revelada_aviso">A senha some da tela em 30 segundos.</string>
+    <string name="wifi_mostrar">Mostrar senha</string>
+    <string name="wifi_copiar">Copiar senha</string>
+    <string name="wifi_copiado">Senha copiada. Ela sai da área de transferência em 60 segundos.</string>
+    <string name="wifi_qr">Gerar QR para outro aparelho</string>
+    <string name="wifi_qr_ajuda">No outro celular: Wi‑Fi → adicionar rede → escanear o QR.</string>
+    <string name="wifi_card_teste">Testar ligação com o computador</string>
+    <string name="wifi_teste_ajuda">Confere se este celular alcança o computador do PDV pela rede da loja.</string>
+    <string name="wifi_testar">Testar agora</string>
+    <string name="wifi_testando">Testando…</string>
+    <string name="wifi_teste_sem_pareamento">Este celular ainda não foi pareado com o PDV. Use o QR de configuração do PDV primeiro.</string>
+    <string name="wifi_teste_ok">Computador respondeu em %1$d ms (%2$s).</string>
+    <string name="wifi_teste_falhou">Sem resposta do computador em %1$s. Verifique se o PDV está ligado e na mesma rede.</string>
+    <string name="wifi_voltar">Voltar</string>
+    <string name="wifi_auth_titulo">Confirme que é você</string>
+    <string name="wifi_auth_sub">Para mostrar ou copiar a senha do Wi‑Fi</string>
+    <string name="wifi_autorizacao_cancelada">Não autorizado. A senha continua protegida.</string>
+    <string name="wifi_sem_trava">Este celular não tem trava (PIN, senha ou biometria). Ative uma trava para proteger a senha do Wi‑Fi.</string>
+
+    <!-- Confirmação de operação -->
+    <string name="confirm_titulo">Confirmação no celular</string>
+    <string name="confirm_teste_badge">Pedido de teste</string>
+    <string name="confirm_expirado_titulo">Pedido expirado</string>
+    <string name="confirm_expirado">Este pedido expirou. Nada foi aplicado no PDV.</string>
+    <string name="confirm_aprovar">Aprovar</string>
+    <string name="confirm_negar">Negar</string>
+    <string name="confirm_fechar">Fechar</string>
+    <string name="confirm_aprovar_titulo">Confirme que é você</string>
+    <string name="confirm_aprovar_sub">Para aprovar esta operação no PDV</string>
+    <string name="confirm_aprovado_ok">Operação aprovada.</string>
+    <string name="confirm_negado_ok">Pedido negado e registrado.</string>
+    <string name="confirm_enviando">Enviando a decisão ao computador…</string>
+    <string name="confirm_enviado">Computador avisado.</string>
+    <string name="confirm_guardado">Decisão guardada neste celular. O computador recebe quando voltar a responder.</string>
+    <string name="confirm_teste_resultado">Pedido de teste: decisão registrada só no celular. Nada foi enviado.</string>
+    <string name="confirm_pedido_inexistente">Pedido não encontrado ou já decidido.</string>
+    <string name="confirm_negado_titulo">Negar este pedido?</string>
+    <string name="confirm_negado_msg">A operação não será aplicada no PDV.</string>
+    <string name="confirm_nao">Voltar</string>
+    <string name="confirm_prazo">Expira em %1$s</string>
+    <string name="confirm_prazo_vencido">Prazo vencido</string>
 </resources>

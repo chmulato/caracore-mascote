@@ -12,5 +12,6 @@ public class PdvSmsApp extends Application {
         super.onCreate();
         Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler(new AppExceptionHandler(defaultHandler));
+        ConfirmationNotifier.criarCanal(this);
     }
 }
