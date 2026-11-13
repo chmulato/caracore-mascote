@@ -4,19 +4,20 @@ Este diretório guarda o aplicativo que roda no celular Android e dispara os SMS
 pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
 
-> O código deste diretório está na **1.6 (código 7), em desenvolvimento e ainda
-> não publicado**. Ele mantém o envelope cifrado, o filtro do SMS de licença pelo
-> número oficial e a trava do provedor de licença do 1.5, e acrescenta o ícone e
-> o skin do Gaspar, o painel da senha do Wi‑Fi da loja e a confirmação de
-> operações do PDV no celular. O **1.5** continua sendo a versão publicada na
-> [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5);
-> o **1.4**, também publicado, não tem a trava do provedor. O Gaspar **1.7.1** ou
-> mais novo usa o 1.5; o aplicativo **1.2** só atende o Gaspar **1.7.0**.
+> O código deste diretório é o da **1.6 (código 7), publicada** em 13/11/2026 na
+> [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
+> Ela mantém o envelope cifrado, o filtro do SMS de licença pelo número oficial e
+> a trava do provedor de licença do 1.5, e acrescenta o ícone e o skin do Gaspar,
+> o painel da senha do Wi‑Fi da loja e a confirmação de operações do PDV no
+> celular. O **1.5**, também publicado, continua disponível; o **1.4** não tem a
+> trava do provedor. O Gaspar **1.7.1** ou mais novo usa o 1.6; o aplicativo
+> **1.2** só atende o Gaspar **1.7.0**.
 >
 > A 1.6 foi verificada por build, 21 testes unitários, lint e em execução num
 > emulador Android 13 (painel, Wi‑Fi com PIN e QR, confirmação pelo Pedido de
-> teste). Ainda não foi exercitada em celular físico (SMS com chip, biometria e
-> tela bloqueada), e o Gaspar/PDV ainda não envia pedidos de confirmação.
+> teste), inclusive instalada por cima do 1.5 publicado. Ainda não foi
+> exercitada em celular físico (SMS com chip, biometria e tela bloqueada), e o
+> Gaspar/PDV ainda não envia pedidos de confirmação.
 
 ## Para que serve
 

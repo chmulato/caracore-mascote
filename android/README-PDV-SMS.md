@@ -8,19 +8,19 @@ chip e devolve o comprovante. Também recebe SMS de ativação de licença Premi
 (CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e
 o estado da licença.
 
-> Este diretório guarda o código da próxima versão, o **1.6 (código 7), ainda
-> em desenvolvimento e não publicado**. Ele mantém o envelope de ponta a ponta,
-> o filtro do SMS de licença pelo número oficial e a trava do provedor de
-> licença do 1.5 publicado, e acrescenta o ícone/skin do Gaspar, o painel da
-> senha do Wi‑Fi da loja e a confirmação de operações do PDV no celular.
->
-> O **1.5** continua sendo a versão publicada na
+> Este diretório guarda o código do **1.6 (código 7), publicado** em 13/11/2026
+> na [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
+> Ele mantém o envelope de ponta a ponta, o filtro do SMS de licença pelo número
+> oficial e a trava do provedor de licença do 1.5, e acrescenta o ícone/skin do
+> Gaspar, o painel da senha do Wi‑Fi da loja e a confirmação de operações do PDV
+> no celular. O **1.5** continua disponível na
 > [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5).
 > O gate local do 1.6 está verde (build, 21 testes unitários e lint) e as telas
 > novas foram exercitadas em emulador Android 13 (painel, Wi‑Fi com PIN e QR,
-> confirmação pelo Pedido de teste); falta o teste em celular físico (SMS com
-> chip, biometria e tela bloqueada). O computador (Gaspar/PDV) ainda não envia
-> pedido de confirmação; o fluxo local se testa pelo botão **Pedido de teste**.
+> confirmação pelo Pedido de teste), com o APK assinado instalado por cima do
+> 1.5; falta o teste em celular físico (SMS com chip, biometria e tela
+> bloqueada). O computador (Gaspar/PDV) ainda não envia pedido de confirmação; o
+> fluxo local se testa pelo botão **Pedido de teste**.
 
 O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
 envio não é mais exportada e exige permissão interna de assinatura. O teste

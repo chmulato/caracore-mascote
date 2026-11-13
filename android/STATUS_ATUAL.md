@@ -2,10 +2,13 @@
 
 Documento de acompanhamento do estado da aplicação e da evolução. Atualizado conforme mudanças relevantes.
 
-> **Medido em 13/11/2026:** o código está na **1.6 (código 7), em
-> desenvolvimento, não publicado**. Gate local verde: build debug, 21 testes
+> **Medido em 13/11/2026:** a **1.6 (código 7)** está **publicada** na
+> [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6):
+> APK assinado de 2.099.052 B (SHA-256 `76acbc6b…7ad1`) e AAB de 1.915.879 B
+> (SHA-256 `b2a9b4e3…c89a`), verificados pelo `apksigner` e baixados da release
+> sem autenticação. Gate local verde: build, 21 testes
 > unitários (10 de confirmação, 3 de QR de Wi‑Fi, 8 da licença) e lint sem
-> erros. APK: `build\outputs\apk\debug\pdv-sms-enviar-1.6.apk` (2.507.894 B,
+> erros. APK debug: `build\outputs\apk\debug\pdv-sms-enviar-1.6.apk` (2.507.894 B,
 > SHA-256 `8b0ec79f…`).
 > **Exercitado em emulador Android 13 (API 33)**: instalação e abertura pelo
 > ícone do Gaspar, painel com cabeçalho do mascote, painel do Wi‑Fi (guardar,
@@ -13,7 +16,9 @@ Documento de acompanhamento do estado da aplicação e da evolução. Atualizado
 > lido de volta no formato `WIFI:`) e confirmação de desconto pelo **Pedido de
 > teste** com aprovação por PIN e registro no histórico. O teste real corrigiu
 > dois acabamentos: valor agora em pt‑BR (R$ 15,00) e histórico registra o
-> método efetivo ("via PIN do aparelho" × "via biometria").
+> método efetivo ("via PIN do aparelho" × "via biometria"). O **APK assinado da
+> release** foi instalado por cima do 1.5 publicado e repetiu a aprovação por
+> PIN com o mesmo resultado.
 > Não exercitados: envio de SMS (emulador sem chip), biometria de digital,
 > notificação com a tela bloqueada, leitura do QR pela câmera e o lado do
 > computador. O Gaspar/PDV ainda **não envia** pedido de confirmação nem expõe
@@ -178,7 +183,7 @@ Wi‑Fi da loja e serve como **confirmação de operações sensíveis** do PDV
 
 ## Histórico de alterações (resumo)
 
-- **1.6 (código 7, em desenvolvimento, não publicado):** ícone do mascote
+- **1.6 (código 7, publicado em 13/11/2026):** ícone do mascote
   Gaspar (legado, redondo e adaptativo) e skin clara com verde da marca; painel
   Wi‑Fi da loja com senha cifrada no Keystore, revelação/cópia/QR protegidos por
   digital ou PIN e teste de ligação com o computador; confirmação de desconto,
@@ -186,7 +191,10 @@ Wi‑Fi da loja e serve como **confirmação de operações sensíveis** do PDV
   notificação de tela cheia e devolução cifrada da decisão. Gate local: build,
   21 testes e lint verdes; APK debug medido e exercitado em emulador Android 13,
   que apontou e já corrigiu dois acabamentos: valor em pt‑BR (R$ 15,00) e
-  registro do método efetivo de aprovação no histórico (PIN × biometria).
+  registro do método efetivo de aprovação no histórico (PIN × biometria). APK
+  assinado (2.099.052 B, SHA-256 `76acbc6b…7ad1`) e AAB (1.915.879 B, SHA-256
+  `b2a9b4e3…c89a`) publicados na Release Android 1.6; o APK de release instalou
+  por cima do 1.5 e repetiu a aprovação por PIN.
 
 - **1.5 (código 6, publicado):** trava do provedor de licença. O
   `LicencaContentProvider` passa a exigir a permissão de assinatura

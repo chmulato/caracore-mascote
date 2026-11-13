@@ -14,17 +14,18 @@ você está usando o computador.
 | --- | --- |
 | Branch oficial | **master** |
 | Versão publicada do Gaspar | **1.7.4** |
-| Aplicativo do celular publicado | **1.5** |
+| Aplicativo do celular publicado | **1.6** |
 | Download | [Release 1.7.4](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.4) |
 | Licença | **MIT** |
 | Plataformas | **Windows 10/11** e **Linux (X11/XWayland)** |
 | Empresa | **Cara Core Informática** |
 
 > **O que você baixa hoje.** Os arquivos de instalação publicados são o Gaspar
-> **1.7.4** e o aplicativo do celular **1.5**. O aplicativo **1.5**, que fecha
-> o acesso de outros aplicativos aos dados de licença e completa a proteção do
-> SMS, acompanha o Gaspar **1.7.1** ou mais novo; quem continua no Gaspar
-> **1.7.0** fica com o aplicativo **1.2**. O que ainda está por vir está em
+> **1.7.4** e o aplicativo do celular **1.6**. O aplicativo **1.6**, que traz o
+> visual do Gaspar, o painel do Wi‑Fi da loja e a confirmação de operações no
+> próprio aparelho, mantém o envelope cifrado do SMS e acompanha o Gaspar
+> **1.7.1** ou mais novo; quem continua no Gaspar **1.7.0** fica com o
+> aplicativo **1.2**. O que ainda está por vir está em
 > [O que vem na próxima versão](#o-que-vem-na-próxima-versão).
 
 ## Se você só quer usar
@@ -42,8 +43,8 @@ Escolha o arquivo do sistema que você usa. O download começa ao clicar no link
 | Debian, Ubuntu, Mint e derivados | `gaspar_1.7.4_amd64.deb` (41 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.4/gaspar_1.7.4_amd64.deb) |
 | Outras distribuições Linux | `Gaspar-1.7.4-amd64.AppImage` (30 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.4/Gaspar-1.7.4-amd64.AppImage) |
 
-Para o **celular**, baixe o aplicativo `pdv-sms-enviar-1.5-release.apk` (704 KB)
-na [Release do aplicativo Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5).
+Para o **celular**, baixe o aplicativo `pdv-sms-enviar-1.6-release.apk` (2,0 MB)
+na [Release do aplicativo Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
 Ele acompanha o Gaspar 1.7.1 ou mais novo; o aplicativo 1.2 só atende quem
 continua no Gaspar 1.7.0.
 
@@ -148,8 +149,8 @@ chip aceitou) e **entregue** (a operadora confirmou).
 
 O Gaspar **1.7.4** já recusa pedidos que não vêm do próprio computador, exige
 que o pedido do PDV venha assinado e aplica limites de envio por número. A
-proteção de ponta a ponta do texto depende do aplicativo **1.5** do celular,
-que já está publicado: use o aplicativo **1.5** com o Gaspar **1.7.1** ou mais
+proteção de ponta a ponta do texto depende do aplicativo **1.6** do celular,
+que já está publicado: use o aplicativo **1.6** com o Gaspar **1.7.1** ou mais
 novo, e o aplicativo **1.2** só com o Gaspar **1.7.0**.
 Detalhes em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html) e [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
@@ -157,8 +158,8 @@ Detalhes em
 Para usar, você precisa de três coisas:
 
 1. **O Gaspar instalado** no computador (passos acima).
-2. **O aplicativo do celular instalado** (APK `pdv-sms-enviar-1.5-release.apk`,
-   publicado na [Release do aplicativo](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5);
+2. **O aplicativo do celular instalado** (APK `pdv-sms-enviar-1.6-release.apk`,
+   publicado na [Release do aplicativo](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6);
    o guia de instalação mostra o passo a passo). No primeiro uso, toque em
    **Liberar o app da economia de bateria**.
 3. **Celular e computador na mesma Wi-Fi**, com o Gaspar aberto.
@@ -167,7 +168,7 @@ Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
 **Parear celular** e leia o QR com o aplicativo do celular.
 
 > A ponte de SMS está no Gaspar **1.7.4** e o envio exige o aplicativo Android
-> **1.5**, já publicado. Instaladores 1.6.0 não têm a ponte; atualize os dois
+> **1.6**, já publicado. Instaladores 1.6.0 não têm a ponte; atualize os dois
 > lados.
 
 O passo a passo completo dos dois lados, com a lista de arquivos de instalação,
@@ -366,7 +367,7 @@ código, compilação e empacotamento ficam no guia técnico.
 O código deste repositório é o da versão **1.7.4**, publicada — é a que está
 nos instaladores para download e reúne a cobertura de testes unitários e de
 ponta a ponta como controle de regressão. Para usar a ponte de SMS, o
-celular também precisa do aplicativo **1.5** (pasta `android/`), que lê o pedido
+celular também precisa do aplicativo **1.6** (pasta `android/`), que lê o pedido
 cifrado e já está publicado. As
 instruções estão em [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md) e
 [android/README.md](android/README.md).
