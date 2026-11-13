@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 import threading
+import types
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -132,7 +133,7 @@ class CicloDeAtualizacaoE2E(unittest.TestCase):
 
     def test_manifesto_assinado_leva_ao_pacote_conferido(self):
         self.publicar()
-        with mock.patch("sys.platform", "win32"):
+        with mock.patch.object(updates, "sys", types.SimpleNamespace(platform="win32")):
             disponivel, origem = updates.consultar_com_origem(
                 self.servidor.base + "/latest.json", self.chave, local="1.7.3"
             )
@@ -152,7 +153,7 @@ class CicloDeAtualizacaoE2E(unittest.TestCase):
         self.publicar()
         destino = self.raiz / "downloads"
         errado = hashlib.sha256(b"outra coisa").hexdigest()
-        with mock.patch("sys.platform", "win32"):
+        with mock.patch.object(updates, "sys", types.SimpleNamespace(platform="win32")):
             with self.assertRaisesRegex(updates.FalhaAtualizacao, "SHA-256"):
                 updates.baixar_instalador(
                     self.servidor.base + "/Gaspar-1.8.0.exe", errado, destino
@@ -194,16 +195,14 @@ class CicloDeAtualizacaoE2E(unittest.TestCase):
 
     def test_entrega_ao_instalador_e_marcador_do_resultado(self):
         self.publicar()
-        with mock.patch("sys.platform", "win32"):
+        with mock.patch.object(updates, "sys", types.SimpleNamespace(platform="win32")):
             disponivel, _ = updates.consultar_com_origem(
                 self.servidor.base + "/latest.json", self.chave, local="1.7.3"
             )
             destino = self.raiz / "downloads"
             instalador = updates.baixar_instalador(disponivel.url, disponivel.sha256, destino)
             app_exe = self.raiz / "Gaspar" / "Gaspar.exe"
-            with mock.patch("sys.platform", "win32"), mock.patch(
-                "gaspar.updates.subprocess.Popen"
-            ) as popen:
+            with mock.patch("gaspar.updates.subprocess.Popen") as popen:
                 updates.aplicar_windows(instalador, app_exe, disponivel.versao)
 
         comando = popen.call_args.args[0]
