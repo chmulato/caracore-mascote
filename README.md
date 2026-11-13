@@ -13,15 +13,15 @@ você está usando o computador.
 |  |  |
 | --- | --- |
 | Branch oficial | **master** |
-| Versão publicada do Gaspar | **1.7.2** |
+| Versão publicada do Gaspar | **1.7.4** |
 | Aplicativo do celular publicado | **1.5** |
-| Download | [Release 1.7.2](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.2) |
+| Download | [Release 1.7.4](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.4) |
 | Licença | **MIT** |
 | Plataformas | **Windows 10/11** e **Linux (X11/XWayland)** |
 | Empresa | **Cara Core Informática** |
 
 > **O que você baixa hoje.** Os arquivos de instalação publicados são o Gaspar
-> **1.7.2** e o aplicativo do celular **1.5**. O aplicativo **1.5**, que fecha
+> **1.7.4** e o aplicativo do celular **1.5**. O aplicativo **1.5**, que fecha
 > o acesso de outros aplicativos aos dados de licença e completa a proteção do
 > SMS, acompanha o Gaspar **1.7.1** ou mais novo; quem continua no Gaspar
 > **1.7.0** fica com o aplicativo **1.2**. O que ainda está por vir está em
@@ -38,20 +38,20 @@ Escolha o arquivo do sistema que você usa. O download começa ao clicar no link
 
 | Seu sistema | Arquivo | Baixar |
 | --- | --- | --- |
-| Windows 10 ou 11 | `GasparSetup-1.7.2.exe` (31 MB) | [Baixar para Windows](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.2/GasparSetup-1.7.2.exe) |
-| Debian, Ubuntu, Mint e derivados | `gaspar_1.7.2_amd64.deb` (41 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.2/gaspar_1.7.2_amd64.deb) |
-| Outras distribuições Linux | `Gaspar-1.7.2-amd64.AppImage` (30 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.2/Gaspar-1.7.2-amd64.AppImage) |
+| Windows 10 ou 11 | `GasparSetup-1.7.4.exe` (31 MB) | [Baixar para Windows](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.4/GasparSetup-1.7.4.exe) |
+| Debian, Ubuntu, Mint e derivados | `gaspar_1.7.4_amd64.deb` (41 MB) | [Baixar o .deb](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.4/gaspar_1.7.4_amd64.deb) |
+| Outras distribuições Linux | `Gaspar-1.7.4-amd64.AppImage` (30 MB) | [Baixar o AppImage](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.4/Gaspar-1.7.4-amd64.AppImage) |
 
 Para o **celular**, baixe o aplicativo `pdv-sms-enviar-1.5-release.apk` (704 KB)
 na [Release do aplicativo Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5).
 Ele acompanha o Gaspar 1.7.1 ou mais novo; o aplicativo 1.2 só atende quem
 continua no Gaspar 1.7.0.
 
-Todos os arquivos ficam na página da [Release 1.7.2](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.2). O arquivo [SHA256SUMS.txt](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.2/SHA256SUMS.txt) serve para conferir se o download chegou completo; se você não sabe o que fazer com ele, pode ignorar.
+Todos os arquivos ficam na página da [Release 1.7.4](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.4). O arquivo [SHA256SUMS.txt](https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.4/SHA256SUMS.txt) serve para conferir se o download chegou completo; se você não sabe o que fazer com ele, pode ignorar.
 
 ### Windows
 
-1. Baixe o arquivo `GasparSetup-1.7.2.exe` no link acima.
+1. Baixe o arquivo `GasparSetup-1.7.4.exe` no link acima.
 2. Dê dois cliques e siga o assistente: **Avançar**, **Instalar**, **Concluir**.
 3. Abra o Gaspar pelo atalho da Área de Trabalho ou pelo menu Iniciar.
 4. Na primeira vez, o painel de configuração abre junto. Ajuste o que quiser e
@@ -65,11 +65,11 @@ isso é esperado em programas distribuídos diretamente pela Cara Core.
 
 ### Linux - Debian, Ubuntu, Mint e derivados
 
-1. Baixe o arquivo `gaspar_1.7.2_amd64.deb` no link acima.
+1. Baixe o arquivo `gaspar_1.7.4_amd64.deb` no link acima.
 2. Dê dois cliques e instale pelo aplicativo de pacotes, ou use o terminal:
 
    ```bash
-   sudo apt install ./gaspar_1.7.2_amd64.deb
+   sudo apt install ./gaspar_1.7.4_amd64.deb
    ```
 
 3. Abra **Gaspar** pelo menu de aplicativos, ou digite `gaspar` no terminal.
@@ -77,7 +77,7 @@ isso é esperado em programas distribuídos diretamente pela Cara Core.
 
 ### Linux - qualquer distribuição, sem instalar
 
-1. Baixe o arquivo `Gaspar-1.7.2-amd64.AppImage` no link acima.
+1. Baixe o arquivo `Gaspar-1.7.4-amd64.AppImage` no link acima.
 2. Clique com o botão direito, abra **Propriedades**, vá em **Permissões** e
    marque **Permitir executar**.
 3. Dê dois cliques no arquivo.
@@ -146,7 +146,7 @@ Na janela **Celular / SMS** você pareia o aparelho lendo um QR code, faz um
 envio de teste e acompanha os últimos resultados, com a marca de **enviado** (o
 chip aceitou) e **entregue** (a operadora confirmou).
 
-O Gaspar **1.7.2** já recusa pedidos que não vêm do próprio computador, exige
+O Gaspar **1.7.4** já recusa pedidos que não vêm do próprio computador, exige
 que o pedido do PDV venha assinado e aplica limites de envio por número. A
 proteção de ponta a ponta do texto depende do aplicativo **1.5** do celular,
 que já está publicado: use o aplicativo **1.5** com o Gaspar **1.7.1** ou mais
@@ -166,7 +166,7 @@ Para usar, você precisa de três coisas:
 Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
 **Parear celular** e leia o QR com o aplicativo do celular.
 
-> A ponte de SMS está no Gaspar **1.7.2** e o envio exige o aplicativo Android
+> A ponte de SMS está no Gaspar **1.7.4** e o envio exige o aplicativo Android
 > **1.5**, já publicado. Instaladores 1.6.0 não têm a ponte; atualize os dois
 > lados.
 
@@ -251,7 +251,7 @@ O que ainda **não** está nos instaladores publicados:
 - **Chamada automática do PDV:** o PDV pede a mensagem ao Gaspar ao fechar a
   venda. Hoje o envio parte do painel do Gaspar ou de quem integra o PDV.
 
-O Gaspar **1.7.2** do computador já está publicado com o aviso de versão nova e
+O Gaspar **1.7.4** do computador já está publicado com o aviso de versão nova e
 as proteções do pedido de SMS. Para atualizar, baixe o instalador novo na página
 de [Releases](https://github.com/chmulato/caracore-mascote/releases) e execute
 por cima: suas preferências são mantidas.
@@ -309,7 +309,7 @@ digital e mostra um aviso discreto quando há versão nova, com **Atualizar
 agora**, **Depois**, **Pular esta versão** e **Ver novidades** — nada é
 instalado sem a sua permissão. No Windows ele baixa o instalador, confere o
 arquivo e instala; no Linux, o botão abre a página de download. Quem está na
-1.7.0 instala a 1.7.2 uma vez, à mão. O passo a passo está em
+1.7.0, na 1.7.1 ou na 1.7.2 instala a 1.7.4 uma vez, à mão. O passo a passo está em
 [Atualização do Gaspar](https://gaspar.caracore.com.br/atualizacao.html).
 
 **Como desinstalar?**
@@ -363,10 +363,9 @@ código, compilação e empacotamento ficam no guia técnico.
 
 ## Para quem compila
 
-O código deste repositório é o da versão **1.7.4**, que reúne a cobertura de
-testes unitários e de ponta a ponta como controle de regressão e **ainda não
-está publicada**; a **publicada** é a 1.7.3, que está nos instaladores para
-download. Para usar a ponte de SMS, o
+O código deste repositório é o da versão **1.7.4**, publicada — é a que está
+nos instaladores para download e reúne a cobertura de testes unitários e de
+ponta a ponta como controle de regressão. Para usar a ponte de SMS, o
 celular também precisa do aplicativo **1.5** (pasta `android/`), que lê o pedido
 cifrado e já está publicado. As
 instruções estão em [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md) e
