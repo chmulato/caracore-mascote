@@ -201,8 +201,6 @@
   .status-strip .facts { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; }
   .status-strip .facts span { display: inline-flex; align-items: center; gap: .4rem; }
   .status-strip .facts span::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-  .status-strip a { color: #065f46; font-weight: 700; text-decoration: none; white-space: nowrap; }
-  .status-strip a:hover { text-decoration: underline; }
 
   /* Seções */
   section { min-width: 0; }
@@ -390,7 +388,7 @@
     .steps { grid-template-columns: 1fr; }
     .footer-grid { grid-template-columns: 1fr 1fr; }
   }
-  @media (max-width: 900px) {
+  @media (max-width: 1080px) {
     .nav { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border-bottom: 1px solid var(--line); padding: 1rem var(--page-gutter) 1.2rem; flex-direction: column; align-items: stretch; gap: .4rem; box-shadow: 0 18px 30px rgba(15, 23, 42, .08); }
     .nav.open { display: flex; }
     .nav a:not(.btn) { padding: .55rem 0; border-bottom: 1px solid #f1f5f9; }
@@ -409,7 +407,6 @@
     .grid-4 { grid-template-columns: 1fr; }
     .hero-actions .btn { width: 100%; }
     .status-strip .inner { justify-content: flex-start; }
-    .status-strip a { text-decoration: underline; text-underline-offset: 2px; }
   }
 </style>
 <script>document.documentElement.classList.add("js");</script>
@@ -440,7 +437,7 @@
       <a href="#pdv">Para o PDV</a>
       <a href="#atualizacao">Atualização</a>
       <a href="https://wiki.caracore.com.br/gaspar/index.html">Ajuda</a>
-      <a href="#baixar" class="btn btn-primary">Baixar grátis</a>
+      <a href="#baixar" class="btn btn-primary">Baixar para Windows</a>
     </div>
   </nav>
 </header>
@@ -451,8 +448,7 @@
     <div class="hero-grid">
       <div>
         <div class="chips">
-          <span class="chip"><span class="dot" aria-hidden="true"></span> Versão 1.7.4</span>
-          <span class="chip">Grátis e de código aberto</span>
+          <span class="chip"><span class="dot" aria-hidden="true"></span> Grátis e de código aberto</span>
           <span class="chip">Windows e Linux</span>
         </div>
         <p class="pixel">Mascote oficial da Cara Core</p>
@@ -466,10 +462,9 @@
         <div class="hero-actions">
           <a class="btn btn-light" href="#baixar">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-            Baixar o Gaspar
+            Baixar para Windows
           </a>
           <a class="btn btn-ghost" href="#mascote">Conhecer o mascote</a>
-          <a class="btn btn-ghost" href="https://pdv.caracore.com.br/index.html" target="_blank" rel="noopener">Conhecer o PDV</a>
         </div>
         <p class="hero-note">Instale, abra e deixe o Gaspar trabalhar. Sem mensalidade e sem anúncios.</p>
       </div>
@@ -492,7 +487,6 @@
         <span>SMS opcional</span>
         <span>Aviso de versão nova</span>
       </div>
-      <a href="#baixar">Ver downloads</a>
     </div>
   </div>
 
@@ -717,7 +711,7 @@
           <h3>Windows 10 e 11</h3>
           <p class="os">Instalador completo · Gaspar + BlackBox</p>
           <p class="size">GasparSetup-1.7.4.exe · 31 MB</p>
-          <a class="btn btn-primary" href="https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.4/GasparSetup-1.7.4.exe">Baixar instalador</a>
+          <a class="btn btn-primary" href="https://github.com/chmulato/caracore-mascote/releases/download/gaspar-v1.7.4/GasparSetup-1.7.4.exe">Baixar para Windows</a>
         </article>
         <article class="download-card">
           <h3>Debian, Ubuntu e Mint</h3>
@@ -736,7 +730,7 @@
           <p class="os">Aplicativo 1.6 · acompanha o Gaspar 1.7.1 ou mais novo · Android 7+</p>
           <p class="size">pdv-sms-enviar-1.6-release.apk · 2,0 MB</p>
           <p class="size">No 1.6: ícone e visual do Gaspar, senha do Wi‑Fi da loja protegida por digital ou PIN e aprovação de desconto, cancelamento e sangria no celular.</p>
-          <a class="btn btn-outline" href="https://github.com/chmulato/caracore-mascote/releases/download/android-v1.6/pdv-sms-enviar-1.6-release.apk">Baixar APK</a>
+          <a class="btn btn-outline" href="https://github.com/chmulato/caracore-mascote/releases/download/android-v1.6/pdv-sms-enviar-1.6-release.apk">Baixar para Android</a>
         </article>
       </div>
       <p class="download-foot">
@@ -797,8 +791,7 @@
         <p>O Gaspar é gratuito e funciona sozinho. Quem usa o CaraCore PDV pode ter o mascote no computador da loja e, na próxima versão do PDV, o SMS do comprovante pedido pelo próprio sistema, com o celular pareado.</p>
       </div>
       <div class="hero-actions" style="justify-content:center">
-        <a class="btn btn-primary" href="https://pdv.caracore.com.br/index.html">Conhecer o PDV</a>
-        <a class="btn btn-outline" href="mailto:suporte@caracore.com.br?subject=Gaspar%20e%20PDV">Falar com o suporte</a>
+        <a class="btn btn-outline" href="https://pdv.caracore.com.br/index.html">Conhecer o PDV</a>
       </div>
       <p style="text-align:center;margin-top:1rem;font-size:.9rem;color:#475569">A chamada automática do PDV ao Gaspar está em preparação. Hoje o envio de SMS parte do painel do Gaspar ou de quem integra o PDV ao Gaspar.</p>
     </div>
@@ -809,8 +802,8 @@
     <div class="container">
       <h2 id="titulo-final">Coloque o Gaspar no seu computador.</h2>
       <p>Grátis, sem mensalidade e sem anúncios. Instale, escolha o ritmo e deixe o resto com ele.</p>
-      <a class="btn btn-light" href="#baixar">Baixar a versão 1.7.4</a>
-      <p style="margin-top:1rem;font-size:.86rem;color:#d1fae5">É uma loja e quer o sistema completo? <a href="#pdv" style="color:#fff">Conheça o PDV</a> · dúvidas: <a href="mailto:suporte@caracore.com.br" style="color:#fff">suporte@caracore.com.br</a>.</p>
+      <a class="btn btn-light" href="#baixar">Baixar para Windows</a>
+      <p style="margin-top:1rem;font-size:.86rem;color:#d1fae5">Dúvidas: <a href="mailto:suporte@caracore.com.br" style="color:#fff">suporte@caracore.com.br</a>.</p>
     </div>
   </section>
 </main>
