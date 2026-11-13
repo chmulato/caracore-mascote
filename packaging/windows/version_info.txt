@@ -14,12 +14,12 @@ VSVersionInfo(
       StringTable('040904B0', [
         StringStruct('CompanyName', 'Cara Core Informática'),
         StringStruct('FileDescription', 'Gaspar - Mascote Cara Core'),
-        StringStruct('FileVersion', '1.7.3.0'),
+        StringStruct('FileVersion', '1.7.4.0'),
         StringStruct('InternalName', 'gaspar'),
         StringStruct('LegalCopyright', 'MIT License - Cara Core Informática'),
         StringStruct('OriginalFilename', 'gaspar.exe'),
         StringStruct('ProductName', 'Gaspar - Mascote Cara Core'),
-        StringStruct('ProductVersion', '1.7.3.0')
+        StringStruct('ProductVersion', '1.7.4.0')
       ])
     ]),
     VarFileInfo([VarStruct('Translation', [1046, 1200])])

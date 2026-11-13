@@ -363,9 +363,10 @@ código, compilação e empacotamento ficam no guia técnico.
 
 ## Para quem compila
 
-O código deste repositório é o da versão **1.7.3**, que corrige a instalação
-automática da atualização e **ainda não está publicada**; a **publicada** é a
-1.7.2, que está nos instaladores para download. Para usar a ponte de SMS, o
+O código deste repositório é o da versão **1.7.4**, que reúne a cobertura de
+testes unitários e de ponta a ponta como controle de regressão e **ainda não
+está publicada**; a **publicada** é a 1.7.3, que está nos instaladores para
+download. Para usar a ponte de SMS, o
 celular também precisa do aplicativo **1.5** (pasta `android/`), que lê o pedido
 cifrado e já está publicado. As
 instruções estão em [manual-tecnico/tecnico.md](manual-tecnico/tecnico.md) e

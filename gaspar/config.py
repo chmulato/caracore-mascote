@@ -54,6 +54,8 @@ def load_settings(path: Path | None = None) -> Settings:
         raw = json.loads(target.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return settings
+    if not isinstance(raw, dict):
+        return settings
 
     known = {field.name for field in fields(Settings)}
     for key, value in raw.items():

@@ -3,7 +3,7 @@
 Documentação para quem mantém, compila ou audita o Gaspar. O guia do usuário está no [README](../README.md).
 
 - Branch oficial: **master**
-- Versão: **1.7.3** (publicada: **1.7.2**)
+- Versão: **1.7.4** (publicada: **1.7.3**)
 - Licença: **MIT**
 - Plataformas: **Windows 10/11** e **Linux (X11/XWayland)**
 
@@ -131,10 +131,17 @@ O aplicativo Android da pasta `android/` é Java, sem Kotlin, com minSdk 24, tar
 │       └── gaspar_blackbox.spec
 ├── tests/
 │   ├── smoke_test.py              # 5 verificações de fumaça
+│   ├── test_app.py                # 89 testes do painel (janela real escondida)
+│   ├── test_core.py               # 45 testes do núcleo sem tela
+│   ├── test_e2e_sms.py            # 6 testes de ponta a ponta da ponte
+│   ├── test_e2e_update.py         # 7 testes de ponta a ponta do canal
+│   ├── test_engine.py             # 20 testes do motor de presença
 │   ├── test_isolamento.py         # 2 testes de isolamento das integrações
 │   ├── test_channel.py            # 12 testes da rotina de release
+│   ├── test_phone.py              # 15 testes de rede, descoberta e QR
 │   ├── test_sms.py                # 59 testes da ponte
-│   └── test_updates.py            # 41 testes do canal (atualizador e ferramenta)
+│   ├── test_updates.py            # 43 testes do canal (atualizador e ferramenta)
+│   └── test_updates_extra.py      # 29 testes de lacunas do canal
 ├── tools/
 │   ├── gaspar_channel.py          # init-key, sign, prova, check, monitor e verify
 │   └── make_assets.py
@@ -222,7 +229,7 @@ Saídas:
 
 - `dist/windows/gaspar/gaspar.exe`
 - `dist/windows/gaspar_blackbox/gaspar_blackbox.exe`
-- `dist/installer/GasparSetup-1.7.3.exe` (quando o Inno Setup está instalado)
+- `dist/installer/GasparSetup-1.7.4.exe` (quando o Inno Setup está instalado)
 
 O instalador:
 
@@ -274,13 +281,13 @@ Saídas:
 
 - `dist/linux/gaspar/gaspar`
 - `dist/linux/gaspar_blackbox/gaspar_blackbox`
-- `dist/linux/gaspar_1.7.3_<arch>.deb`
-- `dist/linux/Gaspar-1.7.3-<arch>.AppImage`
+- `dist/linux/gaspar_1.7.4_<arch>.deb`
+- `dist/linux/Gaspar-1.7.4-<arch>.AppImage`
 
 Instalação do `.deb`:
 
 ```bash
-sudo apt install ./dist/linux/gaspar_1.7.3_amd64.deb
+sudo apt install ./dist/linux/gaspar_1.7.4_amd64.deb
 gaspar
 gaspar-blackbox
 ```
@@ -296,8 +303,8 @@ O `.deb` instala:
 AppImage:
 
 ```bash
-chmod +x dist/linux/Gaspar-1.7.3-amd64.AppImage
-./dist/linux/Gaspar-1.7.3-amd64.AppImage
+chmod +x dist/linux/Gaspar-1.7.4-amd64.AppImage
+./dist/linux/Gaspar-1.7.4-amd64.AppImage
 ```
 
 O AppImage inclui o Gaspar e o BlackBox. O item **Gaspar BlackBox** do ícone da bandeja encontra o executável na própria instalação.
@@ -761,6 +768,57 @@ Os 2 testes de `tests/test_isolamento.py` falham se um domínio de pagamento ou
 de nota fiscal (`api.mercadopago.com`, `api.plugnotas.com.br` e o sandbox)
 aparecer na lista do BlackBox ou no código do pacote.
 
+As ondas de 12/11/2026 fecharam o miolo sem tela, que antes não tinha teste:
+
+- `tests/test_core.py` (45 testes): configuração, caminhos, log de eventos,
+  bloco de telemetria no `hosts`, início automático, atividade (Windows e
+  Linux), elevação do BlackBox e ajudantes do overlay.
+- `tests/test_engine.py` (20 testes): ciclo de presença com backend falso
+  (mouse, `F15`, Teams, sino, telemetria), adiamento por tela cheia e usuário
+  ativo, trajeto do cursor e início/parada do motor.
+- `tests/test_updates_extra.py` (29 testes): manifesto assinado contra um
+  servidor HTTP local, download conferido, estado, roteiro PowerShell,
+  abertura da página de notas e o monitor de canal.
+- `tests/test_phone.py` (15 testes): cliente TCP contra um celular falso,
+  descoberta UDP, escolha de endereço da rede e QR Code.
+- `tests/test_app.py` (89 testes): painel de verdade, construído escondido com
+  preferências numa pasta temporária. Cobre montagem da janela, intervalo,
+  todas as opções, sobreposição, simulação, tela **Celular / SMS** (ponte,
+  QR, envio de teste, apagar histórico, token), aviso de atualização (opcional,
+  obrigatória, pular, adiar, download e falhas), registros, bandeja, BlackBox
+  e saída. Sem display, a classe inteira é pulada; no Linux a esteira roda com
+  `xvfb`.
+
+Os testes de ponta a ponta abrem soquetes reais em `127.0.0.1`:
+
+- `tests/test_e2e_sms.py` (6 testes): pedido assinado do PDV → servidor local →
+  ponte → celular falso → envelope decifrado com a chave privada de teste →
+  comprovante → `entregue`; celular offline falha sem bloquear a venda; saúde e
+  token. Os três negativos: mensagem fora do modelo é recusada com `400` sem
+  entrar na fila; nonce reaproveitado é recusado com `401` (`pedido repetido`);
+  pedido vindo pelo endereço da rede local, e não pelo `127.0.0.1`, é recusado
+  com `403`. Confere ainda que estado e auditoria não guardam número nem texto.
+- `tests/test_e2e_update.py` (7 testes): manifesto Ed25519 servido por HTTP →
+  consulta → download com SHA-256 → entrega ao instalador com o roteiro
+  PowerShell decodificado; pacote adulterado não fica no disco; reserva
+  responde quando o principal cai; `min_supported` obriga a atualização.
+
+Cobertura medida em 12/11/2026 com `coverage` (327 testes unitários):
+
+| Camada | Cobertura |
+| --- | --- |
+| Núcleo sem tela (`config`, `paths`, `eventlog`, `autostart`, `telemetry_hosts`) | 82–99% |
+| Motor de presença (`presence`) | 89% |
+| Canal de atualização (`updates`) | 94% |
+| Ponte de SMS (`sms/`) | 78–100% |
+| Painel (`app`) | 89% |
+| Sobreposição e bandeja (`overlay`, `tray`) | 18–23% |
+| **Total** | **77%** |
+
+A sobreposição animada e a bandeja continuam cobertas só pelo teste de fumaça:
+exigem janela visível e relógio real. A esteira roda
+`coverage run --source=gaspar` — no Linux sob `xvfb` — e falha abaixo de 70%.
+
 O teste de fumaça usa uma pasta temporária via `GASPAR_HOME`, não altera o `hosts` real e cobre:
 
 - Persistência de configuração (incluindo modo discreto e pausa em tela cheia).
@@ -840,7 +898,7 @@ O script remove o magenta, recorta o mascote, suaviza a borda, desconta a franja
 
 ## Estado de validação desta versão
 
-- Testes automáticos: **121 testes** — 59 da ponte de SMS, 43 do canal e do atualizador, 12 da rotina de release, 2 de isolamento e 5 do teste de fumaça —, aprovados na árvore local em 12/11/2026; a esteira `gaspar.yml` executa os 116 testes unitários no Linux e no Windows e o teste de fumaça no Linux, ainda sem execução registrada para esta versão.
+- Testes automáticos: **332 testes** — 327 unitários (89 do painel, 59 da ponte de SMS, 43 do canal, 29 de lacunas do canal, 45 do núcleo, 20 do motor, 15 de rede e QR, 12 da rotina de release, 6 de ponta a ponta da ponte, 7 de ponta a ponta do canal e 2 de isolamento) e 5 do teste de fumaça —, aprovados na árvore local em 12/11/2026 com cobertura de **77%**; a esteira `gaspar.yml` executa os 327 unitários no Windows e, no Linux, sob `xvfb`, com piso de cobertura de 70% e o teste de fumaça no Linux, ainda sem execução registrada para esta versão.
 - Canal de atualização: **no ar**. O `latest.json` (3.135 bytes) da 1.7.2 foi assinado com a chave `gaspar-2026-11` e publicado na [Release 1.7.2](https://github.com/chmulato/caracore-mascote/releases/tag/gaspar-v1.7.2). Medido em 12/11/2026: o gateway `api.caracore.com.br/releases/gaspar/latest.json` e o domínio `gaspar.caracore.com.br/latest.json` entregam os mesmos 3.135 bytes, e a assinatura confere com a chave pública em `assets/gaspar-update-public.pem` (`key_id` `gaspar-2026-11`, `min_supported` 1.7.0). A chave privada fica só no HD removível do responsável; a pública está versionada e dentro dos dois pacotes. A 1.7.2, publicada, inverte a ordem do canal: consulta o gateway primeiro e deixa o domínio antigo como reserva.
 - Vigilância do canal: a esteira `canal-monitor.yml` roda a cada 6 horas e falha quando o canal sai do ar, perde a assinatura, diverge do espelho, fica atrás da release mais nova ou aponta para pacote ausente ou com tamanho diferente. O comando equivalente é `python tools/gaspar_channel.py monitor`; medido no ar e na esteira em 12/11/2026.
 - Atualização real de ponta a ponta (baixar, instalar em silêncio e reabrir): **não concluída**. O roteiro PowerShell foi validado por análise sintática e, em seguida, disparado pelo app no sandbox — sem sucesso, pelos dois defeitos descritos abaixo. O ciclo 1.7.0 → 1.7.1 foi medido em 12/11/2026 como reinstalação manual por cima: versão final 1.7.1, preferências e token preservados, canal consultado no primeiro minuto e desinstalação limpa. O ciclo automático 1.7.1 → 1.7.2 foi medido no mesmo sandbox em 12/11/2026 e **falhou** por dois defeitos do atualizador: a pasta de download não era criada e o processo que instala era encerrado junto com o aplicativo. Os dois foram corrigidos na 1.7.3 e cobertos por teste (o teste novo falha no código antigo com o mesmo `FileNotFoundError` que o app registrou), mas o ciclo automático ainda não foi reexecutado.

@@ -91,7 +91,15 @@ jobs:
         shell: bash
         run: |
           if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi
-          python -m unittest discover -s tests -p "test_*.py" -v
+          # No Linux os testes do painel precisam de tela; o xvfb fornece uma.
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a -s "-screen 0 1280x800x24" \
+              python -m coverage run --source=gaspar -m unittest discover -s tests -p "test_*.py" -v
+          else
+            python -m coverage run --source=gaspar -m unittest discover -s tests -p "test_*.py" -v
+          fi
+          # Piso medido em 12/11/2026: 77% no Windows local, com o painel em 89%.
+          python -m coverage report --fail-under=70
 
       - name: Teste de fumaça com tela virtual (Linux)
         if: runner.os == 'Linux'
