@@ -132,18 +132,18 @@ class CicloDeAtualizacaoE2E(unittest.TestCase):
 
     def test_manifesto_assinado_leva_ao_pacote_conferido(self):
         self.publicar()
-        disponivel, origem = updates.consultar_com_origem(
-            self.servidor.base + "/latest.json", self.chave, local="1.7.3"
-        )
+        with mock.patch("sys.platform", "win32"):
+            disponivel, origem = updates.consultar_com_origem(
+                self.servidor.base + "/latest.json", self.chave, local="1.7.3"
+            )
+            destino = self.raiz / "downloads"
+            arquivo = updates.baixar_instalador(disponivel.url, disponivel.sha256, destino)
         self.assertEqual(origem, self.servidor.base + "/latest.json")
         self.assertEqual(disponivel.versao, "1.8.0")
         self.assertFalse(disponivel.mandatory)
         self.assertEqual(disponivel.sha256, self.sha)
         self.assertEqual(disponivel.notas, "Correcoes da versao nova.")
 
-        destino = self.raiz / "downloads"
-        with mock.patch("sys.platform", "win32"):
-            arquivo = updates.baixar_instalador(disponivel.url, disponivel.sha256, destino)
         self.assertEqual(arquivo, destino / "Gaspar-1.8.0.exe")
         self.assertEqual(arquivo.read_bytes(), self.pacote)
         self.assertEqual(sorted(p.name for p in destino.iterdir()), ["Gaspar-1.8.0.exe"])
@@ -194,11 +194,11 @@ class CicloDeAtualizacaoE2E(unittest.TestCase):
 
     def test_entrega_ao_instalador_e_marcador_do_resultado(self):
         self.publicar()
-        disponivel, _ = updates.consultar_com_origem(
-            self.servidor.base + "/latest.json", self.chave, local="1.7.3"
-        )
-        destino = self.raiz / "downloads"
         with mock.patch("sys.platform", "win32"):
+            disponivel, _ = updates.consultar_com_origem(
+                self.servidor.base + "/latest.json", self.chave, local="1.7.3"
+            )
+            destino = self.raiz / "downloads"
             instalador = updates.baixar_instalador(disponivel.url, disponivel.sha256, destino)
             app_exe = self.raiz / "Gaspar" / "Gaspar.exe"
             with mock.patch("sys.platform", "win32"), mock.patch(

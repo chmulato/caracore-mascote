@@ -30,7 +30,7 @@ class PresenceEngine:
         self._next_at: float | None = None
         self._backend = None
         self._backend_error: str | None = None
-        self._last_defer_log = 0.0
+        self._last_defer_log = float("-inf")
         self.cycles = 0
 
     @property

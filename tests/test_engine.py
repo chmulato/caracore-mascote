@@ -160,16 +160,17 @@ class DeferTests(unittest.TestCase):
             self.assertIsNone(engine._defer_reason(estado))
 
     def test_defer_reschedules_and_logs_only_once(self):
-        engine, estado, _, sistema, _ = make_engine(Settings(interval=300, only_when_idle=True))
-        engine._defer("usuario ativo no computador", estado)
-        self.assertEqual(engine.seconds_remaining(), 30)
-        engine._defer("usuario ativo no computador", estado)
-        self.assertEqual(len(sistema), 1)
-        self.assertIn("Nova tentativa em 30s", sistema[0])
+        with mock.patch.object(presence.time, "monotonic", return_value=100.0):
+            engine, estado, _, sistema, _ = make_engine(Settings(interval=300, only_when_idle=True))
+            engine._defer("usuario ativo no computador", estado)
+            self.assertEqual(engine.seconds_remaining(), 30)
+            engine._defer("usuario ativo no computador", estado)
+            self.assertEqual(len(sistema), 1)
+            self.assertIn("Nova tentativa em 30s", sistema[0])
 
-        curto, curto_estado, _, _, _ = make_engine(Settings(interval=20, only_when_idle=True))
-        curto._defer("motivo", curto_estado)
-        self.assertEqual(curto.seconds_remaining(), 20)
+            curto, curto_estado, _, _, _ = make_engine(Settings(interval=20, only_when_idle=True))
+            curto._defer("motivo", curto_estado)
+            self.assertEqual(curto.seconds_remaining(), 20)
 
 
 class CursorTests(unittest.TestCase):
