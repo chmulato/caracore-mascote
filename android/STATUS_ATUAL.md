@@ -2,10 +2,13 @@
 
 Documento de acompanhamento do estado da aplicação e da evolução. Atualizado conforme mudanças relevantes.
 
-> **Medido em 15/11/2026:** o **código deste diretório é a 1.7 (código 8)**,
-> preparada e provada localmente e **ainda não publicada**. O que está
-> publicado continua sendo a **1.6 (código 7)**, na
-> [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
+> **Medido em 15/11/2026:** a **1.7 (código 8)** está **publicada** na
+> [Release Android 1.7](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.7):
+> APK assinado de 2.094.869 B (SHA-256 `aa67eba6…602a`) e AAB de 1.909.267 B
+> (SHA-256 `006a41ce…cc4`), conferidos pelo `apksigner`, com as somas do
+> `SHA256SUMS.txt` e baixados da release sem autenticação. O certificado é o
+> mesmo da 1.6, e o APK assinado foi instalado por cima do 1.6 publicado no
+> emulador (código 7 → 8, alvo 27 → 35).
 > Gate local verde: build, 27 testes unitários (10 de confirmação, 3 de QR de
 > Wi‑Fi, 8 da licença e 6 do token de backup) e lint sem erros. APK debug
 > `build\outputs\apk\debug\pdv-sms-enviar-1.7.apk`, 2.456.228 B, SHA-256
@@ -204,7 +207,7 @@ com digital, rosto ou senha do aparelho.
 
 ## Histórico de alterações (resumo)
 
-- **1.7 (código 8, preparada em 15/11/2026, não publicada):** licença digitada
+- **1.7 (código 8, publicada em 15/11/2026):** licença digitada
   no painel em vez de lida por SMS (permissão e receptor de SMS removidos);
   isenção de bateria deixada de pedir (o botão abre a lista do sistema); aviso
   de backup só aceito com token e endereçado ao app; confirmação de operações
@@ -214,7 +217,10 @@ com digital, rosto ou senha do aparelho.
   concorriam, e o Android 13 descartava o segundo — agora são sequenciais. Gate
   local: build, 27 testes unitários (10 de confirmação, 3 de QR de Wi‑Fi,
   8 da licença e 6 do token de backup) e lint verdes; APK debug 2.456.228 B
-  (SHA-256 `249244a5…99673a`) provado em emulador Android 13.
+  (SHA-256 `249244a5…99673a`) provado em emulador Android 13. APK assinado
+  (2.094.869 B, SHA-256 `aa67eba6…602a`) e AAB (1.909.267 B, SHA-256
+  `006a41ce…cc4`) publicados na Release Android 1.7; o APK assinado instalou
+  por cima do 1.6 publicado e abriu com "Versão 1.7".
 
 - **1.6 (código 7, publicado em 13/11/2026):** ícone do mascote
   Gaspar (legado, redondo e adaptativo) e skin clara com verde da marca; painel

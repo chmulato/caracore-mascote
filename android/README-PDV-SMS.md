@@ -8,19 +8,18 @@ chip e devolve o comprovante. A licença Premium é digitada na tela de
 configuração ou aplicada pelo QR de pareamento — o app **não lê SMS** desde a
 1.7. Ele expõe ao PDV, via ContentProvider, o HardwareID e o estado da licença.
 
-> **Publicado hoje:** o **1.6 (código 7)**, de 13/11/2026, na
-> [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
-> O **1.5** continua disponível na
-> [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5).
->
-> **Preparada e ainda não publicada:** a **1.7 (código 8)**, de 15/11/2026.
-> Ela retira a leitura de SMS (licença digitada ou pelo QR), retira o pedido de
+> **Publicado hoje:** o **1.7 (código 8)**, de 15/11/2026, na
+> [Release Android 1.7](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.7).
+> Ele retira a leitura de SMS (licença digitada ou pelo QR), retira o pedido de
 > isenção da economia de bateria, exige token do PDV no aviso de backup, mostra
 > a confirmação só depois do toque na notificação e compila para o Android 15
 > (targetSdk/compileSdk 35, AGP 8.7.3, Gradle 8.9, JDK 17). Gate local verde:
 > build, 27 testes unitários (10 de confirmação, 3 de QR de Wi‑Fi, 8 da licença
-> e 6 do token de backup) e lint sem erros. A prova em emulador está registrada
-> em [STATUS_ATUAL.md](STATUS_ATUAL.md); falta o teste em celular físico.
+> e 6 do token de backup) e lint sem erros; APK assinado e AAB publicados e
+> instalados por cima do 1.6 no emulador. A prova em emulador está registrada em
+> [STATUS_ATUAL.md](STATUS_ATUAL.md); falta o teste em celular físico.
+>
+> O **1.6** e o **1.5** continuam disponíveis nas respectivas releases.
 
 O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
 envio não é mais exportada e exige permissão interna de assinatura. O teste
