@@ -2,6 +2,8 @@ package br.com.caracore.pdv.sms;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -21,6 +23,7 @@ import android.widget.Toast;
 public class ConfigActivity extends Activity {
 
     private static final int REQ_SMS = 1001;
+    private static final int REQ_NOTIFICACOES = 1002;
 
     private SmsPreferences prefs;
     private Switch switchAtivo;
@@ -43,6 +46,9 @@ public class ConfigActivity extends Activity {
             textDataHoraBackupCard = findViewById(R.id.textDataHoraBackupCard);
 
             solicitarPermissoesSms();
+            if (checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
+                solicitarPermissaoNotificacoes();
+            }
 
             switchAtivo.setChecked(prefs.isAtivo());
             atualizarStatus();
@@ -107,16 +113,21 @@ public class ConfigActivity extends Activity {
             if (btnBateria != null) {
                 btnBateria.setOnClickListener(v -> pedirBateriaLivre());
             }
-            EditText editNumeroOficial = findViewById(R.id.editNumeroOficial);
-            if (editNumeroOficial != null) {
-                String numeroOficial = prefs.getNumeroOficialLicenca();
-                if (numeroOficial != null) {
-                    editNumeroOficial.setText(numeroOficial);
+            EditText editChaveLicenca = findViewById(R.id.editChaveLicenca);
+            if (editChaveLicenca != null) {
+                String chave = prefs.getChaveLicenca();
+                if (chave != null) {
+                    editChaveLicenca.setText(chave);
                 }
             }
-            Button btnSalvarNumeroOficial = findViewById(R.id.btnSalvarNumeroOficial);
-            if (btnSalvarNumeroOficial != null) {
-                btnSalvarNumeroOficial.setOnClickListener(v -> salvarNumeroOficial());
+            Button btnSalvarChave = findViewById(R.id.btnSalvarChave);
+            if (btnSalvarChave != null) {
+                btnSalvarChave.setOnClickListener(v -> salvarChaveLicenca());
+            }
+            garantirBackupToken();
+            Button btnCopiarToken = findViewById(R.id.btnCopiarToken);
+            if (btnCopiarToken != null) {
+                btnCopiarToken.setOnClickListener(v -> copiarBackupToken());
             }
 
             TextView textVersao = findViewById(R.id.textVersao);
@@ -147,24 +158,36 @@ public class ConfigActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQ_SMS && grantResults != null && grantResults.length > 0) {
-            for (int r : grantResults) {
-                if (r != PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, getString(R.string.config_sms_permission_negada), Toast.LENGTH_LONG).show();
-                    return;
+        if (requestCode == REQ_SMS) {
+            if (grantResults != null && grantResults.length > 0) {
+                for (int r : grantResults) {
+                    if (r != PackageManager.PERMISSION_GRANTED) {
+                        Toast.makeText(this, getString(R.string.config_sms_permission_negada), Toast.LENGTH_LONG).show();
+                        break;
+                    }
                 }
             }
+            // Uma caixa de permissão por vez: a de notificações só abre depois desta.
+            solicitarPermissaoNotificacoes();
+            return;
+        }
+        if (requestCode == REQ_NOTIFICACOES && grantResults != null && grantResults.length > 0
+                && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, getString(R.string.config_notificacao_negada), Toast.LENGTH_LONG).show();
         }
     }
 
     private void solicitarPermissoesSms() {
         if (Build.VERSION.SDK_INT < 23) return;
-        if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED
-                || checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{
-                    Manifest.permission.SEND_SMS,
-                    Manifest.permission.RECEIVE_SMS
-            }, REQ_SMS);
+        if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.SEND_SMS}, REQ_SMS);
+        }
+    }
+
+    private void solicitarPermissaoNotificacoes() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIFICACOES);
         }
     }
 
@@ -204,27 +227,47 @@ public class ConfigActivity extends Activity {
             return;
         }
         try {
-            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                    android.net.Uri.parse("package:" + getPackageName()));
-            startActivity(intent);
+            startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
             Toast.makeText(this, R.string.config_bateria_pedido, Toast.LENGTH_LONG).show();
         } catch (Exception e) {
-            startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            Toast.makeText(this, R.string.config_bateria_sem_tela, Toast.LENGTH_LONG).show();
         }
     }
 
-    private void salvarNumeroOficial() {
-        EditText edit = findViewById(R.id.editNumeroOficial);
+    private void salvarChaveLicenca() {
+        EditText edit = findViewById(R.id.editChaveLicenca);
         if (edit == null) return;
-        String digitos = LicenseSms.somenteDigitos(edit.getText().toString());
-        if (!LicenseSms.numeroValido(digitos)) {
-            Toast.makeText(this, R.string.config_numero_oficial_invalido, Toast.LENGTH_LONG).show();
+        String chave = LicenseSms.chaveDe(edit.getText().toString());
+        if (chave == null) {
+            Toast.makeText(this, R.string.config_licenca_chave_invalida, Toast.LENGTH_LONG).show();
             return;
         }
-        prefs.setNumeroOficialLicenca(digitos);
-        edit.setText(digitos);
-        Toast.makeText(this, R.string.config_numero_oficial_salvo, Toast.LENGTH_LONG).show();
-        PdvSmsLogger.i("Config.numeroOficial", "Número oficial de licença salvo.");
+        prefs.setChaveLicenca(chave);
+        edit.setText(chave);
+        atualizarStatusLicenca();
+        Toast.makeText(this, R.string.config_licenca_chave_salva, Toast.LENGTH_LONG).show();
+        PdvSmsLogger.i("Config.chaveLicenca", "Chave de licença salva.");
+    }
+
+    private void garantirBackupToken() {
+        String token = prefs.getBackupToken();
+        if (token == null || token.isEmpty()) {
+            token = BackupToken.gerar();
+            prefs.setBackupToken(token);
+        }
+        TextView textToken = findViewById(R.id.textBackupToken);
+        if (textToken != null) {
+            textToken.setText(getString(R.string.config_backup_token, token));
+        }
+    }
+
+    private void copiarBackupToken() {
+        String token = prefs.getBackupToken();
+        if (token == null || token.isEmpty()) return;
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clipboard == null) return;
+        clipboard.setPrimaryClip(ClipData.newPlainText("token-backup", token));
+        Toast.makeText(this, R.string.config_backup_token_copiado, Toast.LENGTH_LONG).show();
     }
 
     private void verificarConexaoUsb() {

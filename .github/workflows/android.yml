@@ -3,7 +3,7 @@ name: App Android
 # Esteira do app Android: análise, testes, APK debug em toda mudança,
 # APK/AAB assinados por etiqueta e rascunho de release.
 #
-# Etiquetas de release: android-v1.2 (precisa bater com versionName no build.gradle).
+# Etiquetas de release: android-v1.7 (precisa bater com versionName no build.gradle).
 # Segredos necessários só para assinar:
 #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
 #   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
@@ -65,7 +65,7 @@ jobs:
             exit 1
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platform-tools" "platforms;android-33" "build-tools;33.0.1" "build-tools;33.0.2"
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Guardar cache do Gradle
         uses: actions/cache@v4

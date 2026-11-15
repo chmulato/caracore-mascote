@@ -60,7 +60,7 @@ if !ERRORLEVEL! equ 0 set "PERM=1"
 del "!DUMP!" 2>nul
 if "!PERM!"=="0" (
     echo [FALHA] Permissao SEND_SMS: negada ou ainda nao concedida.
-    echo            Abra o app no celular uma vez e toque em Permitir quando pedir Enviar e receber SMS.
+    echo            Abra o app no celular uma vez e toque em Permitir quando pedir Enviar SMS.
 ) else (
     echo [OK] Permissao SEND_SMS: concedida
 )

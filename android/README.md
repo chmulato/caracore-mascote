@@ -4,20 +4,21 @@ Este diretório guarda o aplicativo que roda no celular Android e dispara os SMS
 pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
 
-> O código deste diretório é o da **1.6 (código 7), publicada** em 13/11/2026 na
+> **O que está publicado hoje é a 1.6 (código 7)**, de 13/11/2026, na
 > [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
-> Ela mantém o envelope cifrado, o filtro do SMS de licença pelo número oficial e
-> a trava do provedor de licença do 1.5, e acrescenta o ícone e o skin do Gaspar,
-> o painel da senha do Wi‑Fi da loja e a confirmação de operações do PDV no
-> celular. O **1.5**, também publicado, continua disponível; o **1.4** não tem a
-> trava do provedor. O Gaspar **1.7.1** ou mais novo usa o 1.6; o aplicativo
-> **1.2** só atende o Gaspar **1.7.0**.
+> Ela mantém o envelope cifrado, a trava do provedor de licença do 1.5 e
+> acrescenta o ícone e o skin do Gaspar, o painel da senha do Wi‑Fi da loja e a
+> confirmação de operações do PDV no celular. O **1.5**, também publicado,
+> continua disponível; o **1.4** não tem a trava do provedor. O Gaspar **1.7.1**
+> ou mais novo usa o 1.6; o aplicativo **1.2** só atende o Gaspar **1.7.0**.
 >
-> A 1.6 foi verificada por build, 21 testes unitários, lint e em execução num
-> emulador Android 13 (painel, Wi‑Fi com PIN e QR, confirmação pelo Pedido de
-> teste), inclusive instalada por cima do 1.5 publicado. Ainda não foi
-> exercitada em celular físico (SMS com chip, biometria e tela bloqueada), e o
-> Gaspar/PDV ainda não envia pedidos de confirmação.
+> **O código deste diretório já é o da 1.7 (código 8), preparada em 15/11/2026 e
+> ainda não publicada.** Ela reduz o que faz os verificadores de segurança
+> desconfiarem do app: deixa de ler SMS (a licença é digitada na tela ou vem no
+> QR de configuração), deixa de pedir isenção da economia de bateria, exige um
+> token do PDV para aceitar aviso de backup, mostra a confirmação de operações
+> só depois que o dono toca na notificação e passa a compilar para o Android 15.
+> Enquanto a 1.7 não for publicada, instale a **1.6**.
 
 ## Para que serve
 
@@ -39,17 +40,24 @@ janela **Celular / SMS** do Gaspar.
 ## Como preparar o celular
 
 1. Compile e instale o APK no aparelho (Android 7.0 ou superior).
-2. Abra o aplicativo e conceda as permissões de SMS.
-3. Desative a otimização de bateria para o app, para o serviço não ser encerrado.
-4. Mantenha o celular e o computador na mesma rede Wi-Fi.
-5. No Gaspar, abra a janela **Celular / SMS**, clique em **Parear celular** e leia o
+2. Abra o aplicativo e conceda a permissão de **Enviar SMS** e, no Android 13
+   ou superior, a de **notificações** (é por ela que o pedido de confirmação
+   aparece).
+3. Mantenha o celular e o computador na mesma rede Wi-Fi.
+4. No Gaspar, abra a janela **Celular / SMS**, clique em **Parear celular** e leia o
    código com o aplicativo.
+5. Se a licença não vier no QR, digite a chave na tela de configuração do app.
+
+A 1.7 **não pede** isenção da economia de bateria. Deixar o app como "Sem
+restrições" nas configurações do aparelho continua recomendado para o serviço
+não ser encerrado em segundo plano, mas a escolha é do dono, nas configurações
+do Android.
 
 ## Como compilar
 
-O projeto usa Android Gradle Plugin 7.4.2, compileSdk 33 e JDK 11 ou superior.
-As instruções detalhadas de ambiente, assinatura e instalação estão em
-[README-PDV-SMS.md](README-PDV-SMS.md). Os atalhos:
+O projeto usa Android Gradle Plugin 8.7.3, Gradle 8.9, compileSdk/targetSdk 35 e
+exige JDK 17 ou superior. As instruções detalhadas de ambiente, assinatura e
+instalação estão em [README-PDV-SMS.md](README-PDV-SMS.md). Os atalhos:
 
 ```bat
 build.bat                :: gera o APK de depuração
@@ -75,6 +83,9 @@ verificar-keystore.bat   :: confere a senha do keystore
   da própria máquina e aplica limites de volume.
 - O app não aceita acionamento por outros aplicativos e limita o envio a 300 SMS
   por dia no próprio aparelho.
+- A partir da 1.7, o app **não lê SMS**: a licença Premium é digitada na tela ou
+  vem no QR de configuração. O aviso de backup só é aceito quando traz o token
+  gerado no próprio painel do celular (ver [README-PDV-SMS.md](README-PDV-SMS.md)).
 - No código deste repositório, o Gaspar não guarda o número nem o texto: a
   auditoria e o histórico registram só metadados. O Gaspar **1.7.1** publicado
   já funciona assim. O **1.7.0** ainda grava o número completo e o texto no
@@ -86,12 +97,16 @@ verificar-keystore.bat   :: confere a senha do keystore
 
 - O "entregue" depende da operadora devolver o recibo; quando ela não devolve,
   o pedido fica em "enviado", que já confirma que o SMS saiu do celular.
-- A licença recebida por SMS confere formato e mês, sem assinatura digital.
-- O `targetSdk` do projeto é 27; versões novas do Android podem encerrar o
-  serviço em segundo plano e exigir reabrir o aplicativo.
+- A licença digitada confere formato e mês, sem assinatura digital.
+- A confirmação de operações aparece como notificação normal: o celular precisa
+  estar desbloqueado e o dono precisa tocar na notificação para abrir a tela.
+  Não há mais tela cheia sobre a tela de bloqueio.
+- O aviso de backup enviado pelo PDV só é aceito quando é endereçado ao app
+  (`-p br.com.caracore.pdv.sms`) e traz o token mostrado no painel; sem isso o
+  Android bloqueia o aviso ou o app o recusa. PDVs que ainda não enviam o token
+  têm o aviso recusado até serem atualizados.
 - O pareamento usa HTTP na rede local para o diagnóstico inicial; não há TLS.
 - O SMS enviado fica na caixa **Enviadas** do aplicativo de mensagens, como
   qualquer SMS; o Gaspar não controla essa cópia.
-- A 1.6 (ícone/skin, painel Wi‑Fi e confirmação) foi exercitada em emulador
-  Android 13, mas ainda não em celular físico; o lado do computador da
-  confirmação ainda não existe.
+- A 1.6 e a 1.7 foram exercitadas em emulador Android, mas ainda não em celular
+  físico; o lado do computador da confirmação ainda não existe.

@@ -22,12 +22,11 @@ import java.nio.charset.StandardCharsets;
 public final class SetupDiagnosticHelper {
 
     /**
-     * Verifica se as permissões de SMS estão concedidas.
+     * Verifica se a permissão de envio de SMS está concedida.
      */
     public static boolean checkSmsPermissions(Context context) {
         if (Build.VERSION.SDK_INT < 23) return true;
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
-                && ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED;
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED;
     }
 
     /**

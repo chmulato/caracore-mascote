@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:colorPrimary">@color/brand_primary</item>
         <item name="android:colorPrimaryDark">@color/brand_primary_dark</item>
@@ -7,6 +7,8 @@
         <item name="android:windowBackground">@color/app_background</item>
         <item name="android:statusBarColor">@color/brand_primary_dark</item>
         <item name="android:navigationBarColor">@color/brand_primary_dark</item>
+        <!-- Mantém as telas atrás das barras do sistema como antes do alvo 35. -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
         <item name="android:colorControlActivated">@color/brand_primary</item>
     </style>
 

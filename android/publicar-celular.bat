@@ -204,7 +204,7 @@ if !INSTALL_ERR! neq 0 (
     exit /b 1
 )
 
-call :log "[OK] pdv-sms-enviar instalado. Aceite a permissao SMS na primeira execucao."
+call :log "[OK] pdv-sms-enviar instalado. Aceite as permissoes na primeira execucao (SMS e, no Android 13+, notificacoes)."
 call :log "=== Fim (OK) ==="
 exit /b 0
 
