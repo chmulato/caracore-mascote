@@ -320,7 +320,7 @@ O BlackBox grava um bloco delimitado no arquivo `hosts`:
 # BLOCK TELEMETRIA - FIM
 ```
 
-- 34 domínios de telemetria (Microsoft, VS Code/Cursor, Azure e Application Insights).
+- 29 domínios de telemetria (Microsoft e Application Insights). Login, marketplace de extensões e os sistemas do PDV ficam de fora.
 - Aplicação idempotente: reaplicar não duplica o bloco.
 - Remoção restaura o conteúdo original e preserva o estilo de quebra de linha.
 - Atualização do cache DNS por `ipconfig`, `resolvectl`, `systemd-resolve` ou `nscd`, conforme disponível.
@@ -349,7 +349,7 @@ O Gaspar não abre conexão com o Mercado Pago (`api.mercadopago.com`) nem com o
 
 O BlackBox altera somente o arquivo `hosts`, com domínios exatos de telemetria da Microsoft. Nenhum endereço de pagamento ou nota está na lista, e não há regra de proxy, DNS ou firewall. O teste `tests/test_isolamento.py` falha se um domínio protegido aparecer na lista de bloqueio ou no código do pacote.
 
-Atenção: o bloqueio inclui domínios de login e marketplace da Microsoft (`login.microsoftonline.com`, `vscode.dev`, `marketplace.visualstudio.com`). Isso pode impedir autenticação ou instalação de extensões enquanto o bloqueio estiver ativo. O guia completo, com configurações de telemetria do VS Code/Cursor, extensões e firewall, está em [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html).
+A lista exclui de propósito os endereços de login e de marketplace (`login.microsoftonline.com`, `vscode.dev`, `marketplace.visualstudio.com`): o bloqueio não impede autenticação nem instalação de extensões. O guia completo, com configurações de telemetria do VS Code/Cursor, extensões e firewall, está em [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html).
 
 ## Ponte local de SMS
 
@@ -365,7 +365,7 @@ Nada sai para a internet: a API escuta na rede local, o PDV pode chamar por `127
 
 ### Janela Celular / SMS
 
-O botão **Celular / SMS** abre uma janela separada (o painel principal não foi alterado). Ela mostra o estado do celular, a caixa **Ponte ativa**, **Procurar celular**, **Parear celular**, envio de teste, endereço/token da API e os últimos envios. A ponte só sobe quando **Ponte ativa** está marcada e o app é iniciado; no teste de fumaça ela fica desligada para não abrir porta nem disparar aviso do firewall.
+O botão **Celular / SMS** abre uma janela separada (o painel principal não foi alterado). Ela mostra o estado do celular, a caixa **Ponte ativa** (desmarcada por padrão), **Procurar celular**, **Parear celular**, envio de teste, endereço/token da API e os últimos envios. A ponte só sobe quando **Ponte ativa** está marcada e o app é iniciado; no teste de fumaça ela fica desligada para não abrir porta nem disparar aviso do firewall.
 
 ### Pareamento
 

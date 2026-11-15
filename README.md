@@ -96,13 +96,15 @@ isso é esperado em programas distribuídos diretamente pela Cara Core.
 
 ## O que é o Gaspar
 
-O Gaspar é um companheiro de tela. Ele fica flutuando nos cantos, dá pequenas
-voltas de vez em quando e, em paralelo, simula uma presença ativa para que o
-Teams e o Slack não mostrem você como ausente.
+O Gaspar é um companheiro de tela. Ele fica flutuando nos cantos e dá pequenas
+voltas de vez em quando. A simulação de presença — a que evita que o Teams e o
+Slack mostrem você como ausente — vem **desligada**: você liga no painel,
+escolhendo o que ela deve fazer.
 
-O mascote é a parte visível. Atrás dele funciona a **ponte de SMS** que atende
-o PDV. Você pode **tirar o mascote da tela** a qualquer momento sem desligar a
-ponte nem a simulação.
+O mascote é a parte visível. Atrás dele fica a **ponte de SMS** que atende o
+PDV, também desligada até você marcar **Ponte ativa** e parear o celular. Você
+pode **tirar o mascote da tela** a qualquer momento sem desligar o que estiver
+ligado.
 
 O aplicativo também inclui o **Gaspar BlackBox**, uma ferramenta opcional para
 bloquear domínios de telemetria no arquivo `hosts` do sistema.
@@ -111,15 +113,16 @@ bloquear domínios de telemetria no arquivo `hosts` do sistema.
 
 - **Dá vida à tela:** o mascote flutua e se movimenta suavemente entre os
   cantos.
-- **Mantém seu status ativo:** envia uma tecla neutra (F15 por padrão) e um
-  pequeno toque de atividade para Teams e Slack.
+- **Mantém seu status ativo, quando você ativa:** envia uma tecla neutra (F15 é
+  a recomendada) e, se você marcar, um pequeno toque de atividade para Teams e
+  Slack.
 - **Registra o que aconteceu:** cada ciclo fica em `cycle_log.txt`, na pasta de
   dados do usuário.
 - **Respeita sua ausência:** só age depois de 60 segundos sem mouse ou teclado.
 - **Bloqueia telemetria (opcional):** o BlackBox aplica e remove um bloco de
   domínios no arquivo `hosts`, de forma reversível.
-- **Envia SMS pelo celular:** o PDV pede, o Gaspar entrega ao aplicativo
-  Android e o celular dispara a mensagem.
+- **Envia SMS pelo celular, quando você liga a ponte:** o PDV pede, o Gaspar
+  entrega ao aplicativo Android e o celular dispara a mensagem.
 
 ## O que ele não faz
 
@@ -168,7 +171,8 @@ Para usar, você precisa de três coisas:
 3. **Celular e computador na mesma Wi-Fi**, com o Gaspar aberto.
 
 Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
-**Parear celular** e leia o QR com o aplicativo do celular.
+**Parear celular** e leia o QR com o aplicativo do celular. A ponte começa
+desligada: a porta do computador só abre depois que você marca **Ponte ativa**.
 
 > A ponte de SMS está no Gaspar **1.7.4** e o envio exige o aplicativo Android
 > **1.7**, já publicado. Instaladores 1.6.0 não têm a ponte; atualize os dois
@@ -186,12 +190,12 @@ O painel é rolável e se ajusta à altura da tela.
 
 | Controle | O que faz |
 | --- | --- |
-| **Ativar** / **Parar** | Começa ou interrompe os ciclos da simulação. |
-| **Iniciar simulação ao abrir** | Começa os ciclos automaticamente quando o app abre. |
-| **Movimentar o mouse** | Liga ou desliga o deslocamento suave do cursor. |
+| **Ativar** / **Parar** | Começa ou interrompe os ciclos da simulação. A simulação começa parada; **Ativar** só funciona depois que você escolhe ao menos uma ação (mouse, tecla ou Teams/Slack). |
+| **Iniciar simulação ao abrir** | Vem desligado. Começa os ciclos automaticamente quando o app abre. |
+| **Movimentar o mouse** | Liga ou desliga o deslocamento suave do cursor. Vem desligado. |
 | **Sinal sonoro** | Toca um som ao final do ciclo. Vem desligado. |
 | **Gaspar flutuante** | Mostra ou esconde o mascote. |
-| **Manter Teams/Slack ativo** | Além da tecla, envia um pequeno toque de atividade. |
+| **Manter Teams/Slack ativo** | Além da tecla, envia um pequeno toque de atividade. Vem desligado. |
 | **Iniciar com o sistema** | Abre o Gaspar junto com o Windows ou com a sessão Linux, já minimizado. |
 
 ### Discrição
@@ -201,7 +205,7 @@ O painel é rolável e se ajusta à altura da tela.
 | **Agir somente quando eu estiver ausente** | Recomendado. Espera 60 segundos sem mouse ou teclado antes de executar um ciclo. |
 | **Pausar em tela cheia** | Esconde o mascote e suspende os ciclos em vídeos, jogos e apresentações. |
 | **Intervalo** | Tempo entre um ciclo e outro. Vai de 10 segundos a 1 hora. |
-| **Tecla** | F15 (recomendada), Shift, Espaço ou Nenhuma. |
+| **Tecla** | Nenhuma (padrão), F15 (recomendada), Shift ou Espaço. Escolha uma tecla ou o mouse junto com **Ativar**. |
 | **Opacidade do Gaspar** | De 50% a 100%. O padrão 82% dá o efeito translúcido; a faixa recomendada é 75% a 85%. |
 
 ### Botões
@@ -209,7 +213,7 @@ O painel é rolável e se ajusta à altura da tela.
 | Botão | O que faz |
 | --- | --- |
 | **Ocultar** | Esconde o painel e deixa o app na bandeja. |
-| **Tirar o Gaspar da tela** | Remove o mascote da tela. A simulação e a ponte de SMS continuam funcionando. O botão vira **Trazer o Gaspar de volta**. |
+| **Tirar o Gaspar da tela** | Remove o mascote da tela. O que estiver ligado continua funcionando. O botão vira **Trazer o Gaspar de volta**. |
 | **Celular / SMS** | Abre a ponte de SMS: pareamento, teste e acompanhamento. |
 | **BlackBox** | Abre a ferramenta opcional de bloqueio de telemetria. |
 | **Abrir logs** | Abre os registros do Gaspar (Eventos e Sistema), com atalho para a pasta de dados. |
@@ -273,7 +277,7 @@ param enquanto a tela cheia estiver ativa.
 
 **Como faço para ele sumir da tela?**
 Clique em **Tirar o Gaspar da tela**. O mascote some, mas o app continua na
-bandeja e a ponte de SMS segue funcionando. Para voltar, clique em **Trazer o
+bandeja e o que estiver ligado continua funcionando. Para voltar, clique em **Trazer o
 Gaspar de volta**. Você também pode desmarcar **Gaspar flutuante** ou escolher
 **Sair** na bandeja para encerrar o app.
 
@@ -293,10 +297,10 @@ Para usar o mascote e a simulação, não. Somente o **BlackBox** pede elevaçã
 porque altera o arquivo `hosts` do sistema.
 
 **O que é o BlackBox?**
-É uma ferramenta opcional que bloqueia domínios de telemetria da Microsoft, do
-VS Code/Cursor, do Azure e do Application Insights. O bloqueio é reversível, mas
-pode impedir login na Microsoft e instalação de extensões enquanto estiver
-ativo. Leia o guia completo em [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html).
+É uma ferramenta opcional que bloqueia domínios de telemetria da Microsoft e do
+Application Insights. O bloqueio é reversível e fica restrito a esses destinos:
+não inclui login, marketplace de extensões nem os sistemas do PDV. Leia o guia
+completo em [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html).
 
 **Funciona no Linux?**
 Sim, em sessões X11 ou XWayland. Em Wayland puro, o recorte do mascote e o

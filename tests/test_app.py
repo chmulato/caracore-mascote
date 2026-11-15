@@ -267,8 +267,10 @@ class ConstrucaoTests(PainelBase):
     def test_painel_monta_com_os_valores_salvos(self):
         self.assertIn("Gaspar", self.root.title())
         self.assertEqual(self.app.interval_var.get(), "300")
-        self.assertEqual(self.app.key_var.get(), "F15")
-        self.assertTrue(self.app.var_mouse.get())
+        self.assertEqual(self.app.key_var.get(), "Nenhuma")
+        self.assertFalse(self.app.var_mouse.get())
+        self.assertFalse(self.app.var_keep.get())
+        self.assertFalse(self.app.var_auto.get())
         self.assertTrue(self.app.var_idle.get())
         self.assertTrue(self.app.var_fullscreen.get())
         self.assertFalse(self.app.var_startup.get())
@@ -430,6 +432,7 @@ class SimulacaoTests(PainelBase):
         super().setUp()
         self.engine = FakeEngine()
         self.app.engine = self.engine
+        self.app.settings.press_key = "f15"
 
     def test_ativar_e_desativar(self):
         self.engine.remaining = 42

@@ -28,12 +28,12 @@ class Settings:
     sound: bool = False
     overlay: bool = True
     opacity: int = 82
-    simulate_mouse: bool = True
-    press_key: str = "f15"
-    keep_teams: bool = True
+    simulate_mouse: bool = False
+    press_key: str = "none"
+    keep_teams: bool = False
     system_telemetry: bool = False
     logging: bool = True
-    auto_start: bool = True
+    auto_start: bool = False
     only_when_idle: bool = True
     idle_seconds: int = 60
     pause_fullscreen: bool = True
@@ -74,7 +74,7 @@ def load_settings(path: Path | None = None) -> Settings:
             except (TypeError, ValueError):
                 settings.opacity = 82
         elif key == "press_key":
-            settings.press_key = value if value in KEY_CHOICES else "f15"
+            settings.press_key = value if value in KEY_CHOICES else "none"
         elif isinstance(getattr(settings, key), bool):
             setattr(settings, key, bool(value))
         else:
