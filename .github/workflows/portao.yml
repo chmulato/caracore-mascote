@@ -1,0 +1,60 @@
+name: Portao
+
+# Checagem obrigatoria da master. Roda em todo pull request, sem filtro de
+# caminho, para que a regra de protecao nunca fique esperando um check que
+# nao foi disparado. Cobre chave privada no versionado e os testes unitarios;
+# o empacotamento continua nas esteiras por caminho (gaspar.yml, android.yml).
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portao-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  portao:
+    name: Portao
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Recusar chave privada no conteudo rastreado
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -I -n -E -- '-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----'; then
+            echo "::error::Chave privada encontrada no repositorio. Remova antes de mesclar."
+            exit 1
+          fi
+
+      - name: Preparar Python
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3 python3-venv python3-tk \
+            xvfb libx11-6 libxext6 libxtst6 libxss1
+          python3 -m venv .venv --system-site-packages
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python -c "import tkinter, PyInstaller; print('Python pronto')"
+
+      - name: Testes unitarios
+        shell: bash
+        run: |
+          . .venv/bin/activate
+          xvfb-run -a -s "-screen 0 1280x800x24" \
+            python -m coverage run --source=gaspar -m unittest discover -s tests -p "test_*.py"
+          python -m coverage report --fail-under=70
