@@ -4,21 +4,17 @@ Este diretório guarda o aplicativo que roda no celular Android e dispara os SMS
 pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
 [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
 
-> **O que está publicado hoje é a 1.6 (código 7)**, de 13/11/2026, na
-> [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
-> Ela mantém o envelope cifrado, a trava do provedor de licença do 1.5 e
-> acrescenta o ícone e o skin do Gaspar, o painel da senha do Wi‑Fi da loja e a
-> confirmação de operações do PDV no celular. O **1.5**, também publicado,
-> continua disponível; o **1.4** não tem a trava do provedor. O Gaspar **1.7.1**
-> ou mais novo usa o 1.6; o aplicativo **1.2** só atende o Gaspar **1.7.0**.
->
-> **O código deste diretório já é o da 1.7 (código 8), preparada em 15/11/2026 e
-> ainda não publicada.** Ela reduz o que faz os verificadores de segurança
-> desconfiarem do app: deixa de ler SMS (a licença é digitada na tela ou vem no
-> QR de configuração), deixa de pedir isenção da economia de bateria, exige um
-> token do PDV para aceitar aviso de backup, mostra a confirmação de operações
-> só depois que o dono toca na notificação e passa a compilar para o Android 15.
-> Enquanto a 1.7 não for publicada, instale a **1.6**.
+> **O que está publicado hoje é a 1.7 (código 8)**, de 15/11/2026, na
+> [Release Android 1.7](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.7).
+> Ela mantém o envelope cifrado, a trava do provedor de licença, o ícone e o skin
+> do Gaspar, o painel da senha do Wi‑Fi da loja e a confirmação de operações do
+> PDV no celular. Ao mesmo tempo, reduz o que faz os verificadores de segurança
+> desconfiarem do app: a licença é digitada na tela (o app não lê SMS), não pede
+> isenção da economia de bateria, exige um token do PDV para aceitar aviso de
+> backup, mostra a confirmação de operações só depois que o dono toca na
+> notificação e compila para o Android 15 (alvo 35). A **1.6** e a **1.5**
+> continuam disponíveis; o **1.4** não tem a trava do provedor. O Gaspar **1.7.1**
+> ou mais novo usa a 1.7; o aplicativo **1.2** só atende o Gaspar **1.7.0**.
 
 ## Para que serve
 
