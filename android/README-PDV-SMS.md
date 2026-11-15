@@ -4,23 +4,23 @@ Aplicativo Android que serve de **celular de envio** para o PDV, por meio da
 ponte local do Gaspar. O app não aceita acionamento por outros aplicativos: ele
 fica ouvindo o Gaspar na rede Wi-Fi (`GatewayListenerService`), recebe o pedido
 **cifrado de ponta a ponta**, abre com a chave que só ele tem, dispara o SMS pelo
-chip e devolve o comprovante. Também recebe SMS de ativação de licença Premium
-(CC-LICENSE ou CARACORE-KEY) e expõe ao PDV, via ContentProvider, o HardwareID e
-o estado da licença.
+chip e devolve o comprovante. A licença Premium é digitada na tela de
+configuração ou aplicada pelo QR de pareamento — o app **não lê SMS** desde a
+1.7. Ele expõe ao PDV, via ContentProvider, o HardwareID e o estado da licença.
 
-> Este diretório guarda o código do **1.6 (código 7), publicado** em 13/11/2026
-> na [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
-> Ele mantém o envelope de ponta a ponta, o filtro do SMS de licença pelo número
-> oficial e a trava do provedor de licença do 1.5, e acrescenta o ícone/skin do
-> Gaspar, o painel da senha do Wi‑Fi da loja e a confirmação de operações do PDV
-> no celular. O **1.5** continua disponível na
+> **Publicado hoje:** o **1.6 (código 7)**, de 13/11/2026, na
+> [Release Android 1.6](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.6).
+> O **1.5** continua disponível na
 > [Release Android 1.5](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.5).
-> O gate local do 1.6 está verde (build, 21 testes unitários e lint) e as telas
-> novas foram exercitadas em emulador Android 13 (painel, Wi‑Fi com PIN e QR,
-> confirmação pelo Pedido de teste), com o APK assinado instalado por cima do
-> 1.5; falta o teste em celular físico (SMS com chip, biometria e tela
-> bloqueada). O computador (Gaspar/PDV) ainda não envia pedido de confirmação; o
-> fluxo local se testa pelo botão **Pedido de teste**.
+>
+> **Preparada e ainda não publicada:** a **1.7 (código 8)**, de 15/11/2026.
+> Ela retira a leitura de SMS (licença digitada ou pelo QR), retira o pedido de
+> isenção da economia de bateria, exige token do PDV no aviso de backup, mostra
+> a confirmação só depois do toque na notificação e compila para o Android 15
+> (targetSdk/compileSdk 35, AGP 8.7.3, Gradle 8.9, JDK 17). Gate local verde:
+> build, 27 testes unitários (10 de confirmação, 3 de QR de Wi‑Fi, 8 da licença
+> e 6 do token de backup) e lint sem erros. A prova em emulador está registrada
+> em [STATUS_ATUAL.md](STATUS_ATUAL.md); falta o teste em celular físico.
 
 O envio por ADB (`am start -e number -e body`) foi **encerrado**: a activity de
 envio não é mais exportada e exige permissão interna de assinatura. O teste
@@ -32,11 +32,11 @@ manual agora é feito pela janela **Celular / SMS** do Gaspar.
 
 | Item | Descrição |
 |------|-----------|
-| JDK 11 ou superior | Android Gradle Plugin 7.4.2 exige JDK 11+. O config.bat detecta JDK 11, 17 ou 21. |
-| Android SDK | ANDROID_HOME definido ou SDK em %LOCALAPPDATA%\Android\Sdk. Inclui platform-tools (adb) e, para build, platforms;android-33 e build-tools. |
-| Celular | Android 7.0 (API 24) ou superior, chip/SIM, depuração USB ativada, cabo USB conectado ao PC. |
+| JDK 17 ou superior | Android Gradle Plugin 8.7 exige JDK 17+ (não aceita mais JDK 8/11). O config.bat procura JDK 21 e 17. |
+| Android SDK | ANDROID_HOME definido ou SDK em %LOCALAPPDATA%\Android\Sdk. Inclui platform-tools (adb) e, para build, platforms;android-35 e build-tools 35.0.0. |
+| Celular | Android 7.0 (API 24) ou superior, chip/SIM, depuração USB ativada, cabo USB conectado ao PC. Android 13+ pede também a permissão de notificações. |
 
-Detalhes de instalação: use os atalhos `config.bat`, `build.bat` e `publicar-celular.bat` deste diretório, com JDK 11+ e Android SDK instalados.
+Detalhes de instalação: use os atalhos `config.bat`, `build.bat` e `publicar-celular.bat` deste diretório, com JDK 17+ e Android SDK instalados.
 
 ---
 
@@ -44,7 +44,7 @@ Detalhes de instalação: use os atalhos `config.bat`, `build.bat` e `publicar-c
 
 ### Java (JAVA_HOME)
 
-O `config.bat` detecta JDK 11+ automaticamente (C:\Program Files\Java\jdk-17, jdk-21, jdk-11; Eclipse Adoptium; Microsoft; Amazon Corretto). Se nenhum for encontrado, usa JDK 8 e exibe aviso: o AGP 7.4.2 exige JDK 11+ e o build pode falhar.
+O `config.bat` detecta JDK 17+ automaticamente (C:\Program Files\Java\jdk-21 e jdk-17; Eclipse Adoptium; Amazon Corretto). Se nenhum for encontrado, exibe aviso: o AGP 8.7 exige JDK 17+ e o build vai falhar. JDK 8 e 11 não servem mais.
 
 Para fixar um JDK, edite `config.bat` e defina, por exemplo:
 
@@ -58,10 +58,10 @@ Ou copie `config.bat.example` para `config.bat` e ajuste. O config.bat é usado 
 
 Defina ANDROID_HOME apontando para a raiz do SDK. Se não estiver definido, build.bat e publicar-celular.bat usam %LOCALAPPDATA%\Android\Sdk se existir.
 
-Conteúdo mínimo do SDK (via sdkmanager): platform-tools, platforms;android-33, build-tools (ex.: 33.0.2). Exemplo:
+Conteúdo mínimo do SDK (via sdkmanager): platform-tools, platforms;android-35, build-tools;35.0.0. Exemplo:
 
 ```batch
-sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 ```
 
 Para instalar o SDK do zero: use `baixar-dependencias-android.bat` (requer Python 3.6+). Opções: --sdk-root=..., --accept-licenses, --install-cmdline-tools.
@@ -74,7 +74,7 @@ Se `gradle\wrapper\gradle-wrapper.jar` não existir, o build.bat chama automatic
 instalar-gradle-wrapper.bat
 ```
 
-O script usa Gradle em GRADLE_7_5 (ex.: D:\dev\caracore-pdv\tools\gradle-7.5) se existir bin\gradle.bat; caso contrário, baixa Gradle 7.5. Para outro caminho: defina GRADLE_7_5 antes de executar.
+O script usa Gradle em GRADLE_89 (ex.: D:\dev\caracore-pdv\tools\gradle-8.9) se existir bin\gradle.bat; caso contrário, baixa Gradle 8.9. Para outro caminho: defina GRADLE_89 antes de executar.
 
 ---
 
@@ -86,7 +86,7 @@ O script usa Gradle em GRADLE_7_5 (ex.: D:\dev\caracore-pdv\tools\gradle-7.5) se
 build.bat
 ```
 
-O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.6.apk` para scripts como publicar-celular.bat.
+O build usa o diretório `build\` no projeto. O APK fica em `build\outputs\apk\debug\pdv-sms-enviar-1.7.apk` para scripts como publicar-celular.bat.
 
 O script: aplica config.bat para JAVA_HOME; verifica ANDROID_HOME; chama instalar-gradle-wrapper.bat se o jar do wrapper não existir; executa gradlew --stop, gradlew assembleDebug --no-build-cache --max-workers=1 -Dorg.gradle.vfs.watch=false.
 
@@ -98,7 +98,7 @@ Exige `keystore.properties` com storeFile, storePassword, keyAlias e keyPassword
 build.bat release
 ```
 
-O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.6-release.apk`.
+O APK é gerado em `build\outputs\apk\release\pdv-sms-enviar-1.7-release.apk`.
 
 ### AAB para Play Store (bundle)
 
@@ -130,7 +130,7 @@ Ou para release:
 build.bat clean release
 ```
 
-O clean executa gradlew --stop, gradlew clean e remove `build\`. Se AccessDenied persistir: adicione a pasta do projeto às Exclusões do Defender (interface do Windows ou `Add-MpPreference -ExclusionPath "CAMINHO_DO_PROJETO"` em PowerShell como Administrador); ou execute `excluir-defender-e-build.ps1` como Administrador (adiciona a exclusão e executa `build.bat clean`).
+O clean executa gradlew --stop, gradlew clean e remove `build\`. Se AccessDenied persistir, feche o Android Studio e rode `build.bat clean` de novo. Como último recurso, o administrador da máquina pode liberar a pasta do projeto no painel do antivírus instalado — o projeto não traz nem executa nenhum script para isso.
 
 ---
 
@@ -228,8 +228,9 @@ pedido chega pela porta 49998, já cifrado pelo segredo do pareamento, no comand
 - `valor` em centavos, até R$ 100.000,00; `prazo` em segundos, de 30 a 900.
 - O celular recusa pedido repetido (`id` já visto), fora das regras ou com o
   switch desligado, e responde no ack com o motivo.
-- Aceito o pedido, o celular mostra a notificação de alta prioridade (tela cheia
-  com o aparelho bloqueado) ou abre a tela de confirmação.
+- Aceito o pedido, o celular mostra uma **notificação**; a tela de confirmação
+  abre quando o dono toca na notificação. Desde a 1.7 não há mais tela cheia
+  sobre a tela de bloqueio nem a permissão `USE_FULL_SCREEN_INTENT`.
 - **Aprovar** exige digital, rosto ou PIN/senha do celular. **Negar** pede uma
   confirmação simples. O prazo aparece em contagem regressiva; vencido, o pedido
   é registrado como expirado.
@@ -246,11 +247,62 @@ celular guarda as últimas 100 decisões.
 
 ---
 
+## Aviso de backup do PDV (1.7)
+
+O PDV avisa o celular quando o backup termina, por um broadcast do Android
+(`br.com.caracore.pdv.sms.BACKUP_UPDATE`). Desde a 1.7 esse broadcast é
+**protegido por token**: sem o token, o aviso é recusado.
+
+1. Abra o painel do app. O cartão **Backup do banco de dados** mostra o token do
+   aparelho (32 caracteres hexadecimais, criado na primeira abertura) e o botão
+   **Copiar token do backup**.
+2. O PDV precisa endereçar o broadcast ao app (**`-p`**) e incluir o token no
+   extra `token`, junto com `timestamp` e `status`:
+
+```batch
+adb shell am broadcast -p br.com.caracore.pdv.sms -a br.com.caracore.pdv.sms.BACKUP_UPDATE --es token <token> --es timestamp <YYYY_MM_DD_HH_MM_SS> --es status OK
+```
+
+O `-p` é obrigatório: a partir do Android 8, broadcast implícito para app em
+segundo plano é bloqueado pelo sistema ("Background execution not allowed") e o
+aviso nunca chega. Medido no emulador Android 13: sem `-p` o receptor não roda;
+com `-p` e token certo grava `last_backup_timestamp`/`last_backup_status`; com
+`-p` e token errado não grava nada.
+
+O app compara o token recebido com o guardado usando comparação de tempo
+constante. Token ausente ou errado gera a linha "Aviso de backup recusado:
+token ausente ou invalido." no log e nada é gravado; token certo grava a data,
+a hora e o status do último backup como antes.
+
+**Compatibilidade:** o PDV que ainda não envia o token continua funcionando com
+o app **1.6 publicado**; com a **1.7**, o aviso de backup desse PDV será
+recusado até o PDV ser atualizado para mandar `-p br.com.caracore.pdv.sms` e
+`--es token`. O código do PDV (projeto separado) fica em
+`AdbSmsProvider.sendBackupUpdateBroadcast`.
+
+---
+
 ## Licença Premium e exposição para o PDV
 
-Recepção de licença por SMS: o `SMSReceiver` escuta SMS com "CC-LICENSE:[CHAVE]" ou "CARACORE-KEY:[CHAVE]" no corpo e aplica a regra de `LicenseSms`. Com o número oficial gravado em `SmsPreferences` (campo "Número que envia a licença"), só SMS desse remetente são aceitos; **sem esse número, nenhum SMS de licença é aceito**. A chave é guardada e validada no formato CC-YYYYMM-{hex8} (YYYYMM deve ser maior ou igual ao mês atual).
+Licença Premium sem SMS (a partir da 1.7): o app **não lê SMS**. A chave
+(`CC-AAAAmm-{hex8}`) é aplicada de duas formas:
 
-Na tela de configuração: o status da licença aparece em vermelho ("Licença Gratuita / Inativa") ou em verde ("Licença Premium Ativa"), conforme `isLicencaValida()`. O botão "Verificar Conexão USB" consulta `adb_enabled` e indica se a depuração USB está ativa para o PDV.
+1. **Digitada no painel**: o cartão **Licença** tem o campo da chave e o botão
+   **Salvar chave**. O texto é normalizado por `LicenseSms.chaveDe`: aceita a
+   chave pura, o prefixo `CC-LICENSE:` / `CARACORE-KEY:` em qualquer caixa e
+   espaços em volta; o que não casar com `CC-\d{6}-[0-9a-fA-F]{8}` é recusado
+   com aviso e nada é gravado.
+2. **Pelo QR de configuração**: o QR gerado pelo Gaspar pode trazer a chave, que
+   é aplicada junto com IP, porta e segredo.
+
+A chave fica em `SmsPreferences` e `isLicencaValida()` exige mês atual ou
+futuro. O status aparece em vermelho ("Licença Gratuita / Inativa") ou em verde
+("Licença Premium Ativa") no painel. O botão "Verificar Conexão USB" consulta
+`adb_enabled` e indica se a depuração USB está ativa para o PDV.
+
+O app deixou de ter o campo "Número que envia a licença" e o receptor de SMS;
+quem atualiza do 1.6 para a 1.7 precisa digitar a chave uma vez (a chave que já
+estava salva continua valendo).
 
 Consulta protegida (a partir do 1.5, publicado): o ContentProvider `licenca` exige a permissão de assinatura `br.com.caracore.pdv.sms.permission.SMS_INTERNAL`. Só um aplicativo assinado com a mesma chave deste app lê `hardware_id` (ANDROID_ID), `chave`, `valida` (1 ou 0) e `mes_ano` (YYYYMM extraído da chave). O `adb shell content query` deixa de responder: o shell não tem essa permissão. O APK do 1.4 publicado na [Release Android 1.4](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.4) **não** tem essa trava: nele o provedor está exportado e sem permissão de leitura, medido no APK baixado da release.
 
@@ -260,13 +312,15 @@ O PDV 4.1.0 não consulta esse provedor — ele decide o plano Premium pela lice
 
 ## Permissão de SMS
 
-Na primeira abertura o app solicita SEND_SMS e RECEIVE_SMS. O app usa
-SEND_SMS para enviar e RECEIVE_SMS para receber a chave de licença; **não
-consulta a caixa de entrada** nem lê mensagens antigas, e por isso não pede
-READ_SMS. Toque em Permitir.
+Na primeira abertura o app solicita **SEND_SMS** e, no Android 13 ou superior,
+**POST_NOTIFICATIONS**. Desde a 1.7 ele **não pede RECEIVE_SMS nem READ_SMS**:
+não recebe nem consulta mensagens — a licença é digitada ou vem pelo QR. Toque
+em Permitir.
 
 O envio normal vem do Gaspar pela rede Wi-Fi, não de outro aplicativo. Não é
-preciso liberar nada além dessas permissões.
+preciso liberar nada além dessas permissões. A isenção da economia de bateria
+**não é mais solicitada**: se quiser, o dono ajusta o app para "Sem restrições"
+nas configurações do Android.
 
 ---
 
@@ -290,9 +344,13 @@ preciso liberar nada além dessas permissões.
   mostrada/copiada/convertida em QR depois da confirmação do dono, some da tela
   e da área de transferência sozinha, e o app recusa revelar em celular sem
   trava.
-- **Confirmação de operações (1.6)**: o pedido chega cifrado pelo segredo do
+- **Aviso de backup (1.7)**: o broadcast `BACKUP_UPDATE` só grava estado quando
+  traz o token de 32 caracteres gerado no painel; a comparação é de tempo
+  constante. É a única entrada exportada além do despertar por reinício.
+- **Confirmação de operações (1.6/1.7)**: o pedido chega cifrado pelo segredo do
   pareamento, com prazo curto, valor máximo e recusa de repetição; aprovar exige
-  digital, rosto ou PIN/senha do próprio celular, e a decisão volta cifrada.
+  digital, rosto ou PIN/senha do próprio celular, e a decisão volta cifrada. A
+  partir da 1.7 a tela só abre depois do toque na notificação.
 
 O termo completo, com o que é guardado e os limites, está em
 [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
@@ -353,15 +411,14 @@ Para AAB (Play Store): `build.bat bundle` ou `build.bat aab`. Saída: `build\out
 ```
 android-sms-enviar/
   build.bat                     build APK debug, release ou AAB (Gradle); build em build\
-  config.bat                    JAVA_HOME; auto-detecta JDK 11+ ou fallback JDK 8
+  config.bat                    JAVA_HOME; procura JDK 17+ (AGP 8.7 não aceita JDK 8/11)
   config.bat.example            modelo para config.bat
   criar-keystore.bat            gera pdv-sms-release.keystore
   recriar-keystore.bat          backup do keystore e cria novo; só para app novo
   verificar-keystore.bat        valida senha do keystore com keytool -list
-  instalar-gradle-wrapper.bat   instala gradle-wrapper.jar (Gradle 7.5)
+  instalar-gradle-wrapper.bat   instala gradle-wrapper.jar (Gradle 8.9)
   publicar-celular.bat          instala APK via adb; valida dispositivo, API 24+
   verificar-app.bat             verifica: dispositivo, app instalado, permissão SEND_SMS
-  excluir-defender-e-build.ps1  adiciona pasta às exclusões do Defender e executa build.bat clean; executar como Admin
   baixar-dependencias-android.bat  chama script Python para baixar platform-tools, platforms, build-tools
   baixar-dependencias-android.py
   build.gradle                  build em build\ (pasta do projeto)
@@ -374,14 +431,14 @@ android-sms-enviar/
     AndroidManifest.xml         ConfigActivity (launcher), WifiActivity,
                                 ConfirmationActivity, ScanSetupActivity (QR),
                                 SendSmsActivity (interna), GatewayListenerService,
-                                SMSReceiver, SmsStatusReceiver, BootReceiver,
+                                SmsStatusReceiver, BootReceiver,
                                 BackupUpdateReceiver, LicencaContentProvider
     java/br/com/caracore/pdv/sms/
       PdvSmsApp.java, ConfigActivity.java, ScanSetupActivity.java
       GatewayListenerService.java, GatewayCrypto.java, E2ECrypto.java, E2EKeySender.java
       SmsReceiptSender.java, SmsStatusReceiver.java, SendSmsActivity.java
       SetupPayload.java, SetupDiagnosticHelper.java, SmsPreferences.java
-      SMSReceiver.java, BootReceiver.java, BackupUpdateReceiver.java
+      LicenseSms.java, BackupToken.java, BootReceiver.java, BackupUpdateReceiver.java
       LicencaContentProvider.java, PdvSmsLogger.java, ErrorReporter.java,
       AppExceptionHandler.java, excecoes (SmsSendException, SmsValidationException, etc.)
       WifiActivity.java, WifiCredentialStore.java, WifiQr.java, DeviceAuth.java
@@ -400,7 +457,7 @@ android-sms-enviar/
 
 | Erro | Causa ou solução |
 |------|------------------|
-| Java não encontrado / AGP exige JDK 11 | Instale JDK 11 ou 17 (ex.: Eclipse Adoptium). Ajuste config.bat com o caminho em JAVA_HOME. |
+| Java não encontrado / AGP exige JDK 17 | Instale JDK 17 ou 21 (ex.: Eclipse Adoptium). Ajuste config.bat com o caminho em JAVA_HOME. |
 | ANDROID_HOME não definido | Defina a variável para a raiz do Android SDK ou instale em %LOCALAPPDATA%\Android\Sdk. |
 | gradle-wrapper.jar não encontrado | Execute instalar-gradle-wrapper.bat. O build.bat tenta chamá-lo automaticamente. |
 | aapt2 / no repositories | Em settings.gradle deve haver dependencyResolutionManagement com repositories { google(); mavenCentral() }. |
@@ -409,7 +466,7 @@ android-sms-enviar/
 | adb: device offline | Desconecte e reconecte o cabo; aceite "Permitir depuração USB"; tente adb kill-server e adb start-server. |
 | device unauthorized | No celular, toque em Permitir em "Permitir depuração USB?". Se não surgir, desbloqueie a tela, reconecte ou revogue autorizações em Opções do desenvolvedor. |
 | INSTALL_FAILED_VERIFICATION_FAILURE | Desative Play Protect ou instale o APK manualmente (copiar para o aparelho e abrir o arquivo). |
-| AccessDeniedException em SendSmsActivity.dex | O build usa build\ no projeto. Rode build.bat clean e em seguida build.bat. Se persistir: adicione a pasta do projeto às Exclusões do Defender (interface ou Add-MpPreference -ExclusionPath "CAMINHO_PROJETO" em PowerShell como Admin), ou execute excluir-defender-e-build.ps1 como Administrador. |
+| AccessDeniedException em SendSmsActivity.dex | O build usa build\ no projeto. Rode build.bat clean e em seguida build.bat. Se persistir, feche o Android Studio; como último recurso, o administrador da máquina libera a pasta do projeto no painel do antivírus. |
 | APK vazio ou muito pequeno | Verifique ANDROID_HOME e se existem platforms e build-tools. Tente: gradlew clean assembleDebug --no-build-cache. |
 
 ---

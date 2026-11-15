@@ -18,9 +18,9 @@ public final class SmsPreferences {
     private static final String PREFS_NAME = "pdv_sms_prefs";
     private static final String KEY_ATIVO = "ativo";
     private static final String KEY_CHAVE_LICENCA = "chave_licenca";
-    private static final String KEY_NUMERO_OFICIAL_LICENCA = "numero_oficial_licenca";
     private static final String KEY_LAST_BACKUP_TIMESTAMP = "last_backup_timestamp";
     private static final String KEY_LAST_BACKUP_STATUS = "last_backup_status";
+    private static final String KEY_BACKUP_TOKEN = "backup_token";
     /** Chave compartilhada (Base64) para criptografia PDV ↔ APK — mesma do PDV (mobile.gateway.shared.secret). */
     private static final String KEY_GATEWAY_SHARED_SECRET = "gateway_shared_secret";
     /** URL base do PDV (ex.: http://192.168.1.10:8080) para setup/diagnóstico. */
@@ -67,7 +67,7 @@ public final class SmsPreferences {
         prefs.edit().putBoolean(KEY_CONFIRMACAO_ATIVA, ativa).apply();
     }
 
-    // --- Licença Premium (recepção via SMS CC-LICENSE:[CHAVE]) ---
+    // --- Licença Premium (chave digitada na tela ou recebida no QR de configuração) ---
 
     public String getChaveLicenca() {
         return prefs.getString(KEY_CHAVE_LICENCA, null);
@@ -75,19 +75,6 @@ public final class SmsPreferences {
 
     public void setChaveLicenca(String chave) {
         prefs.edit().putString(KEY_CHAVE_LICENCA, chave).apply();
-    }
-
-    /**
-     * Número oficial da Cara Core para filtrar SMS de licença.
-     * Vazio ou null = nenhum SMS de licença é aceito (a tela de configuração preenche).
-     */
-    public String getNumeroOficialLicenca() {
-        return prefs.getString(KEY_NUMERO_OFICIAL_LICENCA, null);
-    }
-
-    public void setNumeroOficialLicenca(String numero) {
-        String n = (numero != null && !numero.trim().isEmpty()) ? numero.trim() : null;
-        prefs.edit().putString(KEY_NUMERO_OFICIAL_LICENCA, n).apply();
     }
 
     /**
@@ -134,6 +121,15 @@ public final class SmsPreferences {
 
     public void setLastBackupStatus(String status) {
         prefs.edit().putString(KEY_LAST_BACKUP_STATUS, status != null ? status.trim() : null).apply();
+    }
+
+    /** Token que o PDV inclui no aviso de backup; sem ele o receptor recusa o aviso. */
+    public String getBackupToken() {
+        return prefs.getString(KEY_BACKUP_TOKEN, null);
+    }
+
+    public void setBackupToken(String token) {
+        prefs.edit().putString(KEY_BACKUP_TOKEN, token).apply();
     }
 
     public String getGatewaySharedSecret() {

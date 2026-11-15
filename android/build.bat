@@ -9,17 +9,17 @@ REM   build.bat clean   -> limpa build/ (evita AccessDenied em .dex)
 REM   build.bat clean release  -> clean + APK release
 REM   build.bat clean bundle   -> clean + AAB
 REM   Requer keystore.properties (storeFile, storePassword, keyAlias, keyPassword) para release/bundle.
-REM Requer: JDK 11+, Android SDK (ANDROID_HOME ou %LOCALAPPDATA%\Android\Sdk).
+REM Requer: JDK 17+, Android SDK (ANDROID_HOME ou %LOCALAPPDATA%\Android\Sdk, plataforma 35).
 REM Veja README-PDV-SMS.md para instalar as dependencias.
 REM ============================================================================
 
 cd /d "%~dp0"
 
-REM --- Configurar Java 8: config.bat ou padrao ---
-if exist "%~dp0config.bat" (call "%~dp0config.bat") else (set "JAVA_HOME=C:\Program Files\Java\jdk1.8.0_202")
+REM --- Configurar Java 17+: config.bat ou padrao ---
+if exist "%~dp0config.bat" (call "%~dp0config.bat") else (set "JAVA_HOME=C:\Program Files\Java\jdk-17")
 if not exist "%JAVA_HOME%\bin\java.exe" (
     echo [ERRO] Java nao encontrado em: %JAVA_HOME%
-    echo AGP 7.4.2 requer JDK 11+. Instale ex: Eclipse Adoptium JDK 11 ou 17 e edite config.bat.
+    echo AGP 8.7 requer JDK 17+. Instale ex: Eclipse Adoptium JDK 17 e edite config.bat.
     exit /b 1
 )
 set "PATH=%JAVA_HOME%\bin;%PATH%"
@@ -47,7 +47,7 @@ if not exist "gradle\wrapper\gradle-wrapper.jar" (
     call "%~dp0instalar-gradle-wrapper.bat"
     if %ERRORLEVEL% neq 0 (
         echo [ERRO] Falha ao instalar gradle-wrapper. Verifique a conexao.
-        echo Alternativa: gradle wrapper --gradle-version 7.5
+        echo Alternativa: gradle wrapper --gradle-version 8.9
         exit /b 1
     )
     if not exist "gradle\wrapper\gradle-wrapper.jar" (
@@ -124,12 +124,12 @@ if errorlevel 1 (
     echo/
     echo [ERRO] Build falhou. Verifique:
     echo   - ANDROID_HOME e platforms/build-tools - sdkmanager
-    echo   - JDK 11+ - AGP 7.4.2 exige Java 11. config.bat prioriza JDK 11+; instale Eclipse Adoptium JDK 17 se necessario.
-    echo   - Erro "compatible with Java 11" ou "Java 8": use JDK 11+ em config.bat.
+    echo   - JDK 17+ - AGP 8.7 exige Java 17. config.bat procura JDK 17/21; instale Eclipse Adoptium JDK 17 se necessario.
+    echo   - Erro "Unsupported class file major version" ou "Java 8": use JDK 17+ em config.bat.
     if "%MODE%"=="release" echo   - keystore.properties com storeFile, storePassword, keyAlias, keyPassword
     if "%MODE%"=="bundle" echo   - keystore.properties com storeFile, storePassword, keyAlias, keyPassword
-    echo   - AccessDenied em SendSmsActivity.dex: Execute como Admin: .\excluir-defender-e-build.ps1
-    echo     Ou adicione manualmente a pasta do projeto em Exclusoes do Defender: %CD%
+    echo   - AccessDenied em SendSmsActivity.dex: feche o Android Studio e rode build.bat clean.
+    echo     Se persistir, o administrador pode liberar a pasta %CD% no painel do antivirus.
     if exist "%APK%" del "%APK%" 2>nul
     exit /b 1
 )

@@ -12,7 +12,7 @@ import androidx.core.app.NotificationCompat;
 
 /**
  * Avisa o dono do celular que uma operação sensível espera decisão.
- * Toca a tela cheia quando o celular está bloqueado, como um alarme de chamada.
+ * A notificação é de alta prioridade e só abre a tela quando o dono toca nela.
  */
 public final class ConfirmationNotifier {
 
@@ -46,20 +46,12 @@ public final class ConfirmationNotifier {
                 .setContentTitle("Confirme: " + pedido.tituloTipo() + " " + pedido.valorFormatado())
                 .setContentText("Venda " + pedido.referencia + " — toque para decidir")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setAutoCancel(true)
                 .setContentIntent(pi)
                 .setOngoing(true);
 
-        if (Build.VERSION.SDK_INT >= 29) {
-            Intent telaCheia = new Intent(context, ConfirmationActivity.class);
-            telaCheia.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            telaCheia.putExtra(ConfirmationActivity.EXTRA_ID, pedido.id);
-            PendingIntent pfi = PendingIntent.getActivity(context, pedido.id.hashCode() + 1, telaCheia,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            b.setFullScreenIntent(pfi, true);
-        }
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.notify(pedido.id.hashCode(), b.build());
     }

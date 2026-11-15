@@ -1,5 +1,5 @@
 plugins {
-    id 'com.android.application' version '7.4.2'
+    id 'com.android.application' version '8.7.3'
 }
 
 // Build na pasta build/ do projeto. Basta adicionar a pasta do projeto nas exclusões do Defender.
@@ -16,15 +16,19 @@ def trimProp = { key -> (keystoreProperties[key] ?: '').toString().trim() }
 
 android {
     namespace 'br.com.caracore.pdv.sms'
-    compileSdk 33
+    compileSdk 35
 
     defaultConfig {
         applicationId 'br.com.caracore.pdv.sms'
         minSdk 24
-        targetSdk 27
-        versionCode 7
-        versionName '1.6'
+        targetSdk 35
+        versionCode 8
+        versionName '1.7'
         multiDexEnabled true
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     if (hasSigning) {
@@ -54,7 +58,6 @@ android {
 
     lint {
         abortOnError true
-        lintConfig file('lint.xml')
     }
 
     applicationVariants.all { variant ->
