@@ -38,26 +38,29 @@ permissions:
   contents: read
 
 concurrency:
-  group: gaspar-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+  group: gaspar-${{ github.ref_type }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   test:
-    name: Testes (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Testes (Linux)
+    runs-on: ubuntu-latest
     timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
+      - name: Guardar cache do pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Preparar Python (Linux)
-        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
@@ -71,56 +74,26 @@ jobs:
           pip install -r requirements-dev.txt
           python -c "import tkinter, PyInstaller; print('Python pronto')"
 
-      - name: Preparar Python (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-          cache: pip
-          cache-dependency-path: requirements-dev.txt
-
-      - name: Instalar dependências (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-          python -c "import tkinter, PyInstaller; print('Python pronto')"
-
       - name: Testes automáticos
         shell: bash
         run: |
-          if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi
-          # No Linux os testes do painel precisam de tela; o xvfb fornece uma.
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            xvfb-run -a -s "-screen 0 1280x800x24" \
-              python -m coverage run --source=gaspar -m unittest discover -s tests -p "test_*.py" -v
-          else
+          . .venv/bin/activate
+          xvfb-run -a -s "-screen 0 1280x800x24" \
             python -m coverage run --source=gaspar -m unittest discover -s tests -p "test_*.py" -v
-          fi
-          # Piso medido em 12/11/2026: 77% no Windows local, com o painel em 89%.
           python -m coverage report --fail-under=70
 
       - name: Teste de fumaça com tela virtual (Linux)
-        if: runner.os == 'Linux'
         shell: bash
         run: |
           . .venv/bin/activate
-          # Tela virtual sem gerenciador de janelas nao aplica "sempre no topo"
-          # nem empilhamento; o openbox reproduz o comportamento do X11 real.
           xvfb-run -a -s "-screen 0 1280x800x24" \
             bash -c 'openbox >/dev/null 2>&1 & sleep 1; python tests/smoke_test.py'
 
-      - name: Teste de fumaça (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        timeout-minutes: 10
-        run: python tests/smoke_test.py
-
   linux:
     name: Pacote Linux
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/gaspar-v')
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.GASPAR_RELEASE_LINUX_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 35
     steps:
       - name: Baixar o código
@@ -144,17 +117,28 @@ jobs:
 
       - name: Preparar Python e dependências
         shell: bash
+        env:
+          GASPAR_RUNNER_ENVIRONMENT: ${{ runner.environment }}
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            python3 python3-venv python3-tk dpkg-dev \
-            libx11-6 libxext6 libxtst6 libxss1
+          if [ "$GASPAR_RUNNER_ENVIRONMENT" = "github-hosted" ]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends \
+              python3 python3-venv python3-tk dpkg-dev xvfb openbox \
+              libx11-6 libxext6 libxtst6 libxss1
+          fi
           python3 -m venv .venv --system-site-packages
           . .venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           python -c "import tkinter, PyInstaller; print('Python pronto')"
+
+      - name: Teste de fumaça com tela virtual (Linux)
+        shell: bash
+        run: |
+          . .venv/bin/activate
+          xvfb-run -a -s "-screen 0 1280x800x24" \
+            bash -c 'openbox >/dev/null 2>&1 & sleep 1; python tests/smoke_test.py'
 
       - name: Baixar appimagetool
         shell: bash
@@ -190,9 +174,10 @@ jobs:
 
   windows:
     name: Pacote Windows
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/gaspar-v')
     needs: test
-    runs-on: windows-latest
-    timeout-minutes: 35
+    runs-on: ${{ fromJSON(vars.GASPAR_WINDOWS_RUNNER || '["self-hosted","Windows","X64"]') }}
+    timeout-minutes: 60
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
@@ -209,17 +194,36 @@ jobs:
       - name: Instalar dependências
         shell: bash
         run: |
+          python -m venv .venv
+          . .venv/Scripts/activate
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           python -c "import tkinter, PyInstaller; print('Python pronto')"
+
+      - name: Testes automáticos (Windows)
+        shell: bash
+        env:
+          GASPAR_HOME: ${{ runner.temp }}/gaspar-tests-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          . .venv/Scripts/activate
+          python -m coverage run --source=gaspar -m unittest discover -s tests -p "test_*.py" -v
+          python -m coverage report --fail-under=70
+
+      - name: Teste de fumaça (Windows)
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          . .venv/Scripts/activate
+          python tests/smoke_test.py
 
       - name: Conferir etiqueta x versão
         shell: bash
         run: |
           set -euo pipefail
+          code="$(python -c 'import gaspar; print(gaspar.__version__)')"
+          echo "APP_VERSION=$code" >> "$GITHUB_ENV"
           if [[ "${GITHUB_REF}" == refs/tags/gaspar-v* ]]; then
             tag="${GITHUB_REF_NAME#gaspar-v}"
-            code="$(python -c 'import gaspar; print(gaspar.__version__)')"
             echo "etiqueta=$tag código=$code"
             if [ "$tag" != "$code" ]; then
               echo "::error::A etiqueta $GITHUB_REF_NAME não confere com gaspar/__init__.py ($code)."
@@ -229,9 +233,11 @@ jobs:
 
       - name: Garantir Inno Setup
         shell: pwsh
+        env:
+          GASPAR_RUNNER_ENVIRONMENT: ${{ runner.environment }}
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) {
+          if (-not (Test-Path $iscc) -and $env:GASPAR_RUNNER_ENVIRONMENT -eq 'github-hosted') {
             choco install innosetup --no-progress -y
           }
           if (-not (Test-Path $iscc)) {
@@ -240,25 +246,25 @@ jobs:
 
       - name: Empacotar executáveis e instalador
         shell: bash
-        run: python packaging/windows/build_windows.py
+        run: |
+          . .venv/Scripts/activate
+          python packaging/windows/build_windows.py
 
       - name: Gerar impressões digitais
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Path dist/installer -Filter *.exe
-          if (-not $files) { throw "Nenhum instalador gerado em dist/installer" }
-          $lines = foreach ($f in $files) {
-            $hash = (Get-FileHash -Algorithm SHA256 -Path $f.FullName).Hash.ToLower()
-            "$hash *$($f.Name)"
-          }
-          $lines | Set-Content -Encoding ascii dist/installer/SHA256SUMS.txt
+          $file = Get-Item -ErrorAction Stop "dist/installer/GasparSetup-$env:APP_VERSION.exe"
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $file.FullName).Hash.ToLower()
+          "$hash *$($file.Name)" | Set-Content -Encoding ascii dist/installer/SHA256SUMS.txt
           Get-Content dist/installer/SHA256SUMS.txt
 
       - name: Guardar pacotes Windows
         uses: actions/upload-artifact@v4
         with:
           name: gaspar-windows
-          path: dist/installer
+          path: |
+            dist/installer/GasparSetup-${{ env.APP_VERSION }}.exe
+            dist/installer/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
 
@@ -266,7 +272,7 @@ jobs:
     name: Rascunho de release
     if: startsWith(github.ref, 'refs/tags/gaspar-v')
     needs: [linux, windows]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.GASPAR_RELEASE_LINUX_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 10
     environment: release
     permissions:

@@ -1,7 +1,7 @@
 name: App Android
 
-# Esteira do app Android: análise, testes, APK debug em toda mudança,
-# APK/AAB assinados por etiqueta e rascunho de release.
+# Esteira do app Android: análise e testes em toda mudança,
+# pacotes por etiqueta ou acionamento manual e rascunho de release.
 #
 # Etiquetas de release: android-v1.7 (precisa bater com versionName no build.gradle).
 # Segredos necessários só para assinar:
@@ -30,13 +30,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+  group: android-${{ github.ref_type }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Analisar, testar e empacotar
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/android-v')) && (vars.GASPAR_RELEASE_LINUX_RUNNER || '"ubuntu-latest"') || '"ubuntu-latest"') }}
     timeout-minutes: 35
     steps:
       - name: Baixar o código
@@ -106,15 +106,21 @@ jobs:
             exit 1
           fi
 
-      - name: Analisar e compilar debug
+      - name: Analisar e testar
         shell: bash
         run: |
           set -euo pipefail
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace --console=plain \
-            lintDebug testDebugUnitTest assembleDebug
-          cd ..
+            lintDebug testDebugUnitTest
+
+      - name: Compilar APK debug
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/android-v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          ( cd android && ./gradlew --no-daemon --stacktrace --console=plain assembleDebug )
           mkdir -p dist/android
           cp "$(find android/build/outputs/apk/debug -name '*.apk' | head -1)" \
             "dist/android/pdv-sms-enviar-${APP_VERSION}-debug.apk"
@@ -178,7 +184,7 @@ jobs:
         run: rm -f android/ci-release.keystore android/keystore.properties
 
       - name: Gerar impressões digitais
-        if: always()
+        if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/android-v'))
         shell: bash
         run: |
           set -euo pipefail
@@ -197,7 +203,7 @@ jobs:
           cat SHA256SUMS.txt
 
       - name: Guardar app
-        if: always()
+        if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/android-v'))
         uses: actions/upload-artifact@v4
         with:
           name: android-app
@@ -209,7 +215,7 @@ jobs:
     name: Rascunho de release
     if: startsWith(github.ref, 'refs/tags/android-v')
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.GASPAR_RELEASE_LINUX_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 10
     environment: release
     permissions:

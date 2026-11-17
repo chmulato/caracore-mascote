@@ -18,12 +18,12 @@ permissions:
 
 concurrency:
   group: canal-gaspar
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   publicar:
     name: Publicar canal
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.GASPAR_RELEASE_LINUX_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 10
     environment:
       name: github-pages
@@ -66,8 +66,10 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          python3 -m pip install --quiet cryptography
-          python3 tools/gaspar_channel.py verify --file site/latest.json --expect "${TAG#gaspar-v}"
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --quiet cryptography
+          python tools/gaspar_channel.py verify --file site/latest.json --expect "${TAG#gaspar-v}"
 
       - name: Montar o site
         shell: bash
