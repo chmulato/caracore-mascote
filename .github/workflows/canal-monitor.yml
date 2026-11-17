@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: canal-vigilancia-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   conferir:
     name: Conferir canal publicado
