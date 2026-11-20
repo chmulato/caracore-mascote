@@ -174,3 +174,6 @@ $RECYCLE.BIN/
 # ============================================================================
 # Imagens geradas para estudo de estilo; nao fazem parte do produto.
 vibe_images/
+# Copia de trabalho das auditorias: sondas independentes e logs de gate de um
+# dia de conferencia. Material local, nao faz parte do produto.
+.auditoria/

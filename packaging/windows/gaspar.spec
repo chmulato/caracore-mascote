@@ -26,6 +26,12 @@ for module in ("pystray", "Xlib"):
     except Exception:
         pass
 
+# D6, requisito para abrir a Fase Beta da mensageria 2.0: quando a barreira for
+# ligada em gaspar/app.py, listar aqui os submodulos de gaspar.messaging e
+# conferir o pacote gerado, nao apenas a arvore de codigo. O import acontece
+# dentro de um try que so desliga a peca em silencio, entao um executavel sem o
+# modulo passa no Portao e chega ao balcao com a mensageria apagada.
+
 # Lista fixa: a ponte de SMS e importada em tempo de execucao pelo Gaspar.
 hiddenimports += [
     "gaspar.sms",
