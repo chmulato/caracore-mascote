@@ -313,7 +313,9 @@ class FilaBaseTeste(unittest.TestCase):
             self.dispatcher.run_once()
         self.assertEqual(len(driver.submitted), 1)
         self.assertEqual(self.store.get("PDV", message.id).status, STATUS_INCERTO)
-        resolvido = self.store.resolve_uncertain(message.id, STATUS_ENTREGUE, motivo="visto no celular")
+        resolvido = self.store.resolve_uncertain(
+            message.id, STATUS_ENTREGUE, origem="PDV", motivo="visto no celular"
+        )
         self.assertEqual(resolvido.status, STATUS_ENTREGUE)
 
     def test_excecao_no_meio_vira_duvida_e_o_motor_para_de_puxar(self):
