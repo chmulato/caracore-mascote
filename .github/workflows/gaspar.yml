@@ -156,6 +156,13 @@ jobs:
           . .venv/bin/activate
           APPIMAGETOOL=/tmp/appimagetool bash packaging/linux/build_linux.sh
 
+      - name: Conferir os módulos da mensageria no pacote (D6)
+        shell: bash
+        run: |
+          set -euo pipefail
+          . .venv/bin/activate
+          python packaging/verifica_pacote.py --arquivo dist/linux/gaspar
+
       - name: Gerar impressões digitais
         shell: bash
         run: |
@@ -249,6 +256,13 @@ jobs:
         run: |
           . .venv/Scripts/activate
           python packaging/windows/build_windows.py
+
+      - name: Conferir os módulos da mensageria no pacote (D6)
+        shell: bash
+        run: |
+          set -euo pipefail
+          . .venv/Scripts/activate
+          python packaging/verifica_pacote.py --arquivo dist/windows/gaspar
 
       - name: Gerar impressões digitais
         shell: pwsh
