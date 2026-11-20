@@ -499,7 +499,25 @@ A auditoria da Fase Alpha (PR #6) registrou seis requisitos obrigatórios para a
 | D5 | A chave da fila nasce com ACL restrita ao usuário no Windows, e a falha de restringir aparece no estado em vez de sumir dentro do `chmod` que o sistema ignora. | `gaspar/messaging/vault.py`: `load_or_create` | `icacls` no arquivo da chave mostra só o usuário; o caminho que não consegue restringir é reportado no estado. |
 | D6 | Os submódulos de `gaspar.messaging` entram na lista fixa dos dois specs de empacotamento e a presença deles é provada no pacote. | `packaging/windows/gaspar.spec`, `packaging/linux/gaspar.spec` | Varredura do executável e do AppImage gerados, não da árvore de código. **Este item bloqueia a Beta:** o import da barreira fica dentro de um `try` que apenas desliga a peça, então um pacote sem o módulo passa no Portão e chega ao balcão com a mensageria apagada, sem erro na tela. |
 
-O que falta para a Fase Beta existir é o que a RFC aprovou e ainda não foi escrito: os motoristas `smtp_email` (ponte de e-mail), `android_lan` (aparelho na rede local) e `usb_modem` (modem USB), o ligamento no painel e o app Android 2.0.
+O que falta para a Fase Beta existir é o que a RFC aprovou e ainda não foi escrito: os motoristas `android_lan` (aparelho na rede local) e `usb_modem` (modem USB), o ligamento no painel e o app Android 2.0. A ponte de e-mail (`smtp_email`) foi escrita na Onda B3 e está descrita abaixo; ela ainda não aparece no painel nem em `messaging.json` ligado.
+
+### Ponte de e-mail (`smtp_email`)
+
+Gravado em 2026-11-20 (Onda B3). `gaspar/messaging/transports/smtp_email.py` traz o `EmailBridgeDriver`: em vez de contratar um gateway de operadora, o computador da loja escreve o pedido na caixa postal do próprio balcão e o celular, lendo a mesma caixa, dispara pelo chip — inclusive no 4G, fora do Wi-Fi da loja. A caixa postal é a fila.
+
+Do lado do computador:
+
+- **Escrever** é SMTP (`ssl` na 465, `starttls` ou `plano`), com a Senha de App sempre selada pelo `Vault` do motor. Nada de senha mestra em texto claro: `EmailSettings` só conhece `password_sealed` e `bridge_key_sealed`, e o `to_dict()` grava os dois já selados — quem escrever o `messaging.json` (Onda B6) não tem como pôr a senha aberta sem trocar o tipo.
+- **Ler** prefere IMAP com cursor de `UID` e cai para POP3 quando só existe POP3. Cada recado já lido leva um carimbo (o `Message-ID`, ou a impressão SHA-256 do corpo quando ele falta) e o que a ponte aprendeu é pouco e limitado: 400 carimbos lidos e 200 recibos. O arquivo é o caminho que `state_path` receber — com `state_path` vazio a ponte funciona, mas esquece o cursor entre uma execução e outra. Cabe à Onda B6 apontar esse caminho para a pasta de dados do usuário.
+- **O corpo** é um envelope AES-256-GCM em base64 de uma linha só, com a chave da ponte também selada no cofre. Assunto e `Message-ID` carregam só o identificador do pedido, e o `To` é a caixa do balcão: o número do cliente não aparece em claro em nenhum byte do e-mail, e há teste para isso.
+- **Os quatro desfechos** valem aqui, com um refinamento: a falha é classificada pela etapa. Conexão recusada, login recusado ou recusa explícita do servidor são `recusado` (nada chegou ao servidor, refazer é seguro); cair no meio do envio é `incerto` (o pedido pode ter passado, e a barra nunca reenvia sozinha). Um comprovante que chega depois pela mesma caixa resolve o `incerto` sem reenviar.
+- **`health()` não abre conexão nenhuma**, de propósito: ela responde pelo estado da configuração. É por aí que o painel e o `/v2/health`, quando a ponte estiver ligada, poderão dizer se ela está de pé sem gastar uma ida ao servidor de e-mail a cada consulta.
+
+A prova de que a ponte desligada não fala com o mundo é `tests/test_messaging_email.py`: `ZeroConexaoTeste` monta o motorista **sem** dublês — então são os caminhos reais de saída do módulo que estão na mira — com oito pontos da biblioteca padrão gravando e recusando (`smtplib.SMTP`, `smtplib.SMTP_SSL`, `imaplib.IMAP4`, `imaplib.IMAP4_SSL`, `poplib.POP3`, `poplib.POP3_SSL`, `socket.create_connection`, `socket.getaddrinfo`), e exige lista vazia depois de `health`, `submit`, `poll_inbound`, `resolve_uncertain` e `shutdown`. Um teste irmão liga a ponte e confere que o mesmo gravador registra exatamente uma tentativa, nomina o servidor e o endereço (`smtplib.SMTP_SSL smtp.test.invalid` na saída, `imaplib.IMAP4_SSL imap.test.invalid` na leitura) — sem essa contra-prova, o verde de antes poderia ser decorativo.
+
+Cobertura medida no gate local (Python 3.13, `GASPAR_HOME` em área de passagem): 53 testes em `test_messaging_email.py`, 498 testes no total, `smtp_email.py` em 91% e o repositório em 82% contra o piso de 70% do Portão.
+
+A ponte ainda é código vivo mas não instalado: nada em `config.py`, `local_api.py` ou no painel a referencia, então nenhum balcão a aciona hoje. O ligamento (escolher a conta, testar o acesso, mostrar o estado na aba Celular) é a Onda B6. E quando o PR da D6 entrar na `master`, a asserção de empacotamento passa a exigir `gaspar.messaging.transports.smtp_email` nos dois specs — é um acréscimo de uma linha por spec, não uma escolha.
 
 ## Canal de atualização
 
