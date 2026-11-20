@@ -67,6 +67,7 @@ hiddenimports += [
     "gaspar.messaging.transport",
     "gaspar.messaging.transports",
     "gaspar.messaging.transports.loopback",
+    "gaspar.messaging.transports.smtp_email",
     "gaspar.messaging.vault",
 ]
 
