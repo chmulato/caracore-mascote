@@ -20,6 +20,7 @@ from gaspar.messaging.errors import CredentialError
 from gaspar.messaging.model import STATUS_ENTREGUE, STATUS_FILA, STATUS_INCERTO
 from gaspar.messaging.service import MessagingService
 from gaspar.messaging.store import MessageStore
+from gaspar.messaging.transport import Health
 from gaspar.messaging.transports.loopback import LoopbackTransportDriver
 from gaspar.messaging.vault import Vault
 from gaspar.sms import signing
@@ -59,13 +60,20 @@ class ConfigTeste(TempTestCase):
         self.assertEqual(config.transports, {})
 
     def test_escrever_e_ler_batem(self):
-        config = MessagingConfig(enabled=True, port=0, max_attempts=3, daily_limit_per_origin=10)
+        config = MessagingConfig(
+            enabled=True,
+            port=0,
+            max_attempts=3,
+            daily_limit_per_origin=10,
+            per_minute_limit_per_origin=4,
+        )
         config.set_transport("PDV", "loopback")
         caminho = config.save(self.base / "messaging.json")
         relida = load_config(caminho)
         self.assertTrue(relida.enabled)
         self.assertEqual(relida.max_attempts, 3)
         self.assertEqual(relida.daily_limit_per_origin, 10)
+        self.assertEqual(relida.per_minute_limit_per_origin, 4)
         self.assertEqual(relida.transport_for("PDV"), "loopback")
         self.assertEqual(relida.transport_for("HUB"), "")
 
@@ -75,6 +83,14 @@ class ConfigTeste(TempTestCase):
         self.assertEqual(config.transports, {"HUB": "smtp_email"})
         self.assertEqual(config.transport_for("LOJA"), "")
         self.assertEqual(config.origins_with_transport, ("HUB",))
+
+    def test_o_teto_por_minuto_nunca_passa_o_teto_do_dia(self):
+        # D3: a janela curta existe para nao deixar uma origem silenciar a outra,
+        # mas nunca pode autorizar por minuto mais do que o dia inteiro permite.
+        self.assertEqual(self.config(daily_limit_per_origin=5).per_minute_limit_per_origin, 5)
+        self.assertEqual(self.config(per_minute_limit_per_origin=0).per_minute_limit_per_origin, 1)
+        self.assertEqual(self.config(per_minute_limit_per_origin=999).per_minute_limit_per_origin, 300)
+        self.assertEqual(MessagingConfig().per_minute_limit_per_origin, 20)
 
     def test_arquivo_ausente_ou_torto_devolve_o_padrao_desligado(self):
         self.assertFalse(load_config(self.base / "nao-existe.json").enabled)
@@ -199,6 +215,7 @@ class ServicoTeste(TempTestCase):
         self.assertEqual(estado["fila"]["por_origem"]["PDV"][STATUS_FILA], 1)
         self.assertFalse(estado["meios"]["PDV"]["disponivel"])
         self.assertTrue(estado["assinatura_obrigatoria"])
+        self.assertTrue(estado["chave_restrita_ao_dono"])
 
     def test_ronda_liquida_a_fila_sozinha(self):
         service = self.service(max_attempts=1, poll_interval_seconds=0.2)
@@ -257,6 +274,20 @@ class CredenciaisTeste(unittest.TestCase):
         self.assertIn("emitida_em", texto)
         self.assertTrue(descricao["PDV"]["assinatura"])
         self.assertEqual(descricao["HUB"]["emitida_em"], 0.0)
+
+
+class EspiaSaude(LoopbackTransportDriver):
+    """Meio que conta as vezes que alguem checou a saude dele."""
+
+    name = "espiasaude"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.chamadas = 0
+
+    def health(self) -> Health:
+        self.chamadas += 1
+        return super().health()
 
 
 class ContratoLocalTeste(TempTestCase):
@@ -331,17 +362,44 @@ class ContratoLocalTeste(TempTestCase):
 
     # ------------------------------------------------------------------ portas
 
-    def test_saude_publica_nao_mostra_conteudo_nem_trafego(self):
-        self.pedir()
+    def test_saude_exige_credencial(self):
+        # D2: a saude mostra meio, porta e o tamanho da espera - nao e mais um ping anonimo.
         code, data = self.request("GET", "/v2/health", sign=False)
+        self.assertEqual(code, 401)
+        self.assertIn("credencial", data["error"])
+
+    def test_saude_nao_mostra_conteudo_nem_trafego(self):
+        self.pedir()
+        code, data = self.request("GET", "/v2/health", credencial=self.pdv, sign=False)
         self.assertEqual(code, 200)
         self.assertTrue(data["ok"])
         self.assertEqual(data["servico"], "gaspar-messaging")
+        self.assertEqual(data["origem"], "PDV")
         self.assertTrue(data["ativo"])
         self.assertGreater(data["porta"], 0)
         texto = json.dumps(data, ensure_ascii=False)
         self.assertNotIn(NUMERO, texto)
         self.assertNotIn("por_origem", texto)
+
+    def test_saude_so_mostra_o_meio_de_quem_pergunta(self):
+        self.ligar_meio("PDV")
+        self.ligar_meio("HUB")
+        _, do_pdv = self.request("GET", "/v2/health", credencial=self.pdv)
+        _, do_hub = self.request("GET", "/v2/health", credencial=self.hub)
+        self.assertEqual(list(do_pdv["meios"]), ["PDV"])
+        self.assertEqual(list(do_hub["meios"]), ["HUB"])
+        self.assertEqual(do_pdv["meios"]["PDV"]["meio"], self.meio.name)
+
+    def test_saude_de_um_nao_checa_o_meio_do_vizinho(self):
+        # Prova negativa: o meio do outro produto nem chega a ser interrogado.
+        espioa = EspiaSaude()
+        self.service.registry.register(espioa)
+        self.ligar_meio("PDV")
+        self.service.registry.bind("HUB", espioa.name)
+        code, data = self.request("GET", "/v2/health", credencial=self.pdv)
+        self.assertEqual(code, 200)
+        self.assertEqual(list(data["meios"]), ["PDV"])
+        self.assertEqual(espioa.chamadas, 0)
 
     def test_indice_do_contrato_sem_credencial(self):
         code, data = self.request("GET", "/v2")
@@ -451,6 +509,28 @@ class ContratoLocalTeste(TempTestCase):
             )[0],
             202,
         )
+
+    def test_cota_por_minuto_e_por_origem(self):
+        # D3: quem despeja pedidos nao pode calar o outro produto nem o balcao.
+        self.service.config.per_minute_limit_per_origin = 2
+        self.assertEqual(self.pedir(externo="m1", chave="m1")[0], 202)
+        self.assertEqual(self.pedir(externo="m2", chave="m2")[0], 202)
+        code, data = self.pedir(externo="m3", chave="m3")
+        self.assertEqual(code, 429)
+        self.assertIn("minuto", data["error"])
+        self.assertEqual(
+            self.request(
+                "POST",
+                "/v2/messages",
+                {"id_externo": "hub-1", "destino": OUTRO_NUMERO, "mensagem": "oi do hub"},
+                credencial=self.hub,
+            )[0],
+            202,
+        )
+        # o que foi recusado nao entrou na fila: nada espera do outro lado
+        self.assertEqual(self.service.store.counts("PDV")[STATUS_FILA], 2)
+        self.assertEqual(self.service.store.counts("HUB")[STATUS_FILA], 1)
+        self.assertEqual(self.service.store.day_count("PDV"), 2)
 
     # -------------------------------------------------------------------- ler
 
@@ -672,7 +752,7 @@ class ContratoLocalTeste(TempTestCase):
         self.service.dispatcher.drain_inbound()
         _, proprias = self.request("GET", "/v2/replies", credencial=self.pdv)
         self.assertEqual(proprias["respostas"], [])
-        _, saude = self.request("GET", "/v2/health")
+        _, saude = self.request("GET", "/v2/health", credencial=self.pdv)
         self.assertEqual(saude["respostas_por_identificar"], 1)
         pendente = self.service.store.pending_inbound()[0]
         code, data = self.request(

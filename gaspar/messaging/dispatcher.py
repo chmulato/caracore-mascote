@@ -134,6 +134,7 @@ class Dispatcher:
         self.store.mark(
             message.id,
             status,
+            origem=message.origem,
             motivo=motivo,
             transport=transport,
             device_id=device_id,
