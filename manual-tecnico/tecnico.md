@@ -484,6 +484,23 @@ O PDV deve tratar `sem resposta`, `401`, `403`, `429` e `507` como "não enviado
 
 Todos ficam na pasta de dados do usuário (`data_dir()`), respeitando `GASPAR_HOME`. O guia do usuário e o passo a passo do celular estão em [wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html); o termo de privacidade está em [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
 
+## Motor de mensageria 2.0
+
+A Fase Alpha do Gaspar 2.0 está no repositório como `gaspar/messaging/`: uma fila SQLite única em que cada pedido leva a `origem` (`PDV` ou `HUB`), com credenciais, cotas e trilha de eventos separados por origem, API local assinada em `127.0.0.1:8767` e a interface `SmsTransportDriver`, que devolve `aceito`, `recusado`, `incerto` ou `indisponivel`. O motor ainda não está ligado ao painel: `messaging.json` nasce com `enabled: false` e nenhum outro módulo do mascote importa o pacote. O que o lojista usa continua sendo a ponte de SMS da 1.7.
+
+A auditoria da Fase Alpha (PR #6) registrou seis requisitos obrigatórios para abrir a Fase Beta. Eles valem como item de partida, e a coluna da prova é o que fecha cada um. Gravado em 2026-11-20.
+
+| # | Requisito | Onde | Prova de que foi feito |
+| --- | --- | --- | --- |
+| D1 | Ler ou mutar pedido e resposta pelo `id` também filtra por `origem`, para o isolamento PDV/HUB não depender só da camada de API. | `gaspar/messaging/store.py`: `mark`, `resolve_uncertain`, `get_inbound`, `find_inbound` | Caso que chama a função com um `id` da origem vizinha: recebe recusa e a fila da origem vizinha continua igual. |
+| D2 | `/v2/health` deixa de responder sem credencial e mostra apenas o motorista da origem que pediu. | `gaspar/messaging/local_api.py` | Requisição sem token cai com `401`, e cada origem enxerga só o próprio meio. |
+| D3 | Cota por janela móvel de 60 segundos ao lado da cota diária, que hoje vira à meia-noite local do balcão. | `gaspar/messaging/store.py`: `_day_start` e o uso em `enqueue` | Caso que gasta o limite em poucos segundos, leva `429` e recupera a liberação dentro de um minuto. |
+| D4 | O rótulo que casa a resposta do cliente passa a ser HMAC-SHA256 truncado, em vez de `SHA-256(domínio + valor + chave)`. | `gaspar/messaging/vault.py`: `tag` | Vetores fixos no teste. A troca muda o rótulo, então é para fazer agora: nenhuma fila desse motor chegou a existir num balcão. |
+| D5 | A chave da fila nasce com ACL restrita ao usuário no Windows, e a falha de restringir aparece no estado em vez de sumir dentro do `chmod` que o sistema ignora. | `gaspar/messaging/vault.py`: `load_or_create` | `icacls` no arquivo da chave mostra só o usuário; o caminho que não consegue restringir é reportado no estado. |
+| D6 | Os submódulos de `gaspar.messaging` entram na lista fixa dos dois specs de empacotamento e a presença deles é provada no pacote. | `packaging/windows/gaspar.spec`, `packaging/linux/gaspar.spec` | Varredura do executável e do AppImage gerados, não da árvore de código. **Este item bloqueia a Beta:** o import da barreira fica dentro de um `try` que apenas desliga a peça, então um pacote sem o módulo passa no Portão e chega ao balcão com a mensageria apagada, sem erro na tela. |
+
+O que falta para a Fase Beta existir é o que a RFC aprovou e ainda não foi escrito: os motoristas `smtp_email` (ponte de e-mail), `android_lan` (aparelho na rede local) e `usb_modem` (modem USB), o ligamento no painel e o app Android 2.0.
+
 ## Canal de atualização
 
 O Gaspar tem um canal próprio. O aplicativo consulta um único arquivo assinado,
