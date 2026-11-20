@@ -60,6 +60,20 @@ class TransportRegistry:
     def bindings(self) -> dict[str, str]:
         return {origem: self._by_origin[origem] for origem in ORIGENS if origem in self._by_origin}
 
+    def health_for(self, origem: str) -> Health:
+        """Checagem de uma unica origem. Um produto nao mexe no meio do vizinho."""
+        driver = self.driver_for(origem)
+        if driver is None:
+            return Health(False, "nenhum meio ativo para esta origem")
+        return self._probe(driver)
+
+    @staticmethod
+    def _probe(driver: SmsTransportDriver) -> Health:
+        try:
+            return driver.health()
+        except Exception as exc:  # o motorista nao pode derrubar a checagem
+            return Health(False, "falha ao checar o meio", str(exc)[:200])
+
     def health(self) -> dict[str, Health]:
         """Checagem de cada origem ligada, uma vez por motorista repetido."""
 
@@ -72,10 +86,7 @@ class TransportRegistry:
                 continue
             cached = cache.get(driver.name)
             if cached is None:
-                try:
-                    cached = driver.health()
-                except Exception as exc:  # o motorista nao pode derrubar a checagem
-                    cached = Health(False, "falha ao checar o meio", str(exc)[:200])
+                cached = self._probe(driver)
                 cache[driver.name] = cached
             result[origem] = cached
         return result

@@ -202,8 +202,11 @@ class MessageStore:
             recipient_tag=row["recipient_tag"],
         )
 
-    def _raw_message(self, message_id: str) -> sqlite3.Row | None:
-        cursor = self._conn.execute("SELECT * FROM messages WHERE id = ?", (message_id,))
+    def _raw_message(self, message_id: str, origem: str) -> sqlite3.Row | None:
+        """A linha do pedido, vista so pela origem dele (D1)."""
+        cursor = self._conn.execute(
+            "SELECT * FROM messages WHERE id = ? AND origem = ?", (message_id, origem)
+        )
         return cursor.fetchone()
 
     # ------------------------------------------------------------- escrever
@@ -295,14 +298,20 @@ class MessageStore:
         message_id: str,
         status: str,
         *,
+        origem: str,
         motivo: str = "",
         transport: str = "",
         device_id: str = "",
         reference: str = "",
     ) -> Message | None:
-        """Muda o estado do pedido e escreve a notificacao correspondente."""
+        """Muda o estado do pedido e escreve a notificacao correspondente.
+
+        O pedido de outra origem e invisivel aqui (D1): sem a origem certa, o
+        resultado e o mesmo de um identificador que nunca existiu.
+        """
+        origin = validar_origem(origem)
         with self._lock, self._conn:
-            row = self._raw_message(message_id)
+            row = self._raw_message(message_id, origin)
             if row is None:
                 return None
             now = time.time()
@@ -326,29 +335,34 @@ class MessageStore:
                 changes["finished_at"] = now
             assignments = ", ".join(f"{column} = ?" for column in changes)
             self._conn.execute(
-                f"UPDATE messages SET {assignments} WHERE id = ?",
-                (*changes.values(), message_id),
+                f"UPDATE messages SET {assignments} WHERE id = ? AND origem = ?",
+                (*changes.values(), message_id, origin),
             )
+            fresh = self._raw_message(message_id, origin)
             event = _EVENT_BY_STATUS.get(status)
             if event is not None:
-                self._add_event(row["origem"], message_id, event, status, motivo, transport)
-        return self._message_from_id(message_id)
+                self._add_event(origin, message_id, event, status, motivo, transport)
+        return None if fresh is None else self._row_to_message(fresh)
 
-    def _message_from_id(self, message_id: str) -> Message | None:
-        row = self._raw_message(message_id)
-        return None if row is None else self._row_to_message(row)
-
-    def resolve_uncertain(self, message_id: str, status: str, *, motivo: str = "conferido no painel") -> Message:
+    def resolve_uncertain(
+        self,
+        message_id: str,
+        status: str,
+        *,
+        origem: str,
+        motivo: str = "conferido no painel",
+    ) -> Message:
         """Decisao do operador sobre um pedido incerto: entregue ou falhou, nada de reenvio."""
+        origin = validar_origem(origem)
         if status not in (STATUS_ENTREGUE, STATUS_FALHOU):
             raise InvalidRequest("um envio incerto so pode virar entregue ou falhou")
         with self._lock, self._conn:
-            row = self._raw_message(message_id)
+            row = self._raw_message(message_id, origin)
             if row is None:
                 raise UnknownMessage("pedido nao encontrado")
             if row["status"] != STATUS_INCERTO:
                 raise InvalidRequest("somente um envio incerto pode ser conferido assim")
-            result = self.mark(message_id, status, motivo=motivo, transport=row["transport"])
+            result = self.mark(message_id, status, origem=origin, motivo=motivo, transport=row["transport"])
         if result is None:  # pragma: no cover - a linha existia um instante antes
             raise UnknownMessage("pedido nao encontrado")
         return result
@@ -364,7 +378,12 @@ class MessageStore:
                 "SELECT id, origem FROM messages WHERE status = ?", (STATUS_ENVIANDO,)
             ).fetchall()
             for row in rows:
-                self.mark(row["id"], STATUS_INCERTO, motivo="queda antes da confirmacao")
+                self.mark(
+                    row["id"],
+                    STATUS_INCERTO,
+                    origem=row["origem"],
+                    motivo="queda antes da confirmacao",
+                )
         return len(rows)
 
     # -------------------------------------------------------------- ler
@@ -413,22 +432,34 @@ class MessageStore:
             return result
 
     def day_count(self, origem: str) -> int:
+        """Quantos pedidos esta origem abriu desde a meia-noite dela."""
+        return self._count_since(origem, _day_start())
+
+    def minute_count(self, origem: str, *, now: float | None = None) -> int:
+        """Quantos pedidos esta origem abriu nos ultimos 60 segundos (D3)."""
+        return self._count_since(origem, (time.time() if now is None else float(now)) - 60.0)
+
+    def _count_since(self, origem: str, since: float) -> int:
         origin = validar_origem(origem)
         with self._lock:
             row = self._conn.execute(
                 "SELECT COUNT(*) AS n FROM messages WHERE origem = ? AND created_at >= ?",
-                (origin, _day_start()),
+                (origin, since),
+            ).fetchone()
+        return int(row["n"])
+
+    def unowned_inbound_count(self) -> int:
+        """Respostas que ainda esperam dono. Nao pertencem a nenhum produto ainda."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS n FROM inbounds WHERE origem = ''"
             ).fetchone()
         return int(row["n"])
 
     def stats(self) -> dict:
-        with self._lock:
-            pending = self._conn.execute(
-                "SELECT COUNT(*) AS n FROM inbounds WHERE origem = ''"
-            ).fetchone()["n"]
         return {
             "por_origem": {origem: self.counts(origem) for origem in ORIGENS},
-            "respostas_por_identificar": int(pending),
+            "respostas_por_identificar": self.unowned_inbound_count(),
         }
 
     # --------------------------------------------------- trilha de notificacoes
@@ -473,7 +504,7 @@ class MessageStore:
             ).fetchall()
         events: list[Event] = []
         for row in rows:
-            message = self._raw_message(row["message_id"])
+            message = self._raw_message(row["message_id"], row["origem"])
             external = ""
             if message is not None:
                 external = _external_lido(row["origem"], message["external_id_enc"], self.vault)
@@ -552,9 +583,24 @@ class MessageStore:
             ).fetchall()
         return [self._row_to_inbound(row, with_text=True) for row in rows]
 
-    def get_inbound(self, inbound_id: str) -> Inbound | None:
+    def get_inbound(self, inbound_id: str, *, origem: str | None = None) -> Inbound | None:
+        """Le uma resposta.
+
+        Sem origem, e a leitura do proprio motor (a resposta ainda nao tem dono).
+        Com origem, so enxerga o que ainda espera um dono e o que ja e dela (D1):
+        a resposta roteada para o outro produto nao aparece.
+        """
+        origin = validar_origem(origem) if origem else None
         with self._lock:
-            row = self._conn.execute("SELECT * FROM inbounds WHERE id = ?", (inbound_id,)).fetchone()
+            if origin is None:
+                row = self._conn.execute(
+                    "SELECT * FROM inbounds WHERE id = ?", (inbound_id,)
+                ).fetchone()
+            else:
+                row = self._conn.execute(
+                    "SELECT * FROM inbounds WHERE id = ? AND origem IN ('', ?)",
+                    (inbound_id, origin),
+                ).fetchone()
         return None if row is None else self._row_to_inbound(row, with_text=True)
 
     def _row_to_inbound(self, row: sqlite3.Row, *, with_text: bool = False) -> Inbound:
@@ -617,7 +663,7 @@ class MessageStore:
                 origin,
                 message_id,
                 EVENTO_RECEBIDA,
-                self._raw_message(message_id)["status"],
+                self._raw_message(message_id, origin)["status"],
                 _motivo(motivo) or "resposta do cliente",
                 row["transport"],
             )

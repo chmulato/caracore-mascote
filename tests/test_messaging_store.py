@@ -5,10 +5,13 @@ Sem rede, sem celular e sem dados reais: tudo acontece numa pasta temporaria.
 
 from __future__ import annotations
 
+import os
+import subprocess
 import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from gaspar.messaging.errors import InvalidRequest, QueueFull, StorageError, UnknownMessage
 from gaspar.messaging.model import (
@@ -19,12 +22,22 @@ from gaspar.messaging.model import (
     STATUS_FILA,
     STATUS_INCERTO,
 )
-from gaspar.messaging.store import DOMAIN_RECIPIENT, MessageStore
+from gaspar.messaging.store import DOMAIN_EXTERNAL, DOMAIN_RECIPIENT, MessageStore
 from gaspar.messaging.transport import InboundReply
-from gaspar.messaging.vault import Vault
+from gaspar.messaging.vault import KEY_BYTES, Vault, icacls_arguments, owner_sid, parse_owner_sid
 
 NUMERO = "11988887777"
 CONTEUDO = "COPIA-UNICA-DO-CONTEUDO-DA-MENSAGEM"
+#: chave fixa so para o vetor do rotulo HMAC (D4); nao e segredo de ninguem
+CHAVE_VETOR = bytes(range(KEY_BYTES))
+
+
+def _regras_do_arquivo(caminho):
+    # Le a lista de permissoes do arquivo pela saida do proprio icacls.
+    resposta = subprocess.run(
+        ["icacls", str(caminho)], capture_output=True, text=True, check=False
+    )
+    return [linha.strip() for linha in resposta.stdout.splitlines() if ":(" in linha]
 
 
 class MessagingStoreTestCase(unittest.TestCase):
@@ -134,6 +147,60 @@ class MessagingStoreTestCase(unittest.TestCase):
         self.assertEqual(self.store.day_count("PDV"), 2)
         self.assertEqual(self.store.day_count("HUB"), 1)
 
+    def test_marcar_estado_do_vizinho_e_como_se_o_pedido_nao_existisse(self):
+        # D1: o identificador sozinho nao abre a linha do outro produto.
+        message, _ = self.guardar(origem="PDV")
+        self.assertIsNone(self.store.mark(message.id, STATUS_ENTREGUE, origem="HUB"))
+        self.assertEqual(self.store.get("PDV", message.id).status, STATUS_FILA)
+        self.assertEqual(self.store.events_since("HUB"), [])
+        self.assertEqual([evento.event for evento in self.store.events_since("PDV")], ["criada"])
+        self.assertEqual(self.store.counts("HUB")[STATUS_ENTREGUE], 0)
+
+    def test_conferir_duvida_do_vizinho_da_desconhecido_e_nao_mexe_na_linha(self):
+        # D1: a decisao humana tambem so vale dentro de casa.
+        message, _ = self.guardar(origem="PDV")
+        self.store.claim_next("PDV")
+        self.store.mark(message.id, STATUS_INCERTO, origem="PDV", motivo="sem confirmacao")
+        with self.assertRaises(UnknownMessage):
+            self.store.resolve_uncertain(message.id, STATUS_ENTREGUE, origem="HUB")
+        self.assertEqual(self.store.get("PDV", message.id).status, STATUS_INCERTO)
+        self.assertEqual(self.store.counts("HUB")[STATUS_ENTREGUE], 0)
+
+    def test_resposta_ja_entregue_a_um_nao_aparece_para_o_outro(self):
+        # D1: resposta roteada tem um dono; para o vizinho ela nem existe.
+        message, _ = self.guardar(origem="PDV")
+        inbound, _ = self.store.record_inbound(
+            InboundReply("dev-1", NUMERO, "ok", time.time()), transport="loopback"
+        )
+        self.store.route_inbound(inbound.id, "PDV", message.id)
+        self.assertIsNotNone(self.store.get_inbound(inbound.id, origem="PDV"))
+        self.assertIsNone(self.store.get_inbound(inbound.id, origem="HUB"))
+        # o motor, que ainda nao deu dono a esta linha, continua enxergando
+        self.assertIsNotNone(self.store.get_inbound(inbound.id))
+
+    def test_resposta_sem_dono_pode_ser_reivindicada_pelos_dois(self):
+        inbound, _ = self.store.record_inbound(
+            InboundReply("dev-1", "21977776666", "quem e?", time.time()), transport="loopback"
+        )
+        self.assertIsNotNone(self.store.get_inbound(inbound.id, origem="PDV"))
+        self.assertIsNotNone(self.store.get_inbound(inbound.id, origem="HUB"))
+
+    def test_contagem_por_minuto_separa_as_origens(self):
+        # D3: a janela de 60 segundos so conta o que a propria origem abriu.
+        self.guardar(origem="PDV", externo="a", chave="a")
+        self.guardar(origem="PDV", externo="b", chave="b")
+        self.guardar(origem="HUB", externo="c", chave="c")
+        self.assertEqual(self.store.minute_count("PDV"), 2)
+        self.assertEqual(self.store.minute_count("HUB"), 1)
+
+    def test_a_janela_de_sesenta_segundos_deixa_o_pedido_antigo_para_tras(self):
+        agora = time.time()
+        for indice in range(3):
+            self.guardar(externo="j%d" % indice, chave="j%d" % indice)
+        self.assertEqual(self.store.minute_count("PDV", now=agora), 3)
+        self.assertEqual(self.store.minute_count("PDV", now=agora + 61), 0)
+        self.assertEqual(self.store.day_count("PDV"), 3)
+
     def test_stats_soma_as_duas_origens_sem_misturar(self):
         self.guardar(origem="PDV", externo="a", chave="a")
         self.guardar(origem="HUB", externo="b", chave="b")
@@ -173,8 +240,8 @@ class MessagingStoreTestCase(unittest.TestCase):
 
     def test_marcas_de_estado_escrevem_a_trilha(self):
         message, _ = self.guardar()
-        self.store.mark(message.id, STATUS_ENVIADO, transport="loopback", reference="ref-1")
-        entregue = self.store.mark(message.id, STATUS_ENTREGUE, transport="loopback")
+        self.store.mark(message.id, STATUS_ENVIADO, origem="PDV", transport="loopback", reference="ref-1")
+        entregue = self.store.mark(message.id, STATUS_ENTREGUE, origem="PDV", transport="loopback")
         self.assertEqual(entregue.status, STATUS_ENTREGUE)
         self.assertGreater(entregue.sent_at, 0)
         self.assertGreaterEqual(entregue.delivered_at, entregue.sent_at)
@@ -185,26 +252,28 @@ class MessagingStoreTestCase(unittest.TestCase):
     def test_envio_em_duvida_so_vira_entregue_ou_falhou_por_decisao_humana(self):
         message, _ = self.guardar()
         self.store.claim_next("PDV")
-        self.store.mark(message.id, STATUS_INCERTO, motivo="sem confirmacao")
+        self.store.mark(message.id, STATUS_INCERTO, origem="PDV", motivo="sem confirmacao")
         with self.assertRaises(InvalidRequest):
-            self.store.resolve_uncertain(message.id, "enviado")
-        resolvido = self.store.resolve_uncertain(message.id, STATUS_ENTREGUE, motivo="visto no aparelho")
+            self.store.resolve_uncertain(message.id, "enviado", origem="PDV")
+        resolvido = self.store.resolve_uncertain(
+            message.id, STATUS_ENTREGUE, origem="PDV", motivo="visto no aparelho"
+        )
         self.assertEqual(resolvido.status, STATUS_ENTREGUE)
         with self.assertRaises(InvalidRequest):
-            self.store.resolve_uncertain(message.id, STATUS_FALHOU)
+            self.store.resolve_uncertain(message.id, STATUS_FALHOU, origem="PDV")
 
     def test_conferir_pedido_que_nao_existe_da_desconhecido(self):
         with self.assertRaises(UnknownMessage):
-            self.store.resolve_uncertain("nao-existe", STATUS_ENTREGUE)
+            self.store.resolve_uncertain("nao-existe", STATUS_ENTREGUE, origem="PDV")
 
     def test_mudar_estado_de_pedido_inexistente_devolve_none(self):
-        self.assertIsNone(self.store.mark("nao-existe", STATUS_ENVIADO))
+        self.assertIsNone(self.store.mark("nao-existe", STATUS_ENVIADO, origem="PDV"))
 
     def test_cursor_da_trilha_avanca_sem_pular_nem_repetir(self):
         message, _ = self.guardar()
         primeiro = self.store.events_since("PDV", 0)
         self.assertEqual([evento.seq for evento in primeiro], [1])
-        self.store.mark(message.id, STATUS_ENVIADO)
+        self.store.mark(message.id, STATUS_ENVIADO, origem="PDV")
         depois = self.store.events_since("PDV", primeiro[-1].seq)
         self.assertEqual([evento.seq for evento in depois], [2])
         self.assertEqual(depois[0].message_id, message.id)
@@ -265,17 +334,17 @@ class MessagingStoreTestCase(unittest.TestCase):
         enviado, _ = self.guardar(externo="saiu", chave="saiu")
         na_fila, _ = self.guardar(externo="parado", chave="parado")
         outro_numero, _ = self.guardar(externo="outro", chave="outro", numero="11966665555")
-        self.store.mark(enviado.id, STATUS_ENVIADO)
-        self.store.mark(outro_numero.id, STATUS_ENVIADO)
+        self.store.mark(enviado.id, STATUS_ENVIADO, origem="PDV")
+        self.store.mark(outro_numero.id, STATUS_ENVIADO, origem="PDV")
         candidatos = self.store.candidates(enviado.recipient_tag)
         self.assertEqual([candidato.id for candidato in candidatos], [enviado.id])
         self.assertNotIn(na_fila.id, [candidato.id for candidato in candidatos])
-        self.store.mark(enviado.id, STATUS_FALHOU, motivo="recusado")
+        self.store.mark(enviado.id, STATUS_FALHOU, origem="PDV", motivo="recusado")
         self.assertEqual(self.store.candidates(enviado.recipient_tag), [])
 
     def test_candidato_traz_o_id_externo_para_o_casamento(self):
         message, _ = self.guardar(externo="pedido-77")
-        self.store.mark(message.id, STATUS_ENVIADO)
+        self.store.mark(message.id, STATUS_ENVIADO, origem="PDV")
         candidato = self.store.candidates(message.recipient_tag)[0]
         self.assertEqual(candidato.external_id, "pedido-77")
         self.assertEqual(candidato.origem, "PDV")
@@ -319,6 +388,18 @@ class VaultVaultTestCase(unittest.TestCase):
         self.assertNotIn(NUMERO, rotulo)
         self.assertNotEqual(rotulo, self.vault.tag("11999990000", DOMAIN_RECIPIENT))
 
+    def test_rotulo_e_hmac_com_vetor_gravado(self):
+        # D4: o vetor fixo trava o algoritmo. Mudar a conta do rotulo desliga o
+        # casamento das respostas ja guardadas, entao so se muda com migramento.
+        padrao = Vault(CHAVE_VETOR)
+        self.assertEqual(padrao.tag(NUMERO, DOMAIN_RECIPIENT), "zl1QeMSKjd1ge1w0")
+        self.assertEqual(padrao.tag(NUMERO, DOMAIN_EXTERNAL), "18SVsje9JhiJpQHu")
+        self.assertEqual(padrao.tag("", DOMAIN_RECIPIENT), "RWzYueNEiHLsWnDl")
+        # cada dominio tem subchave propria: o mesmo numero nunca da o mesmo rotulo
+        self.assertNotEqual(padrao.tag(NUMERO, DOMAIN_RECIPIENT), padrao.tag(NUMERO, DOMAIN_EXTERNAL))
+        # e uma chave de fora nao produce o rotulo de dentro
+        self.assertNotEqual(self.vault.tag(NUMERO, DOMAIN_RECIPIENT), padrao.tag(NUMERO, DOMAIN_RECIPIENT))
+
     def test_chave_reaproveitada_e_arquivo_protegido(self):
         outra = Vault.load_or_create(self.path)
         blob = outra.seal("segredo")
@@ -334,6 +415,79 @@ class VaultVaultTestCase(unittest.TestCase):
         outro = Vault.load_or_create(self.path.with_name("outra.key"))
         with self.assertRaises(StorageError):
             outro.open(blob)
+
+
+class PermissoesDaChaveTeste(unittest.TestCase):
+    """D5: o arquivo da chave tem de pertencer a quem esta sentado na maquina."""
+
+    def setUp(self):
+        casa = tempfile.TemporaryDirectory()
+        self.addCleanup(casa.cleanup)
+        self.base = Path(casa.name)
+
+    def test_o_caminho_vai_como_argumento_e_o_sid_vem_com_astisco(self):
+        caminho = self.base / "pasta com espaco;ponto" / "messaging-vault.key"
+        self.assertEqual(
+            icacls_arguments(caminho, "S-1-5-21-1-2-3-4"),
+            ["icacls", str(caminho), "/inheritance:r", "/grant:r", "*S-1-5-21-1-2-3-4:F"],
+        )
+
+    def test_le_o_sid_no_formato_da_saida_do_whoami(self):
+        # amostra inventada: o whoami devolve a conta e o SID separados por virgula
+        saida = '"pc-loja\\lojista","S-1-5-21-1111111111-2222222222-3333333333-1001"\n'
+        self.assertEqual(
+            parse_owner_sid(saida), "S-1-5-21-1111111111-2222222222-3333333333-1001"
+        )
+
+    def test_saida_sem_sid_nao_inventa_nada(self):
+        for saida in ("", "\n", "COMPUTADOR\\usuario\n", '"sem","nada"'):
+            self.assertEqual(parse_owner_sid(saida), "")
+
+    def test_recusa_de_fechar_nao_deixa_arquivo_para_tras(self):
+        alvo = self.base / "messaging-vault.key"
+        recusa = mock.patch(
+            "gaspar.messaging.vault.restrict_to_owner", side_effect=StorageError("o Windows recusou")
+        )
+        with recusa, self.assertRaises(StorageError):
+            Vault.load_or_create(alvo)
+        self.assertEqual(list(self.base.glob("*")), [])
+
+    def test_fechamento_brando_nao_derruba_uma_chave_que_ja_existe(self):
+        alvo = self.base / "messaging-vault.key"
+        blob = Vault.load_or_create(alvo).seal("segredo")
+        recusa = mock.patch("gaspar.messaging.vault.restrict_to_owner", return_value=False)
+        with recusa:
+            reaberta = Vault.load_or_create(alvo)
+        self.assertEqual(reaberta.open(blob), "segredo")
+        # o resultado de fechar (ou nao) aparece na chave: a recusa nao some dentro do chmod
+        self.assertTrue(Vault.load_or_create(self.base / "nova.key").permissoes_fechadas)
+        self.assertIs(reaberta.permissoes_fechadas, False)
+
+    @unittest.skipUnless(os.name == "nt", "lista de permissoes e do Windows")
+    def test_no_windows_a_chave_fica_para_um_unico_dono(self):
+        alvo = self.base / "messaging-vault.key"
+        Vault.load_or_create(alvo)
+        regras = _regras_do_arquivo(alvo)
+        self.assertEqual(len(regras), 1, regras)
+        quem = subprocess.run(["whoami"], capture_output=True, text=True).stdout.strip()
+        dono = regras[0].casefold()
+        self.assertTrue(quem.casefold() in dono or owner_sid().casefold() in dono, regras)
+        # e o proprio dono continua lendo a chave depois do fechamento
+        reaberta = Vault.load_or_create(alvo)
+        lacre = reaberta.seal("x")
+        self.assertEqual(reaberta.open(lacre), "x")
+
+    @unittest.skipUnless(os.name == "nt", "lista de permissoes e do Windows")
+    def test_sem_o_fechamento_o_arquivo_herdava_mais_de_um_acesso(self):
+        solto = self.base / "solto.key"
+        solto.write_text("x", encoding="ascii")
+        self.assertGreater(len(_regras_do_arquivo(solto)), 1)
+
+    @unittest.skipIf(os.name == "nt", "modo de arquivo e coisa de Unix")
+    def test_no_posix_o_modo_da_chave_e_so_do_dono(self):
+        alvo = self.base / "messaging-vault.key"
+        Vault.load_or_create(alvo)
+        self.assertEqual(alvo.stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == "__main__":

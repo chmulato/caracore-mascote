@@ -207,6 +207,10 @@ class _ApiHandler(BaseHTTPRequestHandler):
         path = parsed.path.rstrip("/") or "/"
         query = parse_qs(parsed.query)
         if path == "/v2/health":
+            # D2: a saude diz quais meios estao de pe e quanta resposta espera dono.
+            # Nao e um ping anonimo, entao tambem exige a credencial da origem.
+            if self._authenticate(mutating=False) is None:
+                return
             self._health()
             return
         if path in ("/", "/v2"):
@@ -236,20 +240,22 @@ class _ApiHandler(BaseHTTPRequestHandler):
 
     def _health(self) -> None:
         service = self.api.service
+        origem = self._origem
         meios = {}
-        for origem, health in service.registry.health().items():
-            driver = service.registry.driver_for(origem)
-            meios[origem] = {"meio": driver.name if driver else "", **health.to_dict()}
+        driver = service.registry.driver_for(origem)
+        if driver is not None:
+            meios[origem] = {"meio": driver.name, **service.registry.health_for(origem).to_dict()}
         self._send(
             200,
             {
                 "ok": True,
                 "servico": SERVICE_NAME,
                 "fase": "alpha",
+                "origem": origem,
                 "ativo": bool(self.api.config.enabled),
                 "porta": self.api.port,
                 "meios": meios,
-                "respostas_por_identificar": service.store.stats()["respostas_por_identificar"],
+                "respostas_por_identificar": service.store.unowned_inbound_count(),
             },
         )
 
@@ -328,6 +334,9 @@ class _ApiHandler(BaseHTTPRequestHandler):
         if claimed and not _same_origin(claimed, self._origem):
             self._fail(403, "a credencial nao pertence a origem informada", codigo="origem_diferente")
             return
+        if service.store.minute_count(self._origem) >= service.config.per_minute_limit_per_origin:
+            self._fail(429, "limite por minuto desta origem atingido: aguarde alguns segundos")
+            return
         if service.store.day_count(self._origem) >= service.config.daily_limit_per_origin:
             self._fail(429, "cota diaria desta origem esgotada")
             return
@@ -376,6 +385,7 @@ class _ApiHandler(BaseHTTPRequestHandler):
             updated = service.store.resolve_uncertain(
                 message_id,
                 wanted,
+                origem=self._origem,
                 motivo=str(body.get("motivo") or "conferido pelo produto"),
             )
         except (InvalidRequest, UnknownMessage) as exc:
@@ -396,7 +406,7 @@ class _ApiHandler(BaseHTTPRequestHandler):
         if message is None:
             self._fail(404, "nenhum pedido desta origem com esse id_externo")
             return
-        current = service.store.get_inbound(inbound_id)
+        current = service.store.get_inbound(inbound_id, origem=self._origem)
         if current is None:
             self._fail(404, "resposta nao encontrada")
             return

@@ -84,6 +84,8 @@ class MessagingConfig:
     nonce_ttl_seconds: int = 600
     max_pending: int = 2000
     daily_limit_per_origin: int = 300
+    #: teto de pedidos de uma origem em cada janela de 60 segundos (D3)
+    per_minute_limit_per_origin: int = 20
     max_attempts: int = 2
     poll_interval_seconds: float = 2.0
     #: motorista escolhido por origem: {"PDV": "loopback", "HUB": ""}
@@ -105,6 +107,9 @@ class MessagingConfig:
         self.nonce_ttl_seconds = _as_int(self.nonce_ttl_seconds, 600, low=10, high=3600)
         self.max_pending = _as_int(self.max_pending, 2000, low=1, high=200_000)
         self.daily_limit_per_origin = _as_int(self.daily_limit_per_origin, 300, low=1, high=100_000)
+        self.per_minute_limit_per_origin = _as_int(
+            self.per_minute_limit_per_origin, 20, low=1, high=self.daily_limit_per_origin
+        )
         self.max_attempts = _as_int(self.max_attempts, 2, low=1, high=5)
         self.poll_interval_seconds = _as_float(self.poll_interval_seconds, 2.0, low=0.2, high=600.0)
         self.transports = self._clean_transports(self.transports)
@@ -153,6 +158,7 @@ class MessagingConfig:
             "nonce_ttl_seconds": self.nonce_ttl_seconds,
             "max_pending": self.max_pending,
             "daily_limit_per_origin": self.daily_limit_per_origin,
+            "per_minute_limit_per_origin": self.per_minute_limit_per_origin,
             "max_attempts": self.max_attempts,
             "poll_interval_seconds": self.poll_interval_seconds,
             "transports": {origem: self.transports[origem] for origem in ORIGENS if origem in self.transports},

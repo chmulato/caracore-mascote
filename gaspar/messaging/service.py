@@ -162,6 +162,7 @@ class MessagingService:
             "fila": self.store.stats(),
             "duvidas_na_volta": self.uncertain_after_restart,
             "assinatura_obrigatoria": bool(self.config.require_signed_requests),
+            "chave_restrita_ao_dono": self.vault.permissoes_fechadas,
         }
 
     @property
