@@ -41,7 +41,7 @@ _SAVE_LOCK = threading.Lock()
 
 @dataclass
 class SmsConfig:
-    enabled: bool = True
+    enabled: bool = False
     http_port: int = DEFAULT_HTTP_PORT
     api_token: str = ""
     shared_secret_b64: str = ""
