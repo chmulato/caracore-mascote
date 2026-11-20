@@ -712,6 +712,20 @@ O repositório publica o Gaspar (tags `gaspar-v*`) e o aplicativo Android (tags
 fora de `gaspar-v*`, para que uma release Android não vire "a mais recente" do
 canal.
 
+O selo **Latest** da vitrine do GitHub é outro assunto: é um só por repositório.
+A esteira do Android cria o rascunho com `--latest=false` para o celular não
+herdar o destaque do Gaspar do computador. Mas `gh release edit`, que é como o
+rascunho vira publicação, não tem a opção contrária — só `--latest`. Se uma
+release Android sair com número maior que a do computador, confira o selo depois
+de publicar e reponha:
+
+```bash
+gh release edit gaspar-vX.Y.Z --latest
+```
+
+O selo não interfere no canal de atualização nem na assinatura do manifesto; é
+só o que o visitante vê primeiro na página de downloads.
+
 ## Testes
 
 ```bash
