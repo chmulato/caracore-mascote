@@ -66,6 +66,7 @@ hiddenimports += [
     "gaspar.messaging.store",
     "gaspar.messaging.transport",
     "gaspar.messaging.transports",
+    "gaspar.messaging.transports.android_lan",
     "gaspar.messaging.transports.loopback",
     "gaspar.messaging.transports.smtp_email",
     "gaspar.messaging.vault",

@@ -9,8 +9,10 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioGroup;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,6 +30,7 @@ public class ConfigActivity extends Activity {
     private SmsPreferences prefs;
     private Switch switchAtivo;
     private TextView textStatus;
+    private TextView textPareamento;
     private TextView textStatusLicenca;
     private TextView textStatusBackupCard;
     private TextView textDataHoraBackupCard;
@@ -40,6 +43,7 @@ public class ConfigActivity extends Activity {
 
             prefs = new SmsPreferences(this);
             textStatus = findViewById(R.id.textStatus);
+            textPareamento = findViewById(R.id.textPareamento);
             switchAtivo = findViewById(R.id.switchAtivo);
             textStatusLicenca = findViewById(R.id.textStatusLicenca);
             textStatusBackupCard = findViewById(R.id.textStatusBackupCard);
@@ -52,6 +56,7 @@ public class ConfigActivity extends Activity {
 
             switchAtivo.setChecked(prefs.isAtivo());
             atualizarStatus();
+            atualizarPareamento();
             atualizarStatusLicenca();
             atualizarStatusBackup();
 
@@ -69,20 +74,14 @@ public class ConfigActivity extends Activity {
                 btnUsb.setOnClickListener(v -> verificarConexaoUsb());
             }
             EditText editGatewaySecret = findViewById(R.id.editGatewaySecret);
-            if (editGatewaySecret != null && prefs.getGatewaySharedSecret() != null) {
-                editGatewaySecret.setText(prefs.getGatewaySharedSecret());
+            RadioGroup radioGatewayOrigem = findViewById(R.id.radioGatewayOrigem);
+            mostrarChaveDaOrigem();
+            if (radioGatewayOrigem != null) {
+                radioGatewayOrigem.setOnCheckedChangeListener((grupo, marcado) -> mostrarChaveDaOrigem());
             }
             Button btnGatewayStart = findViewById(R.id.btnGatewayStart);
             if (btnGatewayStart != null) {
-                btnGatewayStart.setOnClickListener(v -> {
-                    EditText edit = findViewById(R.id.editGatewaySecret);
-                    String secret = edit != null ? edit.getText().toString().trim() : "";
-                    prefs.setGatewaySharedSecret(secret.isEmpty() ? null : secret);
-                    if (!secret.isEmpty()) {
-                        startService(new Intent(ConfigActivity.this, GatewayListenerService.class));
-                        Toast.makeText(ConfigActivity.this, "Gateway iniciado. PDV na mesma rede Wi‑Fi pode enviar comandos.", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                btnGatewayStart.setOnClickListener(v -> salvarChaveGateway());
             }
             Button btnSetupQr = findViewById(R.id.btnSetupQr);
             if (btnSetupQr != null) {
@@ -91,6 +90,19 @@ public class ConfigActivity extends Activity {
             Button btnWifiManage = findViewById(R.id.btnWifiManage);
             if (btnWifiManage != null) {
                 btnWifiManage.setOnClickListener(v -> startActivity(new Intent(ConfigActivity.this, WifiActivity.class)));
+            }
+            Button btnEmailManage = findViewById(R.id.btnEmailManage);
+            if (btnEmailManage != null) {
+                btnEmailManage.setOnClickListener(v -> startActivity(new Intent(ConfigActivity.this, EmailActivity.class)));
+            }
+            Button btnMaisOpcoes = findViewById(R.id.btnMaisOpcoes);
+            View maisOpcoes = findViewById(R.id.maisOpcoes);
+            if (btnMaisOpcoes != null && maisOpcoes != null) {
+                btnMaisOpcoes.setOnClickListener(v -> {
+                    boolean aberto = maisOpcoes.getVisibility() != View.VISIBLE;
+                    maisOpcoes.setVisibility(aberto ? View.VISIBLE : View.GONE);
+                    btnMaisOpcoes.setText(aberto ? R.string.config_menos_opcoes : R.string.config_mais_opcoes);
+                });
             }
             Switch switchConfirmacao = findViewById(R.id.switchConfirmacao);
             if (switchConfirmacao != null) {
@@ -150,7 +162,9 @@ public class ConfigActivity extends Activity {
         atualizarStatusLicenca();
         atualizarStatusWifi();
         atualizarStatusConfirmacao();
-        if (prefs.getGatewaySharedSecret() != null && !prefs.getGatewaySharedSecret().isEmpty()) {
+        atualizarPareamento();
+        atualizarStatusEmail();
+        if (new PareamentoPorOrigem(prefs::getGatewaySecretFor, new B64DoAparelho()).pareado()) {
             startService(new Intent(this, GatewayListenerService.class));
         }
     }
@@ -285,6 +299,57 @@ public class ConfigActivity extends Activity {
         } else {
             textWifiRede.setText(getString(R.string.config_wifi_rede_guardada, ssid));
         }
+    }
+
+    /** Quem esta pareado neste celular, dito em linguagem de balcao. */
+    private void atualizarPareamento() {
+        if (textPareamento == null) return;
+        String pareadas = new PareamentoPorOrigem(prefs::getGatewaySecretFor, new B64DoAparelho())
+                .origensPareadas();
+        textPareamento.setText(pareadas.isEmpty() ? getString(R.string.config_pareado_nenhum)
+                : getString(R.string.config_pareado_com, pareadas.replace(" ", " e ")));
+    }
+
+    private void atualizarStatusEmail() {
+        TextView text = findViewById(R.id.textEmailPainel);
+        if (text == null) return;
+        EmailPreferencias ponte = new EmailPreferencias(this);
+        if (!ponte.estaAtiva()) {
+            text.setText(R.string.config_email_off);
+        } else if (!ponte.estaConfigurada()) {
+            text.setText(R.string.config_email_sem_dados);
+        } else {
+            text.setText(getString(R.string.config_email_on, ponte.usuario()));
+        }
+    }
+
+    private String origemSelecionada() {
+        RadioGroup grupo = findViewById(R.id.radioGatewayOrigem);
+        return grupo != null && grupo.getCheckedRadioButtonId() == R.id.radioGatewayHub
+                ? PareamentoPorOrigem.HUB : PareamentoPorOrigem.PDV;
+    }
+
+    /** A chave guardada para o programa escolhido na tela. */
+    private void mostrarChaveDaOrigem() {
+        EditText edit = findViewById(R.id.editGatewaySecret);
+        if (edit == null) return;
+        String chave = prefs.getGatewaySecretFor(origemSelecionada());
+        edit.setText(chave != null ? chave : "");
+    }
+
+    private void salvarChaveGateway() {
+        EditText edit = findViewById(R.id.editGatewaySecret);
+        String secret = edit != null ? edit.getText().toString().trim() : "";
+        String origem = origemSelecionada();
+        prefs.setGatewaySecretFor(origem, secret.isEmpty() ? null : secret);
+        if (secret.isEmpty()) {
+            Toast.makeText(this, R.string.config_gateway_apagada, Toast.LENGTH_LONG).show();
+        } else {
+            startService(new Intent(this, GatewayListenerService.class));
+            Toast.makeText(this, R.string.config_gateway_iniciado, Toast.LENGTH_LONG).show();
+        }
+        atualizarPareamento();
+        PdvSmsLogger.i("Config.gateway", "Chave guardada para a origem " + origem + ".");
     }
 
     private void atualizarStatusConfirmacao() {
