@@ -9,6 +9,7 @@ entra no arquivo selado e que o que da errado fica com um motivo dito no log.
 
 from __future__ import annotations
 
+import base64
 import json
 import tempfile
 import unittest
@@ -30,6 +31,7 @@ from gaspar.messaging.transports.loopback import LoopbackTransportDriver
 from gaspar.messaging.transports.smtp_email import EmailBridgeDriver
 from gaspar.messaging.service import MessagingService
 from gaspar.messaging.vault import Vault
+from gaspar.sms import e2e
 
 #: o nome com que cada meio aparece no messaging.json
 NOME_EMAIL = EmailBridgeDriver.name
@@ -271,6 +273,73 @@ class AjustesPorMotoristaNoArquivoTests(BaseComCofre):
             self.home / "messaging.json"
         ).read_text(encoding="utf-8"))
         self.assertEqual({}, corpo["transport_settings"])
+
+    def test_o_exemplo_do_manual_monta_os_dois_motoristas(self):
+        """O JSON gravado no tecnico e escrito aqui e conferido: os dois meios sobem.
+
+        Vale como trava do documento. Se um campo mudar de nome, o exemplo publicado
+        deixa de montar e este caso fica vermelho antes do manual enganar alguem.
+        """
+        from gaspar.sms import e2e
+
+        _, publica = e2e.generate_keypair()
+        chave_celular = base64.b64encode(publica).decode("ascii")
+        arquivo = self.home / "messaging.json"
+        arquivo.write_text(
+            json.dumps(
+                {
+                    "enabled": True,
+                    "transports": {"PDV": NOME_ANDROID_LAN, "HUB": NOME_EMAIL},
+                    "transport_settings": {
+                        NOME_ANDROID_LAN: {
+                            "ligada": True,
+                            "exigir_e2e": True,
+                            "segredo_sealed": self.vault.seal(SEGREDO),
+                            "chave_celular": chave_celular,
+                        },
+                        NOME_EMAIL: {
+                            "enabled": True,
+                            "smtp_host": "smtp.exemplo.com.br",
+                            "smtp_port": 465,
+                            "smtp_security": "ssl",
+                            "user": "balcao@exemplo.com.br",
+                            "password_sealed": self.vault.seal(SENCA),
+                            "imap_host": "imap.exemplo.com.br",
+                            "bridge_key_sealed": self.vault.seal("chave-da-ponte"),
+                        },
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        config = load_config(arquivo)
+        self.assertEqual((NOME_ANDROID_LAN, NOME_EMAIL), config.meios_citados)
+
+        registry = TransportRegistry()
+        self.assertEqual(
+            [NOME_ANDROID_LAN, NOME_EMAIL],
+            montar_registry(registry, config, vault=self.vault, home=self.home),
+        )
+        registry.bind("PDV", NOME_ANDROID_LAN)
+        registry.bind("HUB", NOME_EMAIL)
+
+        celular = registry.driver_for("PDV")
+        self.assertIsInstance(celular, AndroidLanTransportDriver)
+        self.assertTrue(celular.health().available, celular.health().reason)
+
+        caixa = registry.driver_for("HUB")
+        self.assertIsInstance(caixa, EmailBridgeDriver)
+        self.assertTrue(caixa.health().available, caixa.health().reason)
+        self.assertEqual(str(self.home / ARQUIVO_ESTADO_EMAIL), caixa.settings.state_path)
+        self.assertFalse((self.home / ARQUIVO_ESTADO_EMAIL).exists())
+
+        #: o exemplo nao pede segredo em claro, e o arquivo continua so com selos
+        gravado = arquivo.read_text(encoding="utf-8")
+        for segredo in (SEGREDO, SENCA, "chave-da-ponte"):
+            self.assertNotIn(segredo, gravado)
+        self.assertIn("segredo_sealed", gravado)
+        self.assertIn("password_sealed", gravado)
 
 
 class LanSettingsDoArquivoTests(unittest.TestCase):
