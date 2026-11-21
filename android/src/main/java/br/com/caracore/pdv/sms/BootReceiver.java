@@ -6,7 +6,7 @@ import android.content.Intent;
 
 import androidx.core.content.ContextCompat;
 
-/** Religa o gateway Wi-Fi depois que o celular reinicia. */
+/** Religa o gateway Wi-Fi e a ponte de e-mail depois que o celular reinicia. */
 public class BootReceiver extends BroadcastReceiver {
 
     @Override
@@ -15,13 +15,16 @@ public class BootReceiver extends BroadcastReceiver {
             return;
         }
         SmsPreferences prefs = new SmsPreferences(context);
-        String secret = prefs.getGatewaySharedSecret();
-        if (secret == null || secret.isEmpty() || !prefs.isAtivo()) {
-            return;
-        }
+        boolean pareado = new PareamentoPorOrigem(prefs::getGatewaySecretFor, new B64DoAparelho()).pareado();
         try {
-            ContextCompat.startForegroundService(context, new Intent(context, GatewayListenerService.class));
-            PdvSmsLogger.i("BootReceiver", "Gateway religado apos reiniciar o celular.");
+            if (pareado && prefs.isAtivo()) {
+                ContextCompat.startForegroundService(context, new Intent(context, GatewayListenerService.class));
+                PdvSmsLogger.i("BootReceiver", "Gateway religado apos reiniciar o celular.");
+            }
+            if (new EmailPreferencias(context).estaAtiva()) {
+                ContextCompat.startForegroundService(context, new Intent(context, EmailPonteServico.class));
+                PdvSmsLogger.i("BootReceiver", "Ponte de e-mail religada apos reiniciar o celular.");
+            }
         } catch (Exception e) {
             PdvSmsLogger.i("BootReceiver", "boot: " + e.getMessage());
         }

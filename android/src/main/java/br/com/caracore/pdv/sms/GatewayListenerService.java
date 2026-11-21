@@ -8,7 +8,6 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
-import android.telephony.SmsManager;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -25,7 +24,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Enumeration;
 
 /**
@@ -56,13 +54,9 @@ public class GatewayListenerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         SmsPreferences prefs = new SmsPreferences(this);
-        String secret = prefs.getGatewaySharedSecret();
-        if (secret == null || secret.isEmpty()) {
-            stopSelf();
-            return START_NOT_STICKY;
-        }
-        final GatewayCrypto crypto = GatewayCrypto.fromBase64(secret);
-        if (crypto == null) {
+        final PareamentoPorOrigem pareamentos =
+                new PareamentoPorOrigem(prefs::getGatewaySecretFor, new B64DoAparelho());
+        if (!pareamentos.pareado()) {
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -80,7 +74,7 @@ public class GatewayListenerService extends Service {
             udpThread.start();
         }
         if (tcpThread == null || !tcpThread.isAlive()) {
-            tcpThread = new Thread(() -> runTcpServer(crypto));
+            tcpThread = new Thread(() -> runTcpServer(pareamentos));
             tcpThread.start();
         }
         return START_STICKY;
@@ -127,13 +121,13 @@ public class GatewayListenerService extends Service {
         }
     }
 
-    private void runTcpServer(GatewayCrypto crypto) {
+    private void runTcpServer(PareamentoPorOrigem pareamentos) {
         try (ServerSocket server = new ServerSocket(COMMAND_PORT)) {
             server.setSoTimeout(3000);
             while (running) {
                 try {
                     Socket client = server.accept();
-                    new Thread(() -> handleClient(client, crypto)).start();
+                    new Thread(() -> handleClient(client, pareamentos)).start();
                 } catch (Exception e) {
                     if (!running) break;
                 }
@@ -143,7 +137,7 @@ public class GatewayListenerService extends Service {
         }
     }
 
-    private void handleClient(Socket client, GatewayCrypto crypto) {
+    private void handleClient(Socket client, PareamentoPorOrigem pareamentos) {
         try {
             client.setSoTimeout(15000);
             byte[] lenBuf = new byte[4];
@@ -154,13 +148,20 @@ public class GatewayListenerService extends Service {
             byte[] encrypted = new byte[len];
             read = readFully(client.getInputStream(), encrypted);
             if (read != len) return;
-            byte[] plain = crypto.decrypt(encrypted);
-            String json = new String(plain, StandardCharsets.UTF_8);
-            writeAck(client, crypto, dispatchCommand(json));
+            PareamentoPorOrigem.Aberto aberto = pareamentos.abrir(encrypted);
+            if (aberto == null) {
+                // nao foi escrito com uma chave desta loja: nao ha para quem responder
+                PdvSmsLogger.i("GatewayListener", "comando de fora do pareamento: ignorado");
+                return;
+            }
+            writeAck(client, aberto.par, dispatchCommand(aberto));
         } catch (Exception e) {
             PdvSmsLogger.i("GatewayListener", "handleClient: " + e.getMessage());
         } finally {
-            try { client.close(); } catch (Exception ignored) {}
+            try {
+                client.close();
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -174,11 +175,19 @@ public class GatewayListenerService extends Service {
         return total;
     }
 
-    private JSONObject dispatchCommand(String json) {
+    private JSONObject dispatchCommand(PareamentoPorOrigem.Aberto aberto) {
         JSONObject ack = new JSONObject();
         try {
             ack.put("ok", false);
-            JSONObject entrada = new JSONObject(json);
+            JSONObject entrada = new JSONObject(aberto.texto());
+            String origem = texto(entrada, "origem");
+            if (!aberto.par.servePara(origem)) {
+                // a chave que abriu e desta loja, mas diz ser de outra: a fila errada nunca comeca
+                ack.put("error", "a origem declarada nao bate com o pareamento deste celular");
+                PdvSmsLogger.i("GatewayListener", "origem declarada fora do pareamento.");
+                return ack;
+            }
+            String productora = origem == null || origem.trim().isEmpty() ? aberto.par.origem() : origem.trim();
             String action = texto(entrada, "action");
             String number = texto(entrada, "number");
             String message = texto(entrada, "message");
@@ -202,14 +211,10 @@ public class GatewayListenerService extends Service {
                 prefs.setPdvBaseUrl(base);
             }
             if ("confirmar_operacao".equals(action)) {
-                return dispatchConfirmacao(ack, jobId, entrada, prefs);
+                return dispatchConfirmacao(ack, jobId, entrada, productora, prefs);
             }
             if (!"send_sms".equals(action)) {
                 ack.put("error", "acao desconhecida");
-                return ack;
-            }
-            if (!prefs.isAtivo()) {
-                ack.put("error", "app inativo");
                 return ack;
             }
             if (envelope != null && !envelope.isEmpty()) {
@@ -224,57 +229,20 @@ public class GatewayListenerService extends Service {
                     return ack;
                 }
             }
-            if (number == null || number.trim().isEmpty() || message == null) {
-                ack.put("error", "pedido incompleto");
-                return ack;
-            }
-            number = number.trim().replaceAll("[^+0-9]", "");
-            if (number.length() < 10 || number.length() > 15) {
-                ack.put("error", "numero invalido");
-                return ack;
-            }
-            if (message.length() > 480) {
-                ack.put("error", "mensagem acima de 480 caracteres");
-                return ack;
-            }
-            if (prefs.isKnownJobId(jobId)) {
+            SmsDispatch.Ack resultado = SmsDispatch.enviar(
+                    new SmsLocalState(this), new PhoneRadio(this), jobId, seq, number, message);
+            if (resultado.ok()) {
+                // o comprovante do radio volta por aqui, nao pela ponte de e-mail
+                new TrilhaDoPedido(new PreferenciasChaveValor(this))
+                        .registrar(jobId, productora, TrilhaDoPedido.CANAL_WIFI, number, "");
                 ack.put("ok", true);
-                ack.put("status", "repetido");
-                return ack;
-            }
-            if (seq > 0 && seq <= prefs.getLastSequence()) {
-                ack.put("error", "pedido repetido");
-                return ack;
-            }
-            if (!SetupDiagnosticHelper.checkSmsPermissions(this)) {
-                ack.put("error", "permissao de SMS negada");
-                return ack;
-            }
-            if (!prefs.consumeSmsQuota()) {
-                ack.put("error", "limite diario do celular atingido");
-                return ack;
-            }
-
-            SmsManager sms = SmsManager.getDefault();
-            ArrayList<String> parts = sms.divideMessage(message);
-            ArrayList<PendingIntent> sentIntents = new ArrayList<>();
-            ArrayList<PendingIntent> deliveredIntents = new ArrayList<>();
-            for (int i = 0; i < parts.size(); i++) {
-                sentIntents.add(statusPending(SmsStatusReceiver.ACTION_SENT, jobId, i, true));
-                deliveredIntents.add(statusPending(SmsStatusReceiver.ACTION_DELIVERED, jobId, i, false));
-            }
-            if (parts.size() == 1) {
-                sms.sendTextMessage(number, null, parts.get(0), sentIntents.get(0), deliveredIntents.get(0));
+                ack.put("status", resultado.status());
+                if (SmsDispatch.STATUS_ACEITO.equals(resultado.status())) {
+                    PdvSmsLogger.i("GatewayListener", "Pedido entregue ao radio do celular.");
+                }
             } else {
-                sms.sendMultipartTextMessage(number, null, parts, sentIntents, deliveredIntents);
+                ack.put("error", resultado.erro());
             }
-            ack.put("ok", true);
-            ack.put("status", "aceito");
-            prefs.rememberJobId(jobId);
-            if (seq > 0) {
-                prefs.setLastSequence(seq);
-            }
-            PdvSmsLogger.i("GatewayListener", "Pedido entregue ao radio do celular.");
         } catch (Exception e) {
             try {
                 ack.put("ok", false);
@@ -286,20 +254,9 @@ public class GatewayListenerService extends Service {
         return ack;
     }
 
-    private PendingIntent statusPending(String action, String id, int part, boolean sent) {
-        Intent intent = new Intent(this, SmsStatusReceiver.class);
-        intent.setAction(action);
-        intent.putExtra(SmsStatusReceiver.EXTRA_ID, id);
-        int request = (id.hashCode() * 31 + part) * 2 + (sent ? 0 : 1);
-        return PendingIntent.getBroadcast(
-                this,
-                request,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    }
-
     /** Entrega o pedido de confirmação à tela do celular; a decisão volta por /api/mobile/confirmacao. */
-    private JSONObject dispatchConfirmacao(JSONObject ack, String jobId, JSONObject entrada, SmsPreferences prefs) {
+    private JSONObject dispatchConfirmacao(JSONObject ack, String jobId, JSONObject entrada,
+                                           String origem, SmsPreferences prefs) {
         try {
             if (!prefs.isConfirmacaoAtiva()) {
                 ack.put("error", "confirmacao desligada neste celular");
@@ -315,7 +272,7 @@ public class GatewayListenerService extends Service {
                     texto(entrada, "motivo"),
                     agora + prazoSegundos * 1000L,
                     agora,
-                    texto(entrada, "origem"));
+                    origem);
             String recusa = pedido.validar(agora);
             if (recusa != null) {
                 ack.put("error", "pedido de confirmacao recusado: " + recusa);
@@ -346,9 +303,9 @@ public class GatewayListenerService extends Service {
         return objeto.optString(campo, null);
     }
 
-    private void writeAck(Socket client, GatewayCrypto crypto, JSONObject ack) {
+    private void writeAck(Socket client, PareamentoPorOrigem.Par par, JSONObject ack) {
         try {
-            byte[] blob = crypto.encrypt(ack.toString().getBytes(StandardCharsets.UTF_8));
+            byte[] blob = par.selar(ack.toString().getBytes(StandardCharsets.UTF_8));
             OutputStream out = client.getOutputStream();
             out.write(ByteBuffer.allocate(4).putInt(blob.length).array());
             out.write(blob);
@@ -378,8 +335,8 @@ public class GatewayListenerService extends Service {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                    "Gateway PDV", NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("CaraCore PDV envia comandos por esta rede");
+                    getString(R.string.gateway_canal_nome), NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription(getString(R.string.gateway_canal_desc));
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(channel);
         }
@@ -389,8 +346,8 @@ public class GatewayListenerService extends Service {
         Intent intent = new Intent(this, ConfigActivity.class);
         PendingIntent pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("CaraCore PDV - Gateway")
-                .setContentText("Aguardando PDV na rede Wi‑Fi")
+                .setContentTitle(getString(R.string.gateway_notif_titulo))
+                .setContentText(getString(R.string.gateway_notif_texto))
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentIntent(pi)
                 .setOngoing(true)

@@ -59,8 +59,13 @@
 
     <!-- Gateway Wi‑Fi (PDV ↔ APK) -->
     <string name="config_secao_gateway">Gateway Wi‑Fi (PDV na mesma rede)</string>
+    <string name="config_gateway_origem_titulo">Para qual programa é esta chave?</string>
+    <string name="config_gateway_origem_pdv">CaraCore PDV</string>
+    <string name="config_gateway_origem_hub">CaraCore Hub</string>
     <string name="config_gateway_hint">Chave compartilhada (Base64) — mesma do PDV</string>
     <string name="config_gateway_btn">Salvar e iniciar gateway</string>
+    <string name="config_gateway_iniciado">Pronto. O computador dessa chave já pode usar este celular na rede Wi‑Fi.</string>
+    <string name="config_gateway_apagada">Chave apagada para este programa.</string>
     <string name="config_setup_qr_btn">Configurar com QR Code (Premium+)</string>
     <!-- Setup por QR -->
     <string name="setup_scan_prompt">Aponte para o QR Code na tela do PDV</string>
@@ -144,4 +149,69 @@
     <string name="confirm_nao">Voltar</string>
     <string name="confirm_prazo">Expira em %1$s</string>
     <string name="confirm_prazo_vencido">Prazo vencido</string>
+
+    <!-- Tela do lojista: o que esta pareado -->
+    <string name="config_pareado_nenhum">Nenhum computador está ligado a este celular ainda.</string>
+    <string name="config_pareado_com">Este celular atende: %1$s</string>
+    <string name="config_mais_opcoes">Mais opções</string>
+    <string name="config_menos_opcoes">Menos opções</string>
+
+    <!-- Aviso por e-mail, na tela principal -->
+    <string name="config_secao_email">Pedidos por e-mail (fora da rede da loja)</string>
+    <string name="config_email_off">Desligado — o celular só escuta o computador aqui na rede da loja.</string>
+    <string name="config_email_on">Ligado — o celular também escuta o computador pelo e-mail %1$s.</string>
+    <string name="config_email_sem_dados">Ligado, mas ainda faltam o endereço e a senha do e-mail.</string>
+    <string name="config_email_btn">Abrir painel do e-mail</string>
+
+    <!-- Painel do e-mail -->
+    <string name="email_titulo">Pedidos por e-mail</string>
+    <string name="email_explica">Use quando o computador e este celular não estiverem na mesma rede. O computador escreve o pedido na caixa de e-mail da loja e o celular lê de lá. O pedido chega embaralhado: só este celular consegue abrir os que forem dele, e nada é lido fora da caixa que você indicar.</string>
+    <string name="email_card_switch">Escutar o computador pelo e-mail</string>
+    <string name="email_switch_label">Receber pedidos por e-mail</string>
+    <string name="email_switch_ajuda">Desligue para pausar. Enquanto estiver ligado, o celular procura pedidos novos a cada 30 segundos, em qualquer rede (Wi-Fi da loja, em casa ou 4G).</string>
+    <string name="email_card_dados">Dados da caixa de e-mail</string>
+    <string name="email_endereco_label">Endereço do e-mail da loja</string>
+    <string name="email_endereco_hint">ex.: celular@sualoja.com.br</string>
+    <string name="email_senha_label">Senha do aplicativo</string>
+    <string name="email_senha_ajuda">Não é a sua senha do dia a dia: é a senha especial que o seu e-mail cria para aplicativos. Ela fica guardada dentro deste celular, protegida pela trava da tela, e não aparece na tela de novo.</string>
+    <string name="email_senha_hint">Senha especial criada pelo seu e-mail</string>
+    <string name="email_senha_guardada">Senha guardada neste celular (••••••••)</string>
+    <string name="email_senha_nenhuma">Nenhuma senha guardada ainda.</string>
+    <string name="email_avancado_label">Mais opções (endereço dos servidores)</string>
+    <string name="email_entrada_label">Servidor que guarda os recados (entrada)</string>
+    <string name="email_saida_label">Servidor que envia os recados (saída)</string>
+    <string name="email_porta_label">Porta</string>
+    <string name="email_porta_padrao_entrada">993</string>
+    <string name="email_porta_padrao_saida">465</string>
+    <string name="email_caixa_label">Caixa onde o computador escreve</string>
+    <string name="email_caixa_hint">INBOX</string>
+    <string name="email_salvar">Guardar</string>
+    <string name="email_salvo">Dados guardados neste celular.</string>
+    <string name="email_faltam_dados">Informe o endereço do e-mail, o servidor de entrada e o de saída.</string>
+    <string name="email_sem_senha">Digite a senha do aplicativo antes de ligar.</string>
+    <string name="email_card_estado">Situação</string>
+    <string name="email_estado_off">Desligado — nenhum pedido entra pelo e-mail.</string>
+    <string name="email_estado_on">Ligado — o celular procura pedidos novos a cada 30 segundos.</string>
+    <string name="email_estado_incompleto">Ligado, mas sem endereço ou senha: nada entra pelo e-mail ainda.</string>
+    <string name="email_fila">%1$d aviso(s) esperando para voltar ao computador.</string>
+    <string name="email_fila_vazia">Nenhum aviso esperando para voltar ao computador.</string>
+    <string name="email_testar">Testar agora</string>
+    <string name="email_testando">Entrando na caixa de e-mail…</string>
+    <string name="email_teste_ok">Deu certo: o celular entrou na caixa e falou com os dois servidores. Nenhum pedido foi enviado agora.</string>
+    <string name="email_teste_entrada_sem">Faltam o servidor de entrada, o endereço ou a senha.</string>
+    <string name="email_teste_falha_entrada">Não consegui entrar na caixa de entrada (%1$s:%2$d). Confira o endereço do servidor, a porta e a senha do aplicativo.</string>
+    <string name="email_teste_falha_saida">Entrei na caixa, mas o servidor de saída não respondeu (%1$s:%2$d). Confira o endereço, a porta e a senha.</string>
+    <string name="email_voltar">Voltar</string>
+
+    <!-- Serviço da ponte de e-mail -->
+    <string name="email_canal_nome">Gaspar pelo e-mail</string>
+    <string name="email_canal_desc">O celular procura os pedidos do computador na caixa de e-mail da loja</string>
+    <string name="email_notif_titulo">Gaspar está escutando o computador</string>
+    <string name="email_notif_texto">Pedidos por e-mail: ligado</string>
+
+    <!-- Serviço do canal Wi-Fi -->
+    <string name="gateway_canal_nome">Gaspar na rede da loja</string>
+    <string name="gateway_canal_desc">O computador da loja envia pedidos por esta rede Wi‑Fi</string>
+    <string name="gateway_notif_titulo">Gaspar está escutando o computador</string>
+    <string name="gateway_notif_texto">Aguardando pedidos na rede Wi‑Fi da loja</string>
 </resources>

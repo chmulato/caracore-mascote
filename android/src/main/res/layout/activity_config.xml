@@ -94,6 +94,14 @@
                     android:textColor="@color/text_primary"
                     android:textStyle="bold" />
 
+                <TextView
+                    android:id="@+id/textPareamento"
+                    style="@style/HintText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_pareado_nenhum"
+                    android:layout_marginTop="6dp" />
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -175,6 +183,36 @@
                     android:layout_marginTop="10dp" />
             </LinearLayout>
 
+            <!-- Pedidos por e-mail (fora da rede da loja) -->
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/config_secao_email" />
+
+            <LinearLayout
+                style="@style/Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textEmailPainel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:text="@string/config_email_off" />
+
+                <Button
+                    android:id="@+id/btnEmailManage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_email_btn"
+                    android:layout_marginTop="10dp" />
+            </LinearLayout>
+
             <!-- Confirmação pelo celular -->
             <TextView
                 style="@style/SectionTitle"
@@ -250,11 +288,28 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Mais opcoes: o que so quem configura precisa mexer -->
+            <Button
+                android:id="@+id/btnMaisOpcoes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/config_mais_opcoes"
+                android:layout_marginTop="24dp"
+                style="?android:attr/buttonBarButtonStyle" />
+
+            <LinearLayout
+                android:id="@+id/maisOpcoes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
             <!-- Licença Premium -->
             <TextView
                 style="@style/SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
                 android:text="@string/config_secao_licenca" />
 
             <LinearLayout
@@ -324,13 +379,44 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/config_gateway_origem_titulo"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_primary" />
+
+                <RadioGroup
+                    android:id="@+id/radioGatewayOrigem"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+
+                    <RadioButton
+                        android:id="@+id/radioGatewayPdv"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="@string/config_gateway_origem_pdv" />
+
+                    <RadioButton
+                        android:id="@+id/radioGatewayHub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:text="@string/config_gateway_origem_hub" />
+                </RadioGroup>
+
                 <EditText
                     android:id="@+id/editGatewaySecret"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/config_gateway_hint"
                     android:inputType="textMultiLine"
-                    android:minLines="2" />
+                    android:minLines="2"
+                    android:importantForAutofill="no"
+                    android:layout_marginTop="8dp" />
 
                 <Button
                     android:id="@+id/btnGatewayStart"
@@ -394,6 +480,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/config_backup_token_copiar"
                     android:layout_marginTop="6dp" />
+            </LinearLayout>
             </LinearLayout>
 
             <View
