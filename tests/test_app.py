@@ -141,6 +141,7 @@ class FakeBridge:
         self.erased = 0
         self.phone_result = {"found": True, "host": "192.168.0.9"}
         self.enqueue_error = None
+        self.enviados: list[tuple[str, str, bool]] = []
         self.phone_online = False
         self.phone_host = ""
         self.counts = {"fila": 1, "enviado": 2, "entregue": 3, "falhou": 0}
@@ -159,6 +160,7 @@ class FakeBridge:
     def enqueue(self, number, message, manual=False):
         if self.enqueue_error is not None:
             raise self.enqueue_error
+        self.enviados.append((number, message, manual))
         return SimpleNamespace(id="abcdef1234567890")
 
     def erase_history(self):
@@ -755,6 +757,42 @@ class CelularSmsTests(PainelBase):
             self.app._on_test_send()
         aviso.assert_called_once()
 
+    def test_pedido_de_teste_nao_enfileira_com_o_celular_cedido(self):
+        """O botão da 1.7 obedece à reserva: enfileirar no motorista parado diria "enviado" à toa.
+
+        Amarra três pontas ao mesmo tempo: o pedido de teste não chega ao bridge, o
+        aviso diz o motivo e onde desligar a barra, e o log registra a recusa.
+        """
+        _, bridge = self.usar_fakes()
+        self.app.messaging_config = MessagingConfig(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.assertTrue(self.app._motivo_celular_reservado(), "a reserva tem de estar de pé no teste")
+        with mock.patch.object(app_module.messagebox, "showwarning") as aviso:
+            self.app._on_test_send()
+        self.assertEqual([], bridge.enviados)
+        self.assertFalse(any("enfileirado" in l for l in self.app._events_backlog))
+        texto = aviso.call_args[0][1]
+        self.assertIn("barra 2.0", texto)
+        self.assertIn("Mensagens pelo computador", texto, "o aviso aponta o quadro onde desligar")
+        self.assertTrue(
+            any("Teste de SMS" in linha and "nao enviado" in linha for linha in self.app._events_backlog)
+        )
+
+    def test_pedido_de_teste_livre_quando_o_celular_nesta_fora_do_meio(self):
+        """A reserva só morde com o celular pelo Wi-Fi: escolhendo o e-mail, a 1.7 segue de pé.
+
+        A outra metade da regra, medida no mesmo fake que registra o enqueue: sem
+        reserva o teste passa por aqui exatamente como passava antes da barra 2.0.
+        """
+        _, bridge = self.usar_fakes()
+        self.app.messaging_config = MessagingConfig(enabled=True, transports={"PDV": EmailBridgeDriver.name})
+        self.assertEqual("", self.app._motivo_celular_reservado())
+        self.app.sms_number_var.set("11999999999")
+        with mock.patch.object(app_module.messagebox, "showwarning") as aviso:
+            self.app._on_test_send()
+        aviso.assert_not_called()
+        self.assertEqual([("11999999999", self.app.sms_message_var.get(), True)], bridge.enviados)
+        self.assertTrue(any("Teste de SMS enfileirado" in l for l in self.app._events_backlog))
+
     def test_apagar_historico_pede_confirmacao(self):
         _, bridge = self.usar_fakes()
         with mock.patch.object(app_module.messagebox, "askyesno", return_value=False):
@@ -1213,6 +1251,52 @@ class TelaDaBarraTests(PainelBase):
         self.assertEqual(
             app_module._rotulo_meio(EmailBridgeDriver.name), self.app.msg_meio_var["PDV"].get()
         )
+
+    def test_a_janela_de_ajustes_que_nao_consegue_salvar_volta_atras(self):
+        """O que o disco recusou não pode continuar na memória: a tela releria um canal salvo.
+
+        A janela de ajustes tinha o rollback só na palavra. Aqui se amarra o bloco em
+        memória, o que o log conta e o que fica na tela para o lojista tentar de novo.
+        """
+        config = self.gravar_e_ler(enabled=True, transports={"PDV": EmailBridgeDriver.name})
+        campos = self.abrir_ajustes()[EmailBridgeDriver.name]
+        campos["smtp_host"].set("smtp.usado-agora.test.invalid")
+        with mock.patch.object(MessagingConfig, "save", side_effect=OSError("disco cheio")):
+            self.app._salvar_meios()
+        self.assertEqual({}, config.settings_for(EmailBridgeDriver.name), "a memória voltou ao antes")
+        self.assertNotIn(EmailBridgeDriver.name, config.transport_settings)
+        self.assertIsNotNone(self.app._meios_window, "a janela fica aberta para tentar de novo")
+        self.assertEqual("smtp.usado-agora.test.invalid", campos["smtp_host"].get())
+        self.assertFalse(any("Ajustes dos canais salvos" in l for l in self.app._events_backlog))
+        self.assertTrue(
+            any("Nao foi possivel salvar a barra" in l for l in self.app._system_backlog),
+            "a recusa do disco tem de aparecer no registro",
+        )
+
+    def test_a_janela_devolve_o_mapa_inteiro_sem_inventar_canal(self):
+        """Depois de um disco que recusa, a memória é o mapa de antes, chave por chave.
+
+        O rollback não pode deixar para trás o bloco de um canal que ninguém escolheu:
+        a fábrica percorre os citados, e um bloco órfão na memória monta caixa postal
+        que o arquivo nunca aprovou.
+        """
+        selo = self.app._cofre_da_barra().seal("senha-de-antes")
+        antes = {
+            EmailBridgeDriver.name: {"user": "loja@loja.test.invalid", "password_sealed": selo},
+            MEIO_CELULAR: {"segredo_sealed": "abc", "descobrir": True},
+        }
+        config = self.gravar_e_ler(
+            enabled=True,
+            transports={"PDV": EmailBridgeDriver.name},
+            transport_settings={nome: dict(bloco) for nome, bloco in antes.items()},
+        )
+        mapa_de_antes = {nome: dict(bloco) for nome, bloco in config.transport_settings.items()}
+        campos = self.abrir_ajustes()[EmailBridgeDriver.name]
+        campos["smtp_host"].set("smtp.usado-agora.test.invalid")
+        with mock.patch.object(MessagingConfig, "save", side_effect=OSError("disco cheio")):
+            self.app._salvar_meios()
+        self.assertEqual(mapa_de_antes, config.transport_settings)
+        self.assertEqual(antes[MEIO_CELULAR], config.settings_for(MEIO_CELULAR))
 
     # ------------------------------------------------------- ajustes e segredo selado
 

@@ -1259,12 +1259,20 @@ class GasparApp:
             )
             return
         novos = {nome: self._colher_canal(nome, vault) for nome in self._meio_campos}
+        antes: dict[str, dict] = {}
         alterados: list[str] = []
         for nome, bloco in novos.items():
-            if bloco != config.settings_for(nome):
-                config.set_settings(nome, bloco)
-                alterados.append(nome)
+            guardado = config.settings_for(nome)
+            if bloco == guardado:
+                continue
+            antes[nome] = guardado
+            config.set_settings(nome, bloco)
+            alterados.append(nome)
         if not self._salvar_configuracao_da_barra():
+            # o que o disco recusou nao pode ficar na memoria: no proximo arranque a
+            # barra montaria um canal que o arquivo nega, e a tela releria um ajuste salvo
+            for nome, guardado in antes.items():
+                config.set_settings(nome, guardado)
             return
         if alterados:
             nomes = ", ".join(_rotulo_meio(nome) for nome in sorted(alterados))
@@ -1400,6 +1408,24 @@ class GasparApp:
             return
         if not self.sms_config.enabled:
             messagebox.showinfo("Envio de teste", "Ligue a ponte de SMS primeiro.", parent=self.root)
+            return
+        reservado = self._motivo_celular_reservado()
+        if reservado:
+            # O teste e da ponte 1.7, mas quem segura o celular agora e a barra 2.0:
+            # enfileirar aqui era por o pedido na fila de uma ponte parada, que sai
+            # sozinha quando a barra se desliga - sem ninguem ter voltado a pedir.
+            self.log_event(f"Teste de SMS nao enviado: {reservado}")
+            messagebox.showwarning(
+                "Envio de teste",
+                (
+                    "O celular desta casa esta com a barra 2.0, entao este teste nao "
+                    "sairia agora.\n\n"
+                    'Para testar por aqui, desligue a barra no quadro "Mensagens pelo '
+                    'computador (barra 2.0)" desta mesma aba.\n\n'
+                    f"O que a barra informa: {reservado}"
+                ),
+                parent=self.root,
+            )
             return
         try:
             job = self.sms_bridge.enqueue(self.sms_number_var.get(), self.sms_message_var.get(), manual=True)
