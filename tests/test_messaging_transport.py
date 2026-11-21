@@ -74,6 +74,34 @@ class ContratoDoMotoristaTeste(unittest.TestCase):
         self.assertFalse(driver.supports_reception)
         self.assertEqual(driver.describe()["nome"], "minimo")
 
+    def test_a_sonda_de_acesso_sem_prova_proprio_devolve_a_saude(self):
+        """Um meio sem como conferir de fora nao inventa: o padrao e a configuracao.
+
+        O contrario seria pior: para "provar" o acesso o painel acabaria mandando um
+        SMS de teste ao cliente. Quem tem prova honesta reimplementa o metodo - os
+        motoristas de celular e de e-mail tem os testes deles proprios.
+        """
+
+        class Minimo(SmsTransportDriver):
+            name = "minimo"
+
+            def __init__(self, saude: Health) -> None:
+                self.saude = saude
+                self.perguntas = 0
+
+            def health(self) -> Health:
+                self.perguntas += 1
+                return self.saude
+
+            def submit(self, message: Message) -> SubmitResult:
+                raise AssertionError("a sonda nao pode enviar nada")
+
+        driver = Minimo(Health(False, "sem aparelho"))
+        checagem = driver.testar_acesso()
+        self.assertFalse(checagem.available)
+        self.assertEqual(checagem.reason, "sem aparelho")
+        self.assertEqual(driver.perguntas, 1)
+
     def test_resultado_fora_dos_quatro_nao_existe(self):
         with self.assertRaises(ValueError):
             SubmitResult("quieta")
@@ -93,6 +121,13 @@ class MotoristaDeReferenciaTeste(unittest.TestCase):
         self.assertTrue(self.driver.health().available)
         desligado = LoopbackTransportDriver(available=False)
         self.assertFalse(desligado.health().available)
+
+    def test_a_sonda_do_ensaio_confirma_so_o_que_o_arquivo_diz(self):
+        """O ensaio de bancada nao tem rua do outro lado: conferir e ler o ajuste."""
+        self.assertTrue(self.driver.testar_acesso().available)
+        desligado = LoopbackTransportDriver(available=False)
+        self.assertFalse(desligado.testar_acesso().available)
+        self.assertEqual(desligado.submitted, [])
 
     def test_guarda_o_que_recebeu(self):
         message = Message(

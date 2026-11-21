@@ -414,6 +414,128 @@ class ZeroConexaoTeste(PonteDeEmail):
         self.assertIn("cofre", motorista.ultimo_erro)
 
 
+class SondaDeAcessoTeste(PonteDeEmail):
+    """O botao "Testar acesso" do painel (Onda B6-6) na caixa postal da loja.
+
+    A sonda entra, se apresenta e sai. Ela nunca le recado, nunca marca nada como
+    lido e nunca escreve: um teste de acesso que mexe na caixa derruba a fila por
+    tras - o celular responde, a resposta desaparece e o lojista nao sabe por que.
+    """
+
+    def test_a_ponte_desligada_nao_abre_conexao_nenhuma(self):
+        chamada: list[str] = []
+        motorista = self.motorista(
+            self.ajustes(enabled=False),
+            smtp_factory=lambda *a: chamada.append("smtp"),
+            imap_factory=lambda *a: chamada.append("imap"),
+        )
+        checagem = motorista.testar_acesso()
+        self.assertFalse(checagem.available)
+        self.assertIn("desligada", checagem.reason)
+        self.assertEqual(chamada, [])
+
+    def test_a_saida_confere_e_nenhum_recado_sai_para_a_rua(self):
+        servidor = ServidorSMTP()
+        motorista = self.motorista(self.ajustes(imap_host=""), smtp_factory=lambda *a: servidor)
+        checagem = motorista.testar_acesso()
+        self.assertTrue(checagem.available, checagem.reason)
+        self.assertEqual(servidor.logins, [("loja@loja.test.invalid", SENHA)])
+        self.assertEqual(servidor.enviados, [])
+        self.assertTrue(servidor.fechado, "a conexao de prova tem de ser fechada")
+        self.assertIn("leitura esta desligada", checagem.reason)
+        self.assertEqual(checagem.detail, motorista.device_id)
+
+    def test_a_sonda_de_imap_e_so_entrar_e_sair(self):
+        caixa = ServidorIMAP([])
+        motorista = self.motorista(
+            smtp_factory=lambda *a: ServidorSMTP(), imap_factory=lambda *a: caixa
+        )
+        checagem = motorista.testar_acesso()
+        self.assertTrue(checagem.available, checagem.reason)
+        self.assertEqual(checagem.reason, "")
+        self.assertEqual(caixa.chamadas, ["login:loja@loja.test.invalid", "logout"])
+        self.assertEqual(caixa.senhas, [SENHA])
+
+    def test_a_sonda_de_pop3_sai_pelo_verbo_do_pop3(self):
+        caixa = ServidorPOP3([])
+        motorista = self.motorista(
+            self.ajustes(imap_host="", pop3_host="pop3.test.invalid"),
+            smtp_factory=lambda *a: ServidorSMTP(),
+            pop3_factory=lambda *a: caixa,
+        )
+        checagem = motorista.testar_acesso()
+        self.assertTrue(checagem.available, checagem.reason)
+        self.assertEqual(caixa.chamadas, ["user:loja@loja.test.invalid", "pass", "quit"])
+
+    def test_saida_boa_com_leitura_recusada_ainda_diz_que_da_para_enviar(self):
+        def caixa_que_recusa(host, porta):
+            raise imaplib.IMAP4.error("credencial recusada")
+
+        motorista = self.motorista(
+            smtp_factory=lambda *a: ServidorSMTP(), imap_factory=caixa_que_recusa
+        )
+        checagem = motorista.testar_acesso()
+        self.assertTrue(checagem.available)
+        self.assertIn("a saida confere", checagem.reason)
+        self.assertIn("leitura falhou", checagem.reason)
+        self.assertIn("IMAP: credencial recusada", checagem.reason)
+
+    def test_a_caixa_que_fala_metade_tambem_vira_texto_e_nao_estouro(self):
+        caixa = ServidorIMAP([])
+
+        def login_troncado(usuario, senha):
+            raise OSError("mao fechada no meio do aperto")
+
+        caixa.login = login_troncado
+        motorista = self.motorista(
+            smtp_factory=lambda *a: ServidorSMTP(), imap_factory=lambda *a: caixa
+        )
+        self.assertIn("leitura falhou", motorista.testar_acesso().reason)
+
+    def test_a_saida_recusada_derruba_o_acesso_e_fecha_a_conexao(self):
+        recusa = smtplib.SMTPAuthenticationError(535, b"senha errada")
+        servidor = ServidorSMTP(erro_login=recusa)
+        motorista = self.motorista(smtp_factory=lambda *a: servidor)
+        checagem = motorista.testar_acesso()
+        self.assertFalse(checagem.available)
+        self.assertIn("recusou a credencial", checagem.reason)
+        self.assertTrue(servidor.fechado)
+
+    def test_a_saida_que_nao_responde_devolve_o_motivo_do_sistema(self):
+        def sem_resposta(host, porta):
+            raise OSError("tempo esgotado")
+
+        checagem = self.motorista(smtp_factory=sem_resposta).testar_acesso()
+        self.assertFalse(checagem.available)
+        self.assertIn("nao deu para falar com o servidor de saida", checagem.reason)
+        self.assertIn("tempo esgotado", checagem.reason)
+
+    def test_sem_cofre_a_sonda_reclama_antes_de_bater_na_porta(self):
+        chamada: list[str] = []
+        motorista = EmailBridgeDriver(
+            self.ajustes(),
+            vault=None,
+            smtp_factory=lambda *a: chamada.append("smtp"),
+            imap_factory=lambda *a: chamada.append("imap"),
+        )
+        checagem = motorista.testar_acesso()
+        self.assertFalse(checagem.available)
+        self.assertIn("cofre", checagem.reason)
+        self.assertEqual(chamada, [])
+
+    def test_a_sonda_nunca_usa_o_caminho_de_ida_e_volta(self):
+        """Se a sonda chamasse ``submit`` ou ``poll_inbound``, mexeria na caixa do cliente."""
+
+        def proibido(*_a, **_kw):
+            raise AssertionError("a sonda usou o caminho de ida e volta")
+
+        motorista = self.motorista(smtp_factory=lambda *a: ServidorSMTP())
+        with mock.patch.object(motorista, "submit", proibido), mock.patch.object(
+            motorista, "poll_inbound", proibido
+        ):
+            self.assertTrue(motorista.testar_acesso().available)
+
+
 # ------------------------------------------------------------------ envio
 
 

@@ -28,11 +28,25 @@ def is_loopback_address(address: object) -> bool:
 
 
 class SmsHttpServer:
-    def __init__(self, bridge, config, host: str = "0.0.0.0", port: int | None = None, on_diagnostic=None, on_log=None):
+    def __init__(
+        self,
+        bridge,
+        config,
+        host: str = "0.0.0.0",
+        port: int | None = None,
+        on_diagnostic=None,
+        on_log=None,
+        on_receipt=None,
+        send_blocker=None,
+    ):
         self.bridge = bridge
         self.config = config
         self.on_diagnostic = on_diagnostic
         self.on_log = on_log
+        #: quem recebe o recibo cifrado quando a barra de mensagens 2.0 e a dona do pedido
+        self.on_receipt = on_receipt
+        #: motivo de o celular estar cedido a outro motorista; vazio = a 1.7 envia
+        self.send_blocker = send_blocker
         self.nonces = signing.NonceCache(config.nonce_ttl_seconds)
         bind_port = config.http_port if port is None else port
         self._httpd = ThreadingHTTPServer((host, bind_port), _Handler)
@@ -45,6 +59,24 @@ class SmsHttpServer:
 
     def request_key(self) -> bytes:
         return (self.config.api_token or "").encode("utf-8")
+
+    def motivo_de_reserva(self) -> str:
+        """Por que o envio desta porta esta cedido. Uma falha no gancho nao tranca nada."""
+        if self.send_blocker is None:
+            return ""
+        try:
+            return str(self.send_blocker() or "")[:200]
+        except Exception:
+            return ""
+
+    def entregar_comprovante(self, blob: str) -> bool:
+        """Passa o recibo cifrado para a fila 2.0. False = nao e dela, a 1.7 cuida."""
+        if self.on_receipt is None:
+            return False
+        try:
+            return bool(self.on_receipt(blob))
+        except Exception:
+            return False
 
     @property
     def port(self) -> int:
@@ -220,6 +252,10 @@ class _Handler(BaseHTTPRequestHandler):
             if not self._authorized():
                 self._send(401, {"ok": False, "error": "token invalido"})
                 return
+            reservado = self.app.motivo_de_reserva()
+            if reservado:
+                self._send(503, {"ok": False, "error": reservado, "codigo": "celular_reservado"})
+                return
             problem = self._signature_error(raw, path)
             if problem is not None:
                 self._send(401, {"ok": False, "error": problem})
@@ -268,6 +304,9 @@ class _Handler(BaseHTTPRequestHandler):
             blob = body.get("blob")
             if not isinstance(blob, str) or not blob.strip():
                 self._send(400, {"ok": False, "error": "recibo ausente"})
+                return
+            if self.app.entregar_comprovante(blob.strip()):
+                self._send(202, {"ok": True, "destino": "barra de mensagens 2.0"})
                 return
             try:
                 raw = base64.b64decode(blob.strip(), validate=True)

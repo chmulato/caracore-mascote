@@ -30,6 +30,7 @@ import struct
 import threading
 import unittest
 from contextlib import contextmanager
+from unittest import mock
 
 from gaspar.messaging.model import Message
 from gaspar.messaging.transport import InboundReply
@@ -335,6 +336,66 @@ class SaudeTeste(unittest.TestCase):
         motorista_, fabrica = motorista(ajustes(ligada=False))
         self.assertEqual(motorista_.submit(pedido()).outcome, "indisponivel")
         self.assertEqual(fabrica.tentativas, [])
+
+
+class TesteDeAcessoTeste(unittest.TestCase):
+    """A sonda do painel (Onda B6-6): abre a conexao com o celular e fecha sem falar.
+
+    Nao existe envio de prova - se saisse, o cliente recebia um SMS. O que da para
+    conferir sem efeito e se o aparelho esta do outro lado da porta que a fila usa.
+    """
+
+    def test_meio_desligado_nem_chega_perto_da_rede(self):
+        with sem_rede() as tentativas:
+            checagem = AndroidLanTransportDriver(ajustes(ligada=False)).testar_acesso()
+        self.assertFalse(checagem.available)
+        self.assertEqual(tentativas, [])
+
+    def test_a_sonda_abre_e_fecha_sem_empurrar_quadro(self):
+        motorista_, fabrica = motorista()
+        checagem = motorista_.testar_acesso()
+        self.assertTrue(checagem.available)
+        self.assertEqual(checagem.reason, "")
+        self.assertEqual(checagem.detail, f"192.168.0.50:{PORTA_COMANDO}")
+        self.assertEqual(fabrica.tentativas, [("192.168.0.50", PORTA_COMANDO)])
+        self.assertEqual(bytes(fabrica.ultimo.enviados), b"")
+        self.assertTrue(fabrica.ultimo.encerrou)
+
+    def test_o_celular_que_nao_atende_devolve_o_endereco_e_a_fala_do_sistema(self):
+        motorista_, fabrica = motorista()
+        fabrica.empilhar(OSError("[WinError 10061] Nenhuma conexao pode ser feita"))
+        checagem = motorista_.testar_acesso()
+        self.assertFalse(checagem.available)
+        self.assertIn(f"192.168.0.50:{PORTA_COMANDO}", checagem.reason)
+        self.assertIn("WinError 10061", checagem.reason)
+        self.assertEqual(fabrica.soquetes, [])
+
+    def test_a_sonda_passa_para_o_proximo_endereco_da_rede(self):
+        motorista_, fabrica = motorista(
+            ajustes(host=""), descoberta=lambda: [("192.168.0.9", PORTA_COMANDO), ("192.168.0.10", PORTA_COMANDO)]
+        )
+        fabrica.empilhar(ConnectionRefusedError("recusado"), SoqueteCurta())
+        checagem = motorista_.testar_acesso()
+        self.assertTrue(checagem.available, checagem.reason)
+        self.assertEqual(checagem.detail, f"192.168.0.10:{PORTA_COMANDO}")
+        self.assertEqual(
+            fabrica.tentativas,
+            [("192.168.0.9", PORTA_COMANDO), ("192.168.0.10", PORTA_COMANDO)],
+        )
+
+    def test_sem_celular_na_rede_a_sonda_diz_isso_sem_abrir_nada(self):
+        motorista_, fabrica = motorista(ajustes(host=""), descoberta=lambda: [])
+        checagem = motorista_.testar_acesso()
+        self.assertFalse(checagem.available)
+        self.assertIn("nao apareceu na rede", checagem.reason)
+        self.assertEqual(fabrica.tentativas, [])
+
+    def test_a_sonda_nao_inventa_envio_para_conferir(self):
+        """Se a sonda chamasse ``submit``, o teste do painel mandaria um SMS de verdade."""
+        motorista_, _ = motorista()
+        with mock.patch.object(motorista_, "submit", side_effect=AssertionError("sonda enviou")) as envio:
+            self.assertTrue(motorista_.testar_acesso().available)
+        envio.assert_not_called()
 
 
 # ----------------------------------------------------------------------- envio

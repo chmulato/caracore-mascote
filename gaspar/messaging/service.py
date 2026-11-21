@@ -13,6 +13,7 @@ from pathlib import Path
 from gaspar.paths import data_dir
 from gaspar.sms.audit import AuditLog
 
+from .comprovantes import aplicar_comprovante
 from .config import MessagingConfig, load_config
 from .credentials import Credential, CredentialVault
 from .dispatcher import Dispatcher
@@ -164,6 +165,16 @@ class MessagingService:
     def issue_credential(self, origem: str) -> Credential:
         """Emite (ou gira) a credencial de uma origem. O par so aparece nesta resposta."""
         return self.credentials.issue(origem)
+
+    def registrar_comprovante(self, corpo: object) -> bool:
+        """Fecha a volta do SMS: o recibo cifrado do celular vira estado na fila.
+
+        A porta nao e desta barra - e a mesma que o aplicativo do celular ja usa desde
+        a 1.7. Quem esta de fora entrega o corpo cifrado aqui, e o motorista registrado
+        abre com o segredo do pareamento. Devolve False quando o recibo nao e da fila
+        2.0, e quem recebeu pode seguir com o proprio caminho.
+        """
+        return aplicar_comprovante(self.store, self.registry, corpo, log=self._log)
 
     def status(self) -> dict:
         meios = {}

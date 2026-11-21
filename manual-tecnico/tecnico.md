@@ -500,7 +500,7 @@ O que a regra **não** faz, e o que ela custa, escrito para ninguém descobrir t
 
 - **Ceder não se desfaz sozinho.** Se o lojista desligar o motor 2.0, a 1.7 não volta a usar o celular sozinha nesta execução — ela volta quando o Gaspar reiniciar ou quando o lojista ligar a ponte na aba Celular. Quem cedeu precisa ser religado de propósito.
 - **Bloco de ajustes não reserva nada.** Ter um `transport_settings.android_lan` no arquivo sem nenhuma origem apontando para `android_lan` deixa o celular livre para a 1.7. Só a escolha por origem conta.
-- **A reserva olha a escolha, não a saúde do motorista.** Um balcão que ligar o motor com `android_lan` sem levar o pareamento para `segredo_sealed` fica com as duas pontas desligadas: a 1.7 cede o celular por causa da escolha, e o 2.0 recusa cada pedido — `health()` mede `disponivel: false` com o motivo «celular sem segredo de pareamento», e com a chave faltando «celular sem chave de criptografia; pareie o celular de novo». O lojista vê na aba Celular quem ficou com o aparelho; o motivo fino do motorista ainda não aparece em lugar nenhum, porque a tela é a **B6-6**. Até lá, quem edita o arquivo à mão precisa selar o segredo junto (receita em «Segredo só selado» abaixo).
+- **A reserva olha a escolha, não a saúde do motorista.** Um balcão que ligar o motor com `android_lan` sem levar o pareamento para `segredo_sealed` fica com as duas pontas desligadas: a 1.7 cede o celular por causa da escolha, e o 2.0 recusa cada pedido — `health()` mede `disponivel: false` com o motivo «celular sem segredo de pareamento», e com a chave faltando «celular sem chave de criptografia; pareie o celular de novo». O lojista vê na aba Celular quem ficou com o aparelho e, desde a **B6-6** (21/11/2026), também o motivo que o próprio motorista deu: a linha fecha com «ainda nao esta pronto: celular sem segredo de pareamento». Quem prepara a máquina pela tela só digita a senha no campo **Segredo do pareamento**; quem vai por linha de comando ainda precisa selá-la no arquivo (receita em «Segredo só selado» abaixo).
 - **O segredo de pareamento não migra sozinho.** `android_lan` não lê `sms_config.json`: quem já tinha a 1.7 pareada precisa levar a mesma chave para o `messaging.json`, selada pela chave da fila. Deixar a herança automática de fora foi escolha desta onda, para não importar em segredo um arquivo que o lojista pode querer desligar.
 
 A prova são os 12 casos de `tests/test_messaging_convivencia.py` (motor desligado não reserva; origem a origem reserva e nomeia a origem na frase; as duas reservando aparecem as duas; `smtp_email` e `loopback` não reservam; grafia errada não reserva; um `SimpleNamespace` torto não derruba a consulta; a consulta não muta a configuração) mais os casos de painel em `BarraMensagens20Tests` (`tests/test_app.py`), que medem a árvore real do Tk: com reserva a ponte 1.7 fica com `started == 0`, `sms_server` é `None`, a linha de estado traz «cede a porta 49998» e o token continua lá.
@@ -526,7 +526,7 @@ A auditoria da Fase Alpha (PR #6) registrou seis requisitos obrigatórios para a
 
 O que falta para a Fase Beta existir é o que a RFC aprovou e ainda não foi escrito: o motorista `usb_modem` (modem USB), o ligamento no painel e o app Android 2.0. Os outros dois meios já estão escritos: a ponte de e-mail (`smtp_email`), na Onda B3, e o canal local (`android_lan`), na Onda B4 — os dois descritos abaixo, nenhum dos dois ainda no painel nem escolhível em `messaging.json`. **Corrigido em 20/11/2026 (Onda B5):** dos três itens desta frase, o app Android 2.0 deixou de faltar — ele está escrito na árvore desta branch (o `android/` sobe para `versionCode 9` / `versionName '2.0'`, Java 8 puro, zero Play Services/Firebase, com a ponte de e-mail no aparelho, a chave por origem e a tela do lojista), com gate local verde (build, 109 testes unitários do app, lint sem erros) e a tela provada em emulador Android 13. O que **continua** faltando são os outros dois: o `usb_modem` e o ligamento no painel. E nada disso está publicado: o pacote no ar segue o 1.7 (código 8), a 2.0 não tem etiqueta nem release, e `messaging.json` nasce `enabled: false` como antes. O relato do que foi medido no aparelho está em [android/STATUS_ATUAL.md](../android/STATUS_ATUAL.md).
 
-**Corrigido em 21/11/2026 (Onda B6-A):** desta frase continuam de pé o `usb_modem` (ainda sem motorista) e a parte visual do painel (B6-6). O que mudou: os dois meios escritos **já são escolhíveis no `messaging.json`** — `transports` por origem e `transport_settings` por motorista, montados pela fábrica nova — e o ligamento entre o arquivo e o aplicativo existe (`gaspar/app.py` lê a configuração, liga o motor quando o arquivo manda e deixa a ponte 1.7 de fora quando o celular fica com o 2.0). Falta o lojista fazer isso sem editar arquivo. A descrição completa está em «Ligamento por arquivo (`messaging.json`) — Onda B6-A».
+**Corrigido em 21/11/2026 (Onda B6-A):** desta frase continua de pé só o `usb_modem` (ainda sem motorista). O que mudou: os dois meios escritos **já são escolhíveis no `messaging.json`** — `transports` por origem e `transport_settings` por motorista, montados pela fábrica nova — e o ligamento entre o arquivo e o aplicativo existe (`gaspar/app.py` lê a configuração, liga o motor quando o arquivo manda e deixa a ponte 1.7 de fora quando o celular fica com o 2.0). Faltava o lojista fazer isso sem editar arquivo: **cumprido no mesmo dia pela Onda B6-6** (aba Celular / SMS). A descrição do caminho por arquivo está em «Ligamento por arquivo (`messaging.json`) — Onda B6-A» e a da tela em «A tela do lojista — Onda B6-6».
 
 ### Ponte de e-mail (`smtp_email`)
 
@@ -544,7 +544,7 @@ A prova de que a ponte desligada não fala com o mundo é `tests/test_messaging_
 
 Cobertura medida no gate local (Python 3.13, `GASPAR_HOME` em área de passagem): 53 testes em `test_messaging_email.py`, 498 testes no total, `smtp_email.py` em 91% e o repositório em 82% contra o piso de 70% do Portão.
 
-A ponte ainda é código vivo mas não instalado: nada em `config.py`, `local_api.py` ou no painel a referencia, então nenhum balcão a aciona hoje. O ligamento (escolher a conta, testar o acesso, mostrar o estado na aba Celular) é a Onda B6. **Meio cumprido em 21/11/2026 (Onda B6-A):** escolher a conta e acionar a ponte já existe, pelo `messaging.json` — com `enabled: true` e `transports.HUB = "smtp_email"`, a fábrica monta o motorista, aponta o estado para a pasta de dados e a fila despacha por ele. O que falta tem nome: **B6-6** (a tela para o lojista fazer isso sem editar arquivo) e a validação contra uma caixa postal de verdade — nenhum teste daqui substitui essa prova.
+A ponte ainda é código vivo mas não instalado: nada em `config.py`, `local_api.py` ou no painel a referencia, então nenhum balcão a aciona hoje. O ligamento (escolher a conta, testar o acesso, mostrar o estado na aba Celular) é a Onda B6. **Cumprido no código em 21/11/2026 (Ondas B6-A e B6-6):** escolher a conta e acionar a ponte já existe — pelo `messaging.json` na B6-A (com `enabled: true` e `transports.HUB = "smtp_email"`, a fábrica monta o motorista, aponta o estado para a pasta de dados e a fila despacha por ele) e, desde a B6-6, **o painel também a referencia**: a caixa de e-mail da loja é uma das opções do seletor e a janela dos ajustes escreve a conta. O que falta hoje tem um nome só: a **validação contra uma caixa postal de verdade** — a tela da B6-6 (21/11/2026) deixou de ser falta, mas nenhum teste daqui substitui aquela prova.
 
 **Ela também entrou na lista de empacotamento (D6).** Como o PR #9 já está na `master`, o guardão `tests/test_packaging_manifest.py` compara a lista dos dois specs com o conteúdo de `gaspar/messaging/` a cada Portão — um módulo novo sem linha no spec deixa o Portão vermelho. Esta onda acrescenta `gaspar.messaging.transports.smtp_email` nos dois specs: a mensageria passa de 13 para 14 módulos listados, e a varredura do arquivo gerado (o passo `Conferir os módulos da mensageria no pacote (D6)` dos dois jobs de pacote) é quem prova a presença dentro do executável, não a lista.
 
@@ -568,7 +568,7 @@ Sonda de mutação (`.auditoria/b4_mut.py`, registro em `.auditoria/b4_mutacoes.
 
 Cobertura medida no gate local (Python 3.13, `GASPAR_HOME` em área de passagem): `android_lan.py` em 99% (sobram a descoberta UDP real e dois ramos de rede que o soquete de mentira não reproduz), 590 testes no total e o repositório em 83% contra o piso de 70% do Portão.
 
-O canal ainda é código vivo mas não instalado: nada em `config.py`, `local_api.py` ou no painel referencia `android_lan`, então nenhum balcão o aciona hoje — quem envia SMS pela rede local ainda é a ponte 1.7. A escolha do motorista por origem na configuração, o estado na aba Celular e a rota do comprovante até `abrir_comprovante` são a Onda B6. **Dois terços cumpridos em 21/11/2026 (Onda B6-A):** a escolha por origem no `messaging.json` existe e é ela que decide quem fica com o celular pareado — com `enabled: true` e uma origem em `android_lan`, a barra 2.0 assume o aparelho e a ponte 1.7 cede a vez (ver «Convivência com o motor 2.0 (a porta 49998)»). Falta o estado na aba Celular em linguagem de lojista (**B6-6**) e a rota do comprovante até `abrir_comprovante`, que ainda não tem chamador em produção (**B6-5**).
+Quando esta seção foi escrita (Onda B4) o canal era código vivo mas não instalado: nada fora dos testes referenciava `android_lan`, e quem enviava SMS pela rede local ainda era a ponte 1.7. **Isso mudou.** A escolha do motorista por origem na configuração, o estado na aba Celular e a rota do comprovante até `abrir_comprovante` foram abertos como Onda B6. **Cumprido em 21/11/2026 (Ondas B6-A e B6-5):** a escolha por origem no `messaging.json` existe e é ela que decide quem fica com o celular pareado — com `enabled: true` e uma origem em `android_lan`, a fábrica monta o motorista, o painel (`gaspar/app.py`) liga a barra e a ponte 1.7 cede a vez (ver «Convivência com o motor 2.0 (a porta 49998)») — e a volta do celular chegou ao `abrir_comprovante` (ver «A volta do celular (porta de comprovantes)»). Faltava o estado na aba Celular em linguagem de lojista: **cumprido no mesmo dia pela Onda B6-6** (seletor por origem, cinco frases de status e **Testar acesso**). Continua sem instalação: `enabled` nasce `false`, então nenhum balcão aciona nada disso antes de escolher.
 
 **Também entrou na lista de empacotamento (D6):** `gaspar.messaging.transports.android_lan` nos dois specs, que passam de 14 para 15 módulos listados.
 
@@ -614,7 +614,7 @@ Os nomes de campo são os dos `dataclass` de cada motorista (`LanSettings` usa `
 
 A recusa é do tipo que não deixa o vício entrar: o bloco que trouxer `segredo`/`segredos_por_origem` (Wi-Fi) ou `password`/`bridge_key` (e-mail) em texto aberto **não monta o motorista**. A mensagem nomina o campo e o conserto (`segredo_sealed`), nunca o valor — quem lê o log não vê segredo. Os selos são abertos em memória na montagem e gravados de volta só selados; um selo de outra máquina falha com «não abriu com a chave desta máquina; pareie de novo ou resele».
 
-Enquanto não houver painel para isso (B6-6), quem escreve o arquivo sela à mão com o cofre da fila:
+Enquanto não havia painel, quem escrevia o arquivo selava à mão com o cofre da fila. A partir da Onda B6-6 a tela faz isso sozinha (ver a seção da B6-6); o caminho manual continua valendo para preparar uma máquina por linha de comando:
 
 ```python
 from gaspar.paths import data_dir
@@ -640,14 +640,153 @@ A Onda B6 foi aberta pelo dono em 2026-11-21 dividida em seis itens, com B6-A = 
 | B6-2 | Estrutura do `messaging.json`: meio por origem e ajustes por motorista. | **Cumprido em 21/11/2026** — `transports` + `transport_settings` em `config.py`. |
 | B6-3 | Ajustes de cada motorista lidos do arquivo, com segredo só selado e estado da ponte na pasta de dados. | **Cumprido em 21/11/2026** — `LanSettings.from_dict`, recusa de claro, `bridge-smtp.state`. |
 | B6-4 | Ligamento no aplicativo: o `gaspar/app.py` construindo o serviço, respeitando a precedência da 49998 e entrando nos specs (D6). | **Cumprido em 21/11/2026** — `_init_messaging`/`_start_messaging`/`_stop_messaging`, `convivencia.py`, 17 módulos nos dois specs. |
-| B6-5 | Rota do comprovante: dar a `abrir_comprovante` um chamador em produção (a volta do celular chega à fila). | **Aberto** — só chamado nos testes da B4. |
-| B6-6 | Tela do lojista: escolher meio por origem, testar acesso, mostrar o estado do motorista na aba Celular e selar o segredo sem editar arquivo. | **Aberto** — é o contorno das limitações declaradas acima. |
+| B6-5 | Rota do comprovante: dar a `abrir_comprovante` um chamador em produção (a volta do celular chega à fila). | **Cumprido em 21/11/2026** — `messaging/comprovantes.py` chamado pela porta 8766 (ver seção própria abaixo). |
+| B6-6 | Tela do lojista: escolher meio por origem, testar acesso, mostrar o estado do motorista na aba Celular e selar o segredo sem editar arquivo. | **Cumprido em 21/11/2026** — quadro da barra na aba **Celular / SMS**, seletor por origem, botão **Testar acesso** e a janela dos ajustes que sela a senha (ver seção própria abaixo). |
 
 Fora da conta da B6, continuam abertos: `usb_modem` (sem motorista), a publicação do app Android 2.0 (etiqueta `android-v2.0`, APK assinado e release — travada pela custódia da chave de assinatura) e a validação real (caixa de e-mail de verdade, QR carregando a origem e aparelho físico). Nada disso é decidível por código: os três dependem de máquina, chave e aparelho.
 
 **Medido no gate local** (Python 3.13, `GASPAR_HOME` em área de passagem): 645 testes OK e 1 pulo, repositório em **83%** e `gaspar/messaging` em **94%** contra o piso de 70% do Portão; os dois módulos novos em `convivencia.py` **100%** e `transports/factory.py` **97%**. Os 55 testes novos são 31 em `tests/test_messaging_factory.py`, 12 em `tests/test_messaging_convivencia.py` e 12 em `BarraMensagens20Tests` (`tests/test_app.py`). Um dos 31 (`test_o_exemplo_do_manual_monta_os_dois_motoristas`) grava o JSON de exemplo desta seção — os blocos de `PDV` no celular e de `HUB` no e-mail —, monta os dois meios e exige os dois disponíveis: se um campo mudar de nome, o exemplo publicado fica vermelho aqui antes de enganar alguém na mão. **D6:** `gaspar.messaging.convivencia` e `gaspar.messaging.transports.factory` entraram nos dois specs, que vão de 15 para 17 módulos listados; o guardão compara a lista com `gaspar/messaging/` a cada Portão.
 
 Fica um ponto de honestidade sobre a máquina de medição: a suíte Python em Windows tem as duas fraquezas já registradas (o caso do telefone offline que estoura o tempo da suíte e o 413 do `_read_body` que derruba o soquete com `WinError 10053`). Nesta onda o segundo apareceu em **3 das 5 execuções completas** nesta máquina e em **1 de 6 execuções isoladas do mesmo caso sobre o `763d010`** — o commit da `master` sem nenhuma linha desta onda —, então é herdado, não introduzido aqui, e continua medido sem correção deliberada (as duas fraquezas da suíte em Windows seguem na fila). O verde de 645 testes acima é de uma execução completa sem o tropeço; o Portão roda em `ubuntu-latest`, e nos Portões verdes desta fase (PR #10, #11 e #12) nenhum dos dois casos apareceu.
+
+### A volta do celular (porta de comprovantes) — Onda B6-5
+
+Gravado em 2026-11-21. A B4 escreveu `abrir_comprovante()` no motorista `android_lan` e a prova ficou nos testes: em produção ninguém chamava. A B6-A decidiu quem fica com o celular e, ao fazer isso, abriu um buraco que esta onda fecha.
+
+**O buraco, medido no código e não presumido.** `_start_messaging()`, ao ver o celular reservado, chamava `_stop_sms_services()` — que fecha as duas coisas da 1.7: o trabalhador que envia **e** o `SmsHttpServer` da porta 8766. Na 1.7 os dois andam juntos e está certo. Na barra 2.0 não: quem envia passou a ser o motorista, mas a porta 8766 é a única porta por onde o celular devolve o recibo. Fechar a porta com o motor ligado deixava a fila 2.0 sem volta nenhuma — e derrubava junto `/api/mobile/key`, `/api/mobile/diagnostic` (o pareamento) e `/api/health`. Um celular pareado depois disso não se pareava mais.
+
+**A porta escolhida é a que já existe.** Em vez de um segundo servidor, a 1.7 ganhou dois ganchos opcionais, ambos desligados por padrão, e a barra 2.0 se pendura neles:
+
+| Gancho | O que faz | Sem gancho |
+| --- | --- | --- |
+| `on_receipt` | recebe o blob cifrado do POST `/api/mobile/receipt` antes de qualquer tentativa de abrir | a 1.7 descifra e cuida, como sempre |
+| `send_blocker` | devolve um motivo para recusar o envio nesta porta (`503` + `codigo: "celular_reservado"`) | devolve vazio e o envio segue |
+
+Por que reaproveitar em vez de montar outra porta: o aplicativo Android conhece **uma** URL de volta — a que gravou no pareamento (`ScanSetupActivity` → `setPdvBaseUrl`) e que cada comando pode atualizar pelo campo `base` (`GatewayListenerService`); o recibo sai para `<base>/api/mobile/receipt` (`SmsReceiptSender`). Dois servidores não disputam a mesma 8766, e um endereço novo obrigaria cada aparelho a ser pareado de novo por uma vantagem que não existe. Consequência honesta: **um celular pareado ontem continua fechando a volta hoje sem refazer nada**, e a rota nova não tem nenhuma URL própria para divulgar.
+
+**O ponto único que junta as pontas** é `gaspar/messaging/comprovantes.py`. `aplicar_comprovante(store, registry, corpo)` pergunta a cada motorista registrado se ele sabe abrir aquele recibo (`abrir_comprovante` / `comprovante_de`), procura o pedido na fila de cada origem e escreve o estado com `store.mark(..., motivo="comprovante do celular")`. O `MessagingService` expõe isso como `registrar_comprovante(corpo)`, e é essa função que o painel entrega à porta. As regras que a onda jurou por teste:
+
+- **A origem vem da fila, nunca do celular.** O recibo carrega só o `id`; `_procurar()` atravessa `ORIGENS` até achar o pedido. Um aparelho não escolhe de qual produto ele fala.
+- **Recibo que não é daqui cai na 1.7.** Chave que não abre, id que não está na barra: `aplicar_comprovante` devolve `False`, a porta passa adiante e a loja antiga atende do mesmo jeito. Prova: um recibo cifrado por outra chave chega e a ponte falsa registra `("job-da-17", "delivered")`.
+- **Estado que já está fechado não reabre.** `entregue` é terminal; um `enviado` que chega depois é respondido sem escrever. Recibo repetido escreve uma vez.
+- **Só os três estados do comprovante.** `enviado`/`entregue`/`falhou` — e a equivalência com o vocabulário do motorista (`ESTADO_ENVIADO/ENTREGUE/FALHOU`) está presa por teste, senão as duas listas envelhecem separadas. Estado inventado: responde sem escrever.
+- **Nada aqui reenvia.** A volta só escreve o que o celular contou; a política de `incerto` da B4 continua intacta.
+- **Motorista quebrado não tampa a porta.** O que estoura dentro de `abrir_comprovante` é engolido e a porta continua; um motorista sem o método não impede o que tem.
+
+**O painel** passou a ter três métodos. `_ligar_porta_de_comprovantes()` instala os ganchos num servidor que já está de pé, ou monta e liga um quando a reserva pegou o celular antes de a 1.7 subir. `_parar_envio_da_ponte()` desliga só o trabalhador da fila antiga, sem fechar a porta. `_motivo_de_envio_cedido()` é a resposta que o produto lê: `503` com «O celular desta casa envia pela barra de mensagens 2.0 e a ponte antiga esta cedida. Envie para http://127.0.0.1:8767/v2/messages informando a origem.» Uma falha no gancho devolve vazio — não tranca o balcão que ainda pode enviar.
+
+**Ordem de subida, que é o caso real.** O painel liga a 1.7 em 450 ms e a barra 2.0 em 900 ms: no arranque comum a porta 8766 já está de pé quando o motor toma o celular, e o caminho ali em cima é só instalar ganchos. O outro caminho — o operador acende o motor com a ponte desligada, ou o `enabled: true` chega antes de qualquer 1.7 — é o que monta o servidor na hora. Os dois têm teste.
+
+**O que esta onda não é.** Não é a resposta do cliente: texto de quem responde ao SMS continua sem caminho pelo Wi-Fi, porque o aplicativo Android não tem `RECEIVE_SMS` (removido de propósito na 1.4). «Ida e volta» aqui é **comprovante de entrega**, e é isso que o lojista vê virar `entregue` na fila. Também não abriu janela de novidade anti-repetição: `/api/mobile/receipt` não pede `ts` nem nonce nem assinatura de cabeçalho — ele é autenticado pela própria cifra (só abre com o segredo do pareamento), que é o contrato da 1.7 desde antes desta onda e que ela mantém igual. E não encosta no e-mail: `smtp_email` já tinha a sua volta, pelo `poll_inbound` da ponte.
+
+**Uma regra da B6-A precisou ser afiada, e isso mexeu em teste já verde.** A precedência foi gravada como «a 1.7 cede o celular», e três casos de `tests/test_app.py` tinham sido escritos como «a 1.7 inteira cai»: eles afirmavam `sms_server is None` e que a linha de reserva era a última do log. Com a porta de comprovantes de pé, esses três passaram a afirmar o contrato novo — o servidor continua vivo com os ganchos instalados, a fila antiga é que para. Os outros 98 casos de `test_app.py` não foram tocados. Nada do que a B6-A decidiu sobre **quem** fica com a 49998 mudou: só o que acontece com a porta 8766 depois disso.
+
+**Medido no gate local** (Python 3.13, `GASPAR_HOME` em área de passagem): **671 testes OK** e 1 pulo em 71,8 s, repositório em **83%** e `gaspar/messaging` em **94%** contra o piso de 70% do Portão. Os módulos da volta: `messaging/comprovantes.py` **96%**, `messaging/service.py` **97%**, `sms/server.py` **81%**, `app.py` **88%**. `transports/android_lan.py` ficou em **99%** com **346** sentenças — a volta não acrescentou uma linha ao motorista, porque `abrir_comprovante` já estava lá desde a B4 e o que faltava era chamador. Os 26 testes novos são 23 em `tests/test_messaging_comprovantes.py` (13 em `ComprovanteNaFilaTeste`, 8 em `PortaDeComprovantesTeste` com um `SmsHttpServer` real em `127.0.0.1` e porta efêmera, 2 em `ServicoRegistraComprovanteTeste`) e 3 em `tests/test_app.py`, que vai de 101 para 104.
+
+**D6:** `gaspar.messaging.comprovantes` entrou nos dois specs, que vão de 17 para **18** módulos listados; o guardão `tests/test_packaging_manifest.py` continua verde comparando a lista com `gaspar/messaging/`.
+
+**A fraqueza de Windows medida de novo, e agora com nome mais largo.** O ponto registrado na onda passada («o `_read_body` que derruba o soquete com `WinError 10053`») não é só o 413 do corpo enorme: é **qualquer resposta dada antes de o corpo ser lido**. Nesta medição o mesmo abort estourou em `test_rota_desconhecida` — um `POST /v2/nada`, que responde 404 na linha de despacho sem tocar no corpo — e o caso ficou **2 de 3** execuções do módulo sozinho nesta árvore. Que é herdado, e não entrou aqui, foi provado no commit pai com a mesma imagem: num worktree limpo do `2a975bd` (sem nenhuma linha desta onda) o `tests.test_messaging_api` falhou **2 de 4** e depois **3 de 3**, com o abort em outro caso da mesma classe (`test_corpo_vazio_ou_enorme_ou_fora_de_json`) — mesma classe, mesma exceção, caso diferente a cada rodada, que é a assinatura de uma corrida e não de um contrato errado. O verde de 671 acima é de uma execução completa sem o tropeço, e foi reconfirmado no commit deste lote: a primeira passada naquele commit ainda levou o abort (671 com 1 erro), a segunda fechou em **671 OK, 1 pulo e 83% em 71,9 s** — o placar citado é o dessa segunda passada. A correção tem cara (drenar o corpo antes de responder, ou fechar com `SO_LINGER`/`shutdown` limpo) e continua fora de escopo: mexe no `local_api.py` da Alpha, já assinado, e no `_read_body` da 1.7.
+
+### A tela do lojista (meio por origem, senha selada, prova de acesso) — Onda B6-6
+
+Gravado em 2026-11-21. A B6-A ensinou o programa a ler o `messaging.json`; a B6-5 deu ao celular um caminho de volta. Faltava alguém **escrever** o arquivo, e quem escreve é o dono da loja, não quem edita JSON. Até esta onda, ligar a barra 2.0 numa loja significava editar texto na mão, e as duas limitações registradas na B6-A eram consequência disso: selar senha com um trecho de Python e não ter como saber se o canal escolhido responde.
+
+#### Onde a barra mora na tela
+
+Dentro da aba **Celular / SMS**, um quadro próprio — **Mensagens pelo computador (barra 2.0)** — e não uma aba nova: é ali que o lojista já ia procurar pelo celular. Cinco peças, todas em linguagem de loja:
+
+| Peça da tela | O que é por trás |
+| --- | --- |
+| Caixa **Ligar a barra de mensagens** | `enabled` no arquivo |
+| **CaraCore PDV envia por** / **CaraCore Hub envia por** (um seletor por programa) | `transports.PDV` / `transports.HUB` |
+| Uma linha de resposta debaixo de cada seletor | a saúde daquele motorista, lida no motor vivo |
+| Botão **Testar acesso** | `testar_acesso()` do motorista, sem enviar nada |
+| Botão **Ajustar celular e caixa de e-mail** | a janela que escreve `transport_settings` |
+
+A palavra *motorista*, o nome do arquivo, o número da porta e os apelidos técnicos (`android_lan`, `smtp_email`) não aparecem em nenhuma linha da tela. O vocabulário é este, e é o que o seletor oferece, nesta ordem:
+
+| No arquivo | Na tela |
+| --- | --- |
+| — | Sem canal (este programa nao envia) |
+| `android_lan` | Celular pela rede da loja |
+| `loopback` | Ensaio neste computador (nada sai para a rua) |
+| `smtp_email` | Caixa de e-mail da loja |
+
+As linhas de resposta dizem sempre a mesma coisa em cinco frases, e nenhuma delas empurra o lojista para um termo que ele não pode procurar:
+
+- `CaraCore PDV nao envia mensagens.` — nenhuma origem escolhida;
+- `… a barra esta desligada, nada sai.` — `enabled: false`, que é o padrão de fábrica;
+- `… a barra nao conseguiu subir (veja o registro de eventos).` — `enabled: true` com o motor morto (bloco recusado pela fábrica, porta ocupada);
+- `… pronto para enviar - <detalhe> (<motivo>)` — o canal respondeu à pergunta de saúde;
+- `… ainda nao esta pronto: <motivo>` — respondeu indisponível, com o motivo que o próprio motorista deu.
+
+Quando alguma origem está no celular, a linha ainda fecha com `| o celular esta com a barra; a ponte antiga esta cedida` — a frase que a B6-A/B6-5 decidiu, dita em palavras de loja, porque é isso que explica por que a janela de cima parou de enviar.
+
+#### O que a tela não oferece, e por quê
+
+- **`usb_modem` não aparece no seletor.** Não tem motorista; um botão para um canal inexistente é promessa de loja que o código não assina. Continua listado em `MEIOS_SEM_CODIGO` na fábrica, que recusa por nome.
+- **A terceira cifra do e-mail (`plano`) não é oferecida.** `smtp_security` só aceita `ssl` (465) e `starttls` (587) pela tela; `plano` existe para tubo de teste local e **sobrevive** se já estava no arquivo — a janela converte rótulo por rótulo e um valor que ela não oferece volta inteiro, senão abrir e salvar apagaria o ajuste de quem sabe o que fez.
+- **Ajuste fino fica no arquivo:** `porta` e os três tempos do Wi-Fi; `from_address`, `message_id_domain`, `imap_port`, `pop3_port`, `mailbox`, `max_poll_messages` e `state_path` do e-mail, além de `segredos_por_origem_sealed` (a chave própria por origem, que é texto de integrador, não de balcão).
+- **Nome que a tela não conhece não é reescrito.** Um `usb_modem` que alguém colocou na mão aparece no seletor sem maquiagem e sai do arquivo igual depois de qualquer troca — provado por teste, porque o caminho fácil (mapear rótulo → nome) apagaria o que não mapeia.
+
+#### A janela dos ajustes escreve por cima, não do zero
+
+É o ponto que mais facilmente comeria trabalho alheio, e foi pego na autoauditoria desta onda, não em produção. `_colher_canal()` parte de `dict(guardados)` — o bloco que já está no arquivo — e só por cima põe as chaves que a tela mostra. Reconstruir o bloco a partir da tela apagaria, a cada clique em **Salvar**, tudo o que a tela não mostra: `porta`, `timeout`, `mailbox`, `state_path`, `max_poll_messages` e o `segredos_por_origem_sealed` que dá uma chave por origem. O teste `test_campo_em_branco_mantem_o_selo_e_o_arquivo_nao_perde_ajuste_fino` grava um bloco com `mailbox` e `max_poll_messages`, salva sem digitar nada e exige os dois de volta.
+
+O mesmo cuidado vale para os quadros de marcar. Cada linha da tabela de campos carrega o **padrão do próprio motorista**, não um `False` genérico: `descobrir` e `exigir_e2e` nascem ligados no `LanSettings`, e gravá-los desligados por descuido mudaria a segurança do canal (procurar o celular na rede e exigir envelope ponta a ponta) sem ninguém pedir. `test_a_janela_preserva_o_que_so_o_motorista_sabe_ler` fecha a janela, salva e lê o arquivo.
+
+O segredo tem três regras, todas presas por teste:
+
+1. **o campo de senha entra vazio, sempre** — o que está selado não volta para a tela;
+2. **em branco quer dizer «não mexi aqui»**: o selo antigo continua no arquivo; digitado, o valor é selado por `Vault.seal` do cofre da fila antes de qualquer escrita, e o texto aberto não passa nem pela memória do arquivo;
+3. **selo vazio não é gravado** — um `"password_sealed": ""` no arquivo faria a fábrica chamar `vault.open("")` e recusar o canal inteiro.
+
+Sem cofre aberto (pasta de dados indisponível, chave corrompida), a janela **recusa salvar** com «Sem o cofre deste computador nao da para guardar a senha digitada… Nada foi alterado.» e fica aberta para tentar de novo: perder o texto digitado seria jogar o lojista de volta para o e-mail do banco.
+
+Um detalhe honesto do caminho texto → número: a tela escreve a porta como texto, então uma porta deixada em branco vira `"smtp_port": ""` no arquivo. `EmailSettings._porta` converte para o padrão do motorista (465) — e `test_a_porta_em_branco_monta_o_canal_na_porta_do_motorista` monta o canal a partir do bloco que a janela gravou exatamente para essa regra não envelhecer em silêncio.
+
+#### Testar acesso: a pergunta de verdade, sem efeito colateral
+
+O contrato ganhou `SmsTransportDriver.testar_acesso()`. Ele **não é abstrato de propósito**: o padrão devolve a saúde que a configuração diz, porque há meio que não tem o que conferir de fora (`loopback`) e meio que só saberia mentir — um envio de prova chegaria ao cliente. Quem tem teste honesto reimplementa:
+
+- **`android_lan`** abre o soquete TCP no endereço que usaria para enviar, fecha sem empurrar um byte e devolve `<host>:<porta>`. Se o endereço fixo falhou e a descoberta está ligada, gira pela lista descoberta (limitada) antes de desistir; sem nenhum celular na rede, diz «nao apareceu na rede» sem ter tocado em porta nenhuma.
+- **`smtp_email`** conecta e autentica na saída, dá `quit` sem escrever mensagem; e sonda a entrada **só se ela foi configurada** — IMAP com `login`/`logout` (nunca `SELECT`, `SEARCH` ou `FETCH`: ler a caixa da loja não é papel de um botão de teste) ou POP3 com `USER`/`PASS`/`QUIT`. As três respostas possíveis são «saída e entrada conferem», «a saida confere; a leitura esta desligada (falta o servidor de entrada)» e «a saida confere, mas a leitura falhou: <motivo>» — a saída boa não é escondida quando a entrada está errada, nem o contrário.
+
+Três decisões de desenho valem registro:
+
+- **reusa o motorista vivo.** Com a barra de pé, a pergunta vai ao objeto que a fila já usa (`registry.drivers()`), então PDV e HUB no mesmo celular batem no mesmo canal, uma pergunta depois da outra — nenhum segundo motorista é montado para a tela. Medido por contador: duas origens, duas chamadas, um motorista. Com a barra desligada, a tela monta um canal igualzinho a partir do arquivo (`construir`) para o lojista conferir **antes** de ligar nada; isso não liga a barra, não abre a fila e não toca na porta de comprovantes.
+- **nunca derruba o painel.** O que estourar dentro da sonda vira `Health(False, "a verificacao nao terminou: …")`; um canal que não monta vira «nao deu para preparar o canal com os ajustes salvos» na tela e o motivo completo vai para o registro de eventos com o nome do canal.
+- **roda fora da linha da interface**, e o resultado chega com hora e com o identificador que o motorista devolve — `14:32 Celular pela rede da loja: acesso conferido (192.168.0.9:49998)` ou `14:32 Caixa de e-mail da loja: acesso conferido (email:balcao@exemplo.com.br) - a saida confere; a leitura esta desligada (falta o servidor de entrada)`. No registro de eventos a mesma linha sai nomeada por origem (`Teste de acesso PDV (Caixa de e-mail da loja): …`), e é lá — não na tela — que vai o motivo técnico completo de um canal que não monta (`Canal 'usb_modem' nao montou para o teste: o motorista do modem USB ainda nao foi escrito`). O que o lojista lê antes do primeiro clique é o texto fixo da linha: «Nenhum teste de acesso ainda. Ele nao envia mensagem nenhuma a ninguem.»
+
+#### Ligar, desligar e trocar de canal agora é decisão de tela — e a 1.7 acompanha
+
+É aqui que esta onda afiou comportamento da 1.7, e não só acrescentou botões. Antes, só a leitura do arquivo na inicialização decidia quem ficava com o celular; com o painel decidindo, três caminhos novos precisavam existir:
+
+| Ação na tela | O que acontece com a barra | O que acontece com a 1.7 |
+| --- | --- | --- |
+| Marcar **Ligar a barra de mensagens** | `enabled: true` no arquivo e `_start_messaging()` | se o canal escolhido for o celular, `_parar_envio_da_ponte()` + porta de comprovantes de pé |
+| Desmarcar | `_stop_messaging()` | **`_devolver_a_ponte_antiga()`**: a ponte volta a enviar |
+| Trocar o canal de uma origem | `_reiniciar_a_barra()` (relê o arquivo sem fechar o Gaspar) | volta para a 1.7 se o celular ficou livre; **não é tocada** se a troca não envolve o celular |
+
+A regra de quem recebe o aparelho de volta é a mesma que a B6-5 afiou para a porta: **o sinal de que a ponte está cedida é o `base_url` do motorista dela** — quem cede limpa, quem recebe devolve. Isso evita o efeito colateral feio de reiniciar uma ponte que já estava de pé por uma troca que nada tem a ver com o celular (e-mail → ensaio, por exemplo), que é caso de teste próprio. Junto disso, `_start_sms_services()` passou a **reanexar** o `base_url` quando encontrou a porta já levantada pelos comprovantes, e `_soltar_porta_de_comprovantes()` desinstala os ganchos da 2.0 quando a 1.7 volta a mandar. São as duas pontas que faltavam para o ciclo fechar sem reiniciar o programa.
+
+E uma decisão que custou duas linhas: **o que não foi para o disco não pode ficar na memória.** `_on_messaging_enabled` e `_on_meio_change` desfazem o modelo quando `save()` estoura (`OSError`, pasta protegida, disco cheio), reverteram a caixinha e param ali, com uma linha no registro do sistema. Sem isso, a tela mostrava «desligado» enquanto o config dizia `True` — e a próxima releitura diria o contrário da última frase dita ao lojista.
+
+#### O que esta onda não é
+
+- **Não migra o pareamento da 1.7.** O segredo (`shared_secret_b64`) e a chave pública do celular continuam no `sms_config.json`, e a janela dos ajustes **não lê o arquivo de outro produto** — decisão registrada, não esquecimento: a barra não escreve nem apaga pareamento, e enquanto o lojista não colar o segredo uma vez no campo **Segredo do pareamento** (ou gravar `segredo_sealed` pelo caminho manual), o canal do celular fica indisponível com o motivo dito. Uma onda própria, se o dono quiser o degrau automático.
+- **Não prova entrega.** «Acesso conferido» quer dizer «dá para falar com o servidor/celular agora», não «o SMS chegou»: a entrega é o comprovante da B6-5.
+- **Não inventou capacidade no motor.** Um motorista por tipo continua valendo — duas caixas postais diferentes para PDV e HUB seguem fora de escopo, e a tela reflete isso: os ajustes são **por canal**, não por origem.
+- **Não encosta no 1.7.4 em produção.** O padrão de fábrica continua `enabled: false`: com o arquivo como está hoje, a aba nova mostra a barra desligada e nada monta, nenhuma porta abre.
+- **Nenhum dos testes desta onda viu um aparelho ou uma caixa postal de verdade.** São 25 casos de painel com janela escondida, soquete e conexão de mentira: provam a tela, o arquivo e a decisão sobre a ponte — não provam que a loja consegue ligar a barra num balcão com celular pareado. Essa é a pendência de validação real que continua aberta, com nome, depois da B6.
+
+**Medido no gate local** (Python 3.13, `GASPAR_HOME` em área de passagem): **714 testes OK** e 1 pulo, na árvore do lote (90,6 s) e reconfirmado no commit dele (98,0 s — o único número daqui que se move sozinho é o relógio da suíte em Windows), repositório em **84%** e `gaspar/messaging` em **94%** (2.561 sentenças, 148 delas fora da conta em Windows e 157 no Linux do Portão) contra o piso de 70% do Portão. Os módulos da sonda: `messaging/transport.py` **100%**, `transports/android_lan.py` **99%** (366 sentenças, eram 346), `transports/smtp_email.py` **91%**, `gaspar/app.py` **89%** (era 88%). Os 43 testes novos são 25 em `TelaDaBarraTests` (`tests/test_app.py`, que vai de 104 para 129), 10 em `SondaDeAcessoTeste` (`tests/test_messaging_email.py`), 6 em `TesteDeAcessoTeste` (`tests/test_messaging_lan.py`) e 2 em `tests/test_messaging_transport.py` — os dois últimos fecham o contrato da sonda padrão (quem não tem prova própria devolve a saúde do arquivo) e a resposta do `loopback`, que é a única frase de tela que não pode prometer mais do que «o arquivo diz isso».
+
+**O Portão mediu a mesma onda no Linux.** O PR da onda (base `master`) fechou com `Portao pass` em cada ponta de documento que teve: `Ran 714 tests` em 47,6 s no commit `e4cba80` e em 44,9 s no commit `13181ba`, com `TOTAL 84%` — o relógio da suíte é o único número daqui que se move a cada push, e o que amarra o veredicto ao SHA enviado é o próprio Portão, não esta linha. Saiu também `OK (**skipped=2**)`, um pulo a mais que em Windows, diferença com nome: em `tests/test_messaging_store.py` dois casos de lista de permissões são `skipUnless(os.name == "nt")` e um de modo de arquivo é `skipIf(os.name == "nt")`, então a conta de pulos inverte entre as duas plataformas por construção. `gaspar/messaging` saiu em **94%** nos dois lados (148 sentenças de fora em Windows, 157 no Linux). As duas esteiras de pacote (`Pacote Linux`, `Pacote Windows`) não foram tocadas: o gatilho delas é etiqueta ou disparo manual, e o PR só acionou testes.
+
+**D6:** nenhum módulo novo em `gaspar/messaging/` — os três métodos de sonda entraram em arquivos já listados nos specs, que continuam com **18** módulos, e o guardão `tests/test_packaging_manifest.py` segue verde.
+
+**Uma fraqueza do próprio harness, achada e corrigida nesta onda.** As classes de painel abrem janelas próprias (Celular / SMS, QR, ajustes, registro de eventos) e o `tearDown` compartilhado destruía só a raiz: as janelas ficavam vivas, o coletor de lixo as encontrava depois do `root.destroy()` e o `__del__` das variáveis e imagens órfãs chamava um interpretador Tcl morto — `main thread is not in main loop`, `Tcl_AsyncDelete: async handler deleted by the wrong thread` e o processo **aborta sem imprimir o resumo da suíte** (código de saída 3: vermelho mudo, e com 93 linhas de ruído na classe nova). Com os 25 casos da tela isto deixou de ser teoria. Medido nesta árvore: a classe abortou **3 de 3** rodadas isolada; fechar a janela dos ajustes na limpeza da própria classe consertou a classe (**3/3 verde**) e **não** consertou o conjunto — a suíte completa abortou **2 de 2** execuções do gate com esse remendo dentro. A correção foi onde o defeito mora: `PainelBase._destruir()` agora destrói toda janela filha do app, larga a referência do app e roda `gc.collect()` **com o Tk vivo** antes de `root.destroy()`, o que vale para as quatro janelas e para qualquer teste de painel futuro; o remendo de classe foi apagado. Medido depois: classe 3/3, `tests.test_app` 4/4 com 129 OK e o gate de 714 acima duas vezes — **zero** linhas de ruído nas nove execuções (eram 31 na última passada vermelha do conjunto). Fica a lição em duas partes, porque a suíte tinha fechado verde em 713 testes com o vazamento já na árvore: **fechar o que abriu antes de destruir a raiz**, e o verde do conjunto inteiro não prova a saúde de uma classe isolada — a cronologia do coletor de lixo decide, e essa é a pior espécie de verde.
 
 ## Canal de atualização
 
@@ -804,7 +943,7 @@ manifesto é provado com a mesma verificação que o aplicativo usa.
 Uma vez só, com o HD removível conectado, gere o par de chaves:
 
 ```bash
-python tools/gaspar_channel.py init-key --key E:/gaspar/gaspar-signing.pem
+python tools/gaspar_channel.py init-key --key C:/caminho/seguro/gaspar-signing.pem
 ```
 
 A chave privada fica fora do repositório e não pode ser recuperada: sem ela não
@@ -824,7 +963,7 @@ Em cada versão:
    PowerShell:
 
    ```powershell
-   $env:GASPAR_RELEASE_SIGNING_KEY = Get-Content E:\gaspar\gaspar-signing.pem -Raw
+   $env:GASPAR_RELEASE_SIGNING_KEY = Get-Content C:\caminho\seguro\gaspar-signing.pem -Raw
    python tools/gaspar_channel.py sign --tag gaspar-vX.Y.Z --publish
    Remove-Item Env:GASPAR_RELEASE_SIGNING_KEY
    ```

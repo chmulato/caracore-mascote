@@ -46,9 +46,17 @@ except Exception as _sms_import_error:
 
 try:
     from .messaging.config import load_config as load_messaging_config
-    from .messaging.convivencia import celular_reservado, motivo_celular_reservado
+    from .messaging.convivencia import motivo_celular_reservado, origens_com_celular
+    from .messaging.model import ORIGENS
     from .messaging.service import MessagingService
+    from .messaging.transport import Health
+    from .messaging.transports.android_lan import NOME_MOTORISTA as CANAL_CELULAR
+    from .messaging.transports.factory import construir as construir_meio
+    from .messaging.transports.factory import nomes_disponiveis
+    from .messaging.transports.smtp_email import EmailBridgeDriver as CanalDeEmail
+    from .messaging.vault import KEY_FILENAME as MESSAGING_KEY_FILENAME, Vault
 
+    CANAL_EMAIL = CanalDeEmail.name
     MESSAGING_AVAILABLE = True
     MESSAGING_IMPORT_ERROR = ""
 except Exception as _messaging_import_error:
@@ -57,6 +65,78 @@ except Exception as _messaging_import_error:
 
 KEY_LABELS = list(KEY_CHOICES.values())
 LABEL_TO_KEY = {label: key for key, label in KEY_CHOICES.items()}
+
+#: como o lojista le cada canal da barra 2.0 - o nome tecnico fica no arquivo
+MEIO_APELIDO = {
+    "": "Sem canal (este programa nao envia)",
+    "android_lan": "Celular pela rede da loja",
+    "smtp_email": "Caixa de e-mail da loja",
+    "loopback": "Ensaio neste computador (nada sai para a rua)",
+}
+APELIDO_DO_MEIO = {apelido: nome for nome, apelido in MEIO_APELIDO.items()}
+
+#: os dois programas que pedem mensagens
+ORIGEM_APELIDO = {"PDV": "CaraCore PDV", "HUB": "CaraCore Hub"}
+
+#: os canais mostrados na tela, na ordem em que o lojista os ve
+def _canais_da_tela() -> list[str]:
+    if not MESSAGING_AVAILABLE:
+        return []
+    return [""] + list(nomes_disponiveis())
+
+
+def _rotulo_origem(origem: str) -> str:
+    return ORIGEM_APELIDO.get(origem, origem)
+
+
+def _rotulo_meio(nome: str) -> str:
+    return MEIO_APELIDO.get(nome, nome or MEIO_APELIDO[""])
+
+
+#: os dois rotulos de protecao que a tela oferece
+CIFRAS_OFERECIDAS = ("Protecao total (porta 465)", "Protecao ao ligar (porta 587)")
+#: o que o arquivo guarda por tras de cada rotulo; a terceira linha so aparece se ja estava la
+CIFRA_DOS_ROTULOS = {
+    CIFRAS_OFERECIDAS[0]: "ssl",
+    CIFRAS_OFERECIDAS[1]: "starttls",
+    "Sem protecao, apenas para ensaio local": "plano",
+}
+ROTULO_DA_CIFRA = {valor: rotulo for rotulo, valor in CIFRA_DOS_ROTULOS.items()}
+
+
+def _campos_dos_canais() -> dict[str, tuple[tuple[str, str, str, object], ...]]:
+    """Que ajuste de cada canal a janela mostra: chave, o que a tela diz, tipo, padrao.
+
+    O padrao e o do proprio motorista, nao um ``False`` generico: ``descobrir`` e
+    ``exigir_e2e`` nascem ligados no codigo, e grava-los desligados por descuido
+    mudaria a seguranca do canal sem ninguem pedir.
+
+    Campo do tipo ``senha`` nunca volta para a tela. O que ja esta guardado fica no
+    arquivo selado e so muda se o lojista digitar algo no campo - deixar em branco e
+    dizer "mantenhamos o que esta ai".
+    """
+    return {
+        CANAL_CELULAR: (
+            ("ligada", "Este canal esta ligado", "caixa", False),
+            ("host", "Endereco do celular na rede (vazio = procurar)", "texto", ""),
+            ("descobrir", "Procurar o celular na rede da loja", "caixa", True),
+            ("exigir_e2e", "So enviar mensagem que apenas o celular sabe abrir", "caixa", True),
+            ("chave_celular", "Chave do celular (vem do pareamento)", "texto", ""),
+            ("segredo", "Segredo do pareamento", "senha", ""),
+        ),
+        CANAL_EMAIL: (
+            ("enabled", "Esta caixa de e-mail esta ligada", "caixa", False),
+            ("user", "Conta da loja", "texto", ""),
+            ("password", "Senha de app da conta", "senha", ""),
+            ("smtp_host", "Servidor de saida", "texto", ""),
+            ("smtp_port", "Porta de saida", "texto", ""),
+            ("smtp_security", "Como a conversa com o servidor e protegida", "cifra", "ssl"),
+            ("queue_address", "Caixa onde o pedido entra (vazio = a propria conta)", "texto", ""),
+            ("imap_host", "Servidor de entrada (le a resposta do celular)", "texto", ""),
+            ("pop3_host", "Servidor de entrada em POP3, se nao houver IMAP", "texto", ""),
+            ("bridge_key", "Chave da ponte", "senha", ""),
+        ),
+    }
 
 
 class GasparApp:
@@ -84,6 +164,9 @@ class GasparApp:
         self._sms_window = None
         self._sms_qr_window = None
         self._sms_qr_image_label = None
+        self._meios_window = None
+        self._meio_campos: dict[str, dict[str, object]] = {}
+        self._msg_sondas: dict[str, str] = {}
         self._logs_window = None
         self.events_text = None
         self.system_text = None
@@ -389,16 +472,18 @@ class GasparApp:
             self._sms_window.lift()
             self._sms_window.focus_force()
             self._refresh_sms_ui()
+            self._refresh_messaging_ui()
             return
         window = tk.Toplevel(self.root)
         window.title("Gaspar - Celular / SMS")
-        window.geometry("580x640")
-        window.minsize(540, 580)
+        window.geometry("580x740")
+        window.minsize(540, 620)
         window.transient(self.root)
         window.protocol("WM_DELETE_WINDOW", self._close_sms_window)
         self._sms_window = window
         self._build_sms_window(window)
         self._refresh_sms_ui()
+        self._refresh_messaging_ui()
 
     def _close_sms_window(self) -> None:
         window, self._sms_window = self._sms_window, None
@@ -412,7 +497,7 @@ class GasparApp:
         outer = ttk.Frame(window, padding=12)
         outer.pack(fill=tk.BOTH, expand=True)
         outer.columnconfigure(0, weight=1)
-        outer.rowconfigure(4, weight=1)
+        outer.rowconfigure(5, weight=1)
 
         header = ttk.Frame(outer)
         header.grid(row=0, column=0, sticky=tk.EW)
@@ -480,8 +565,10 @@ class GasparApp:
             justify=tk.LEFT,
         ).grid(row=3, column=0, sticky=tk.W, pady=(6, 0))
 
+        self._build_messaging_block(outer, 4)
+
         recent = ttk.LabelFrame(outer, text="Ultimos envios  |  ok entregue  + aceito pelo celular  ! falha", padding=8)
-        recent.grid(row=4, column=0, sticky=tk.NSEW, pady=(10, 0))
+        recent.grid(row=5, column=0, sticky=tk.NSEW, pady=(10, 0))
         recent.columnconfigure(0, weight=1)
         recent.rowconfigure(0, weight=1)
         self.sms_text = tk.Text(
@@ -498,7 +585,7 @@ class GasparApp:
         self.sms_text.grid(row=0, column=0, sticky=tk.NSEW)
 
         footer = ttk.Frame(outer)
-        footer.grid(row=5, column=0, sticky=tk.EW, pady=(10, 0))
+        footer.grid(row=6, column=0, sticky=tk.EW, pady=(10, 0))
         ttk.Label(
             footer,
             text="O conteudo vai cifrado de ponta a ponta; a auditoria guarda so metadados.",
@@ -510,6 +597,69 @@ class GasparApp:
         if not SMS_AVAILABLE:
             self.sms_status_var.set("Ponte de SMS indisponivel")
             self.sms_detail_var.set(f"Dependencia ausente: {SMS_IMPORT_ERROR}")
+
+    def _build_messaging_block(self, outer: ttk.Frame, row: int) -> None:
+        """O quadro da barra 2.0 dentro da aba do celular.
+
+        A tela nao fala em porta, motorista nem assinatura. O lojista ve duas
+        perguntas - se a barra esta ligada e por onde cada programa envia - e uma
+        linha de resposta por programa, que e o que ele precisa para saber se pode
+        voltar ao caixa.
+        """
+        quadro = ttk.LabelFrame(outer, text="Mensagens pelo computador (barra 2.0)", padding=8)
+        quadro.grid(row=row, column=0, sticky=tk.EW, pady=(10, 0))
+        quadro.columnconfigure(1, weight=1)
+        if not MESSAGING_AVAILABLE:
+            ttk.Label(
+                quadro,
+                text=f"Indisponivel neste computador: {MESSAGING_IMPORT_ERROR}",
+                style="Hint.TLabel",
+                wraplength=520,
+                justify=tk.LEFT,
+            ).grid(row=0, column=0, columnspan=2, sticky=tk.W)
+            return
+        self.msg_enabled_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            quadro,
+            text="Ligar a barra de mensagens",
+            variable=self.msg_enabled_var,
+            command=self._on_messaging_enabled,
+        ).grid(row=0, column=0, columnspan=2, sticky=tk.W)
+        self.msg_meio_var: dict[str, tk.StringVar] = {}
+        self.msg_status_var: dict[str, tk.StringVar] = {}
+        rotulos = [_rotulo_meio(nome) for nome in _canais_da_tela()]
+        linha = 1
+        for origem in ORIGENS:
+            ttk.Label(quadro, text=f"{_rotulo_origem(origem)} envia por:").grid(
+                row=linha, column=0, sticky=tk.W, pady=(6, 0)
+            )
+            escolha = tk.StringVar(value=_rotulo_meio(""))
+            combo = ttk.Combobox(quadro, textvariable=escolha, values=rotulos, state="readonly", width=32)
+            combo.grid(row=linha, column=1, sticky=tk.EW, padx=(8, 0), pady=(6, 0))
+            combo.bind("<<ComboboxSelected>>", lambda _evento, o=origem: self._on_meio_change(o))
+            estado = tk.StringVar(value="")
+            ttk.Label(
+                quadro, textvariable=estado, style="Hint.TLabel", wraplength=520, justify=tk.LEFT
+            ).grid(row=linha + 1, column=0, columnspan=2, sticky=tk.W)
+            self.msg_meio_var[origem] = escolha
+            self.msg_status_var[origem] = estado
+            linha += 2
+        acoes = ttk.Frame(quadro)
+        acoes.grid(row=linha, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+        ttk.Button(acoes, text="Testar acesso", command=self._on_testar_acesso).pack(side=tk.LEFT)
+        ttk.Button(
+            acoes, text="Ajustar celular e caixa de e-mail", command=self._open_meios_window
+        ).pack(side=tk.LEFT, padx=(8, 0))
+        self.msg_verificado_var = tk.StringVar(
+            value="Nenhum teste de acesso ainda. Ele nao envia mensagem nenhuma a ninguem."
+        )
+        ttk.Label(
+            quadro,
+            textvariable=self.msg_verificado_var,
+            style="Hint.TLabel",
+            wraplength=520,
+            justify=tk.LEFT,
+        ).grid(row=linha + 1, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
 
     def _init_sms(self) -> None:
         if not SMS_AVAILABLE:
@@ -533,9 +683,13 @@ class GasparApp:
             return
         reservado = self._motivo_celular_reservado()
         if reservado:
+            # O celular envia pela barra 2.0, mas a porta por onde ele devolve o
+            # comprovante e esta aqui: continua de pe, agora entregando para a fila nova.
             self.log_event(reservado)
+            self._ligar_porta_de_comprovantes()
             self._update_sms_api()
             return
+        self._soltar_porta_de_comprovantes()
         self.sms_bridge.start()
         if self.sms_server is None:
             server = None
@@ -557,9 +711,17 @@ class GasparApp:
                 self.log_system(f"Nao foi possivel abrir a porta {self.sms_config.http_port}: {exc}")
             else:
                 self.sms_server = server
-                self.sms_bridge.base_url = f"http://{lan_ip() or '127.0.0.1'}:{server.port}"
                 self.log_event(f"Servidor local de SMS ativo na porta {server.port}.")
+        if self.sms_server is not None:
+            # a porta pode ter chegado de pe pelos comprovantes: o envio da 1.7 volta para ela
+            self.sms_bridge.base_url = self._base_url_da_ponte()
         self._update_sms_api()
+
+    def _base_url_da_ponte(self) -> str:
+        """O endereco que o celular usa para falar com esta casa. Vazio sem porta."""
+        if self.sms_server is None:
+            return ""
+        return f"http://{lan_ip() or '127.0.0.1'}:{self.sms_server.port}"
 
     def _stop_sms_services(self) -> None:
         server, self.sms_server = self.sms_server, None
@@ -575,6 +737,71 @@ class GasparApp:
             except Exception:
                 pass
         self._update_sms_api()
+
+    def _ligar_porta_de_comprovantes(self) -> None:
+        """Mantem de pe a porta que devolve o comprovante e entrega a volta para a 2.0.
+
+        A fila da 1.7 nao passa por aqui: quem envia passou a ser o motorista do celular.
+        A porta e a mesma que o aplicativo do celular conhece do pareamento, entao um
+        celular pareado ontem continua fechando a volta hoje sem refazer nada.
+        """
+        service = self.messaging_service
+        on_receipt = service.registrar_comprovante if service is not None else None
+        if self.sms_server is not None:
+            self.sms_server.on_receipt = on_receipt
+            self.sms_server.send_blocker = self._motivo_de_envio_cedido
+            return
+        if self.sms_bridge is None or self.sms_config is None:
+            return
+        server = None
+        try:
+            server = SmsHttpServer(
+                self.sms_bridge,
+                self.sms_config,
+                on_diagnostic=self._on_sms_diagnostic,
+                on_log=self._on_sms_log,
+                on_receipt=on_receipt,
+                send_blocker=self._motivo_de_envio_cedido,
+            )
+            server.start()
+        except OSError as exc:
+            if server is not None:
+                try:
+                    server.stop()
+                except Exception:
+                    pass
+            self.log_system(f"Nao foi possivel abrir a porta dos comprovantes: {exc}")
+        else:
+            self.sms_server = server
+            self.log_event(
+                f"Comprovantes do celular serao recebidos na porta {server.port} para a barra de mensagens."
+            )
+
+    def _parar_envio_da_ponte(self) -> None:
+        """Desliga a fila da 1.7 sem fechar a porta por onde o celular responde."""
+        if self.sms_bridge is None:
+            return
+        self.sms_bridge.base_url = ""
+        try:
+            self.sms_bridge.stop()
+        except Exception:
+            pass
+
+    def _motivo_de_envio_cedido(self) -> str:
+        """A frase que o produto ouve ao pedir um SMS pela porta antiga. Vazio quando pode."""
+        if not self._motivo_celular_reservado():
+            return ""
+        service = self.messaging_service
+        porta = service.port if service is not None else 0
+        destino = (
+            f" Envie para http://127.0.0.1:{porta}/v2/messages informando a origem."
+            if porta
+            else ""
+        )
+        return (
+            "O celular desta casa envia pela barra de mensagens 2.0 e a ponte antiga esta cedida."
+            + destino
+        )
 
     def _sms_api_url(self) -> str:
         if self.sms_server is not None:
@@ -620,6 +847,7 @@ class GasparApp:
         except Exception as exc:
             self.messaging_service = None
             self.log_system(f"Barra de mensagens indisponivel: {exc}")
+        self._refresh_messaging_ui()
 
     def _start_messaging(self) -> None:
         service = MessagingService.from_config(on_log=self._on_messaging_log)
@@ -629,10 +857,18 @@ class GasparApp:
             return
         self.messaging_service = service
         reservado = self._motivo_celular_reservado()
-        if reservado and (self.sms_bridge is not None or self.sms_server is not None):
-            # O motor subiu com o celular na mao: a 1.7 sai de cima da 49998.
-            self._stop_sms_services()
+        if reservado:
+            # O motor subiu com o celular na mao: a 1.7 sai de cima da 49998 e para de
+            # enviar, mas a porta dos comprovantes continua de pe - agora entregando
+            # a volta para a fila nova.
+            self._parar_envio_da_ponte()
+            self._ligar_porta_de_comprovantes()
             self.log_event(reservado)
+        else:
+            # O canal escolhido nao e o celular (ou o motor nao o quis): o aparelho
+            # volta para a 1.7, que e quem sempre o usou nesta casa.
+            self._devolver_a_ponte_antiga()
+        self._update_sms_api()
 
     def _stop_messaging(self) -> None:
         service, self.messaging_service = self.messaging_service, None
@@ -651,6 +887,393 @@ class GasparApp:
         if not MESSAGING_AVAILABLE:
             return ""
         return motivo_celular_reservado(self.messaging_config)
+
+    # ------------------------------------------- a barra na tela de quem atende
+
+    def _on_messaging_enabled(self) -> None:
+        """Liga ou desliga a barra 2.0 e entrega o celular a quem fica de pe."""
+        config = self.messaging_config
+        if config is None or not hasattr(self, "msg_enabled_var"):
+            return
+        ligado = bool(self.msg_enabled_var.get())
+        if ligado == config.enabled:
+            return
+        config.enabled = ligado
+        if not self._salvar_configuracao_da_barra():
+            # o que nao foi para o disco nao pode ficar na memoria: a tela releria True
+            config.enabled = not ligado
+            self.msg_enabled_var.set(config.enabled)
+            return
+        if ligado:
+            self.log_event("Barra de mensagens 2.0 ligada.")
+            self._start_messaging()
+        else:
+            self._stop_messaging()
+            self.log_event("Barra de mensagens 2.0 desligada.")
+            self._devolver_a_ponte_antiga()
+        self._refresh_sms_ui()
+        self._refresh_messaging_ui()
+
+    def _on_meio_change(self, origem: str) -> None:
+        """A troca do canal de uma origem. O outro programa nao e tocado."""
+        config = self.messaging_config
+        variavel = getattr(self, "msg_meio_var", {}).get(origem)
+        if config is None or variavel is None:
+            return
+        rotulo = str(variavel.get()).strip()
+        if rotulo not in APELIDO_DO_MEIO:
+            # nome que so existe no arquivo: a tela nao escolhe o que nao conhece
+            variavel.set(_rotulo_meio(config.transport_for(origem)))
+            return
+        nome = APELIDO_DO_MEIO[rotulo]
+        if nome == config.transport_for(origem):
+            return
+        anterior = config.transport_for(origem)
+        config.set_transport(origem, nome)
+        if not self._salvar_configuracao_da_barra():
+            config.set_transport(origem, anterior)
+            variavel.set(_rotulo_meio(anterior))
+            return
+        self.log_event(f"{_rotulo_origem(origem)} passa a enviar por {rotulo}.")
+        self._reiniciar_a_barra()
+        self._refresh_sms_ui()
+
+    def _reiniciar_a_barra(self) -> None:
+        """Rel o arquivo para a escolha valer na hora, sem fechar o Gaspar."""
+        self._stop_messaging()
+        if self.messaging_config is not None and self.messaging_config.enabled:
+            self._start_messaging()
+        else:
+            self._devolver_a_ponte_antiga()
+        self._refresh_messaging_ui()
+
+    def _devolver_a_ponte_antiga(self) -> None:
+        """Sem a barra em cima do celular, a 1.7 volta a enviar pelo aparelho.
+
+        O sinal de que a ponte esta cedida e o endereco que o motorista dela usa:
+        quem cede limpa, quem recebe devolve. Assim um cambio de canal que nao tem
+        nada a ver com o celular nao reinicia a 1.7 que ja estava de pe.
+        """
+        if self.sms_bridge is None or self.sms_config is None or not self.sms_config.enabled:
+            return
+        if self._motivo_celular_reservado() or self.sms_bridge.base_url:
+            return
+        self._start_sms_services()
+
+    def _soltar_porta_de_comprovantes(self) -> None:
+        """A 1.7 voltou a mandar: a porta deixa de encaminhar o recibo para a fila 2.0."""
+        if self.sms_server is None:
+            return
+        self.sms_server.on_receipt = None
+        self.sms_server.send_blocker = None
+
+    def _salvar_configuracao_da_barra(self) -> bool:
+        """Escreve o arquivo da barra. False quando o disco nao deixa - e a tela nao finge."""
+        config = self.messaging_config
+        if config is None:
+            return False
+        try:
+            config.save()
+        except OSError as exc:
+            self.log_system(f"Nao foi possivel salvar a barra de mensagens: {exc}")
+            return False
+        return True
+
+    def _refresh_messaging_ui(self) -> None:
+        """As linhas de resposta da barra: o que o arquivo diz e o que o canal informa."""
+        if not MESSAGING_AVAILABLE or not hasattr(self, "msg_status_var"):
+            return
+        config = self.messaging_config
+        if config is None:
+            for origem, variavel in self.msg_status_var.items():
+                variavel.set(f"{_rotulo_origem(origem)}: ainda lendo os ajustes da barra.")
+            return
+        self.msg_enabled_var.set(config.enabled)
+        service = self.messaging_service
+        for origem in ORIGENS:
+            nome = config.transport_for(origem)
+            escolha = self.msg_meio_var.get(origem)
+            if escolha is not None and escolha.get() != _rotulo_meio(nome):
+                escolha.set(_rotulo_meio(nome))
+            if not nome:
+                self.msg_status_var[origem].set(f"{_rotulo_origem(origem)} nao envia mensagens.")
+                continue
+            texto = f"{_rotulo_origem(origem)} por {_rotulo_meio(nome)}: "
+            if not config.enabled:
+                texto += "a barra esta desligada, nada sai."
+            elif service is None:
+                texto += "a barra nao conseguiu subir (veja o registro de eventos)."
+            else:
+                saude = service.registry.health_for(origem)
+                if saude.available:
+                    texto += "pronto para enviar"
+                    texto += f" - {saude.detail}" if saude.detail else ""
+                    texto += f" ({saude.reason})" if saude.reason else ""
+                else:
+                    texto += f"ainda nao esta pronto: {saude.reason or 'sem motivo informado'}"
+                if config.enabled and origem in origens_com_celular(config):
+                    texto += "  |  o celular esta com a barra; a ponte antiga esta cedida"
+            self.msg_status_var[origem].set(texto)
+        self._refresh_sondas()
+
+    def _refresh_sondas(self) -> None:
+        """A linha do ultimo teste de acesso, com a hora para nao virar boato."""
+        if not self._msg_sondas:
+            return
+        partes = [f"{_rotulo_origem(o)}: {self._msg_sondas[o]}" for o in ORIGENS if o in self._msg_sondas]
+        self.msg_verificado_var.set("Ultimo teste de acesso - " + "  |  ".join(partes))
+
+    def _on_testar_acesso(self) -> None:
+        """Manda a pergunta de verdade a cada canal escolhido, sem enviar nada a ninguem."""
+        config = self.messaging_config
+        if not MESSAGING_AVAILABLE or config is None:
+            messagebox.showinfo(
+                "Testar acesso", "A barra de mensagens nao esta disponivel neste computador.", parent=self.root
+            )
+            return
+        escolhas = [(origem, config.transport_for(origem)) for origem in ORIGENS]
+        escolhas = [(origem, nome) for origem, nome in escolhas if nome]
+        if not escolhas:
+            messagebox.showinfo(
+                "Testar acesso",
+                "Escolha primeiro por onde cada programa vai enviar as mensagens.",
+                parent=self.root,
+            )
+            return
+        for origem, nome in escolhas:
+            self._msg_sondas[origem] = f"conferindo {_rotulo_meio(nome)}..."
+            alvo = self.msg_status_var.get(origem)
+            if alvo is not None:
+                alvo.set(f"{_rotulo_origem(origem)} por {_rotulo_meio(nome)}: conferindo agora...")
+        self._refresh_sondas()
+        threading.Thread(target=self._testar_acesso_worker, args=(escolhas,), daemon=True).start()
+
+    def _testar_acesso_worker(self, escolhas: list[tuple[str, str]]) -> None:
+        for origem, nome in escolhas:
+            saude = self._sondar_meio(nome)
+            self.ui(self._apresentar_sonda, origem, nome, saude)
+
+    def _sondar_meio(self, nome: str) -> Health:
+        motorista = self._motorista_para_sonda(nome)
+        if motorista is None:
+            return Health(False, "nao deu para preparar o canal com os ajustes salvos")
+        try:
+            return motorista.testar_acesso()
+        except Exception as exc:  # a sonda nunca derruba o painel
+            return Health(False, f"a verificacao nao terminou: {str(exc)[:120]}")
+
+    def _motorista_para_sonda(self, nome: str):
+        """O canal vivo, ou um igual montado so para conferir quando a barra esta desligada."""
+        service = self.messaging_service
+        if service is not None:
+            for motorista in service.registry.drivers():
+                if motorista.name == nome:
+                    return motorista
+        config = self.messaging_config
+        try:
+            return construir_meio(
+                nome,
+                config.settings_for(nome) if config is not None else {},
+                vault=self._cofre_da_barra(),
+                home=data_dir(),
+            )
+        except Exception as exc:
+            self.log_system(f"Canal '{nome}' nao montou para o teste: {str(exc)[:160]}")
+            return None
+
+    def _cofre_da_barra(self):
+        service = self.messaging_service
+        if service is not None:
+            return service.vault
+        try:
+            return Vault.load_or_create(data_dir() / MESSAGING_KEY_FILENAME)
+        except OSError as exc:
+            self.log_system(f"O cofre da barra nao abriu: {exc}")
+            return None
+
+    def _apresentar_sonda(self, origem: str, nome: str, saude: Health) -> None:
+        hora = datetime.now().strftime("%H:%M")
+        if saude.available:
+            resumo = "acesso conferido" + (f" ({saude.detail})" if saude.detail else "")
+            resumo += f" - {saude.reason}" if saude.reason else ""
+        else:
+            resumo = f"sem acesso: {saude.reason or 'motivo nao informado'}"
+        self._msg_sondas[origem] = f"{hora} {_rotulo_meio(nome)}: {resumo}"
+        self.log_event(f"Teste de acesso {origem} ({_rotulo_meio(nome)}): {resumo}")
+        self._refresh_messaging_ui()
+
+    def _open_meios_window(self) -> None:
+        """A janela dos ajustes de cada canal: celular pela rede e caixa de e-mail."""
+        if not MESSAGING_AVAILABLE or self.messaging_config is None:
+            messagebox.showinfo(
+                "Ajustes dos canais", "A barra de mensagens nao esta disponivel neste computador.", parent=self.root
+            )
+            return
+        if self._meios_window is not None and self._meios_window.winfo_exists():
+            self._meios_window.deiconify()
+            self._meios_window.lift()
+            self._meios_window.focus_force()
+            return
+        window = tk.Toplevel(self.root)
+        window.title("Gaspar - canais de envio da barra 2.0")
+        window.geometry("560x660")
+        window.transient(self.root)
+        window.protocol("WM_DELETE_WINDOW", self._close_meios_window)
+        self._meios_window = window
+        self._montar_ajustes_dos_canais(window)
+
+    def _close_meios_window(self) -> None:
+        window, self._meios_window = self._meios_window, None
+        self._meio_campos = {}
+        if window is not None:
+            try:
+                window.destroy()
+            except tk.TclError:
+                pass
+
+    def _montar_ajustes_dos_canais(self, window: tk.Toplevel) -> None:
+        config = self.messaging_config
+        if config is None:
+            return
+        outer = ttk.Frame(window, padding=12)
+        outer.pack(fill=tk.BOTH, expand=True)
+        outer.columnconfigure(0, weight=1)
+        self._meio_campos = {}
+        linha = 0
+        for nome, definicao in _campos_dos_canais().items():
+            guardados = config.settings_for(nome)
+            quadro = ttk.LabelFrame(outer, text=_rotulo_meio(nome), padding=8)
+            quadro.grid(row=linha, column=0, sticky=tk.EW, pady=(0, 10))
+            quadro.columnconfigure(1, weight=1)
+            campos: dict[str, object] = {}
+            for indice, (chave, rotulo, tipo, padrao) in enumerate(definicao):
+                variavel = self._campo_de_ajuste(quadro, indice, chave, rotulo, tipo, padrao, guardados)
+                campos[chave] = variavel
+            self._meio_campos[nome] = campos
+            linha += 1
+        rodape = ttk.Frame(outer)
+        rodape.grid(row=linha, column=0, sticky=tk.EW)
+        ttk.Label(
+            rodape,
+            text=(
+                "A senha digitada aqui e guardada cifrada neste computador e nao aparece na tela de novo.\n"
+                "Deixar o campo em branco mantem a senha que ja esta guardada.\n"
+                "Os ajustes finos de servidor continuam apenas no arquivo de ajustes."
+            ),
+            style="Hint.TLabel",
+            wraplength=520,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W)
+        botoes = ttk.Frame(rodape)
+        botoes.pack(fill=tk.X, pady=(8, 0))
+        ttk.Button(botoes, text="Salvar", command=self._salvar_meios).pack(side=tk.RIGHT)
+        ttk.Button(botoes, text="Fechar", command=self._close_meios_window).pack(side=tk.RIGHT, padx=(0, 8))
+
+    def _campo_de_ajuste(
+        self, quadro: ttk.Frame, indice: int, chave: str, rotulo: str, tipo: str, padrao: object, guardados: dict
+    ):
+        """Uma linha da janela. Os tres tipos de senha nascem vazios, sempre."""
+        if tipo == "caixa":
+            variavel = tk.BooleanVar(value=bool(guardados.get(chave, padrao)))
+            ttk.Checkbutton(quadro, text=rotulo, variable=variavel).grid(
+                row=indice, column=0, columnspan=2, sticky=tk.W
+            )
+            return variavel
+        aviso = rotulo
+        if tipo == "senha" and guardados.get(f"{chave}_sealed"):
+            aviso = f"{rotulo} (ja guardada: deixe em branco para manter)"
+        ttk.Label(quadro, text=aviso).grid(row=indice, column=0, sticky=tk.W, pady=(5, 0))
+        if tipo == "senha":
+            variavel = tk.StringVar(value="")
+            ttk.Entry(quadro, textvariable=variavel, show="*", width=36).grid(
+                row=indice, column=1, sticky=tk.EW, padx=(8, 0), pady=(5, 0)
+            )
+        elif tipo == "cifra":
+            valor = str(guardados.get(chave) or "ssl")
+            variavel = tk.StringVar(value=ROTULO_DA_CIFRA.get(valor, CIFRAS_OFERECIDAS[0]))
+            ttk.Combobox(
+                quadro, textvariable=variavel, values=list(CIFRAS_OFERECIDAS), state="readonly", width=34
+            ).grid(row=indice, column=1, sticky=tk.EW, padx=(8, 0), pady=(5, 0))
+        else:
+            variavel = tk.StringVar(value=str(guardados.get(chave, "")))
+            ttk.Entry(quadro, textvariable=variavel).grid(
+                row=indice, column=1, sticky=tk.EW, padx=(8, 0), pady=(5, 0)
+            )
+        return variavel
+
+    def _algum_segredo_digitado(self) -> bool:
+        for nome, campos in self._meio_campos.items():
+            for chave, _rotulo, tipo, _padrao in _campos_dos_canais().get(nome, ()):
+                variavel = campos.get(chave)
+                if tipo == "senha" and variavel is not None and str(variavel.get()).strip():
+                    return True
+        return False
+
+    def _colher_canal(self, nome: str, vault) -> dict:
+        """O que a tela diz, posto por cima do que ja estava no arquivo.
+
+        A janela responde por uma linha de cada ajuste. O que ela nao mostra (porta,
+        mailbox, limites, onde guardar o estado) continua onde sempre esteve, e o
+        segredo que ninguem redigitou mantem o selo antigo: campo em branco na tela
+        quer dizer "nao mexi aqui", nunca "apaga".
+        """
+        config = self.messaging_config
+        guardados = config.settings_for(nome) if config is not None else {}
+        campos = self._meio_campos.get(nome, {})
+        bloco: dict = dict(guardados)
+        for chave, _rotulo, tipo, _padrao in _campos_dos_canais().get(nome, ()):
+            variavel = campos.get(chave)
+            if variavel is None:
+                continue
+            if tipo == "senha":
+                selo = f"{chave}_sealed"
+                digitado = str(variavel.get()).strip()
+                if digitado and vault is not None:
+                    bloco[selo] = vault.seal(digitado)
+                elif not str(bloco.get(selo) or "").strip():
+                    # selo vazio no arquivo: a fabrica tentaria abri-lo e recusaria o canal
+                    bloco.pop(selo, None)
+            elif tipo == "caixa":
+                bloco[chave] = bool(variavel.get())
+            elif tipo == "cifra":
+                bloco[chave] = CIFRA_DOS_ROTULOS.get(str(variavel.get()).strip(), "ssl")
+            else:
+                bloco[chave] = str(variavel.get()).strip()
+        return bloco
+
+    def _salvar_meios(self) -> None:
+        config = self.messaging_config
+        janela = self._meios_window
+        if config is None:
+            return
+        vault = self._cofre_da_barra() if self._algum_segredo_digitado() else None
+        if vault is None and self._algum_segredo_digitado():
+            messagebox.showerror(
+                "Canais de envio",
+                (
+                    "Sem o cofre deste computador nao da para guardar a senha digitada.\n\n"
+                    "Confira se a pasta de dados do Gaspar esta disponivel e tente de novo. "
+                    "Nada foi alterado."
+                ),
+                parent=janela or self.root,
+            )
+            return
+        novos = {nome: self._colher_canal(nome, vault) for nome in self._meio_campos}
+        alterados: list[str] = []
+        for nome, bloco in novos.items():
+            if bloco != config.settings_for(nome):
+                config.set_settings(nome, bloco)
+                alterados.append(nome)
+        if not self._salvar_configuracao_da_barra():
+            return
+        if alterados:
+            nomes = ", ".join(_rotulo_meio(nome) for nome in sorted(alterados))
+            self.log_event(f"Ajustes dos canais salvos: {nomes}.")
+        else:
+            self.log_event("Nada mudou nos ajustes dos canais.")
+        self._close_meios_window()
+        self._reiniciar_a_barra()
+        self._refresh_sms_ui()
 
     def _on_sms_enabled(self) -> None:
         if self.sms_config is None:
@@ -896,6 +1519,7 @@ class GasparApp:
             return
         try:
             self._refresh_sms_ui()
+            self._refresh_messaging_ui()
         except Exception:
             pass
         self._sms_poll_job = self.root.after(2500, self._sms_tick)
