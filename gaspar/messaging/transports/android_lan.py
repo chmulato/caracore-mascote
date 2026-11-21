@@ -28,8 +28,9 @@ Os quatro resultados do contrato saem assim:
 * ``indisponivel``: o meio esta desligado ou sem segredo.
 
 ``health()`` nao abre conexao nem faz descoberta: ela le so a configuracao, para o
-painel poder perguntar sem incomodar ninguem na rede. As conexoes de verdade
-entram por fabrica injetavel (``soquete_factory``, ``descoberta``), e os testes
+painel poder perguntar sem incomodar ninguem na rede. Quem quer a prova de verdade e
+``testar_acesso()``, que abre uma conexao e fecha sem mandar quadro. As conexoes de
+verdade entram por fabrica injetavel (``soquete_factory``, ``descoberta``), e os testes
 usam rede real em 127.0.0.1 com o mesmo AES e o mesmo envelope do Android.
 """
 
@@ -285,6 +286,34 @@ class AndroidLanTransportDriver(SmsTransportDriver):
         if self.settings.exigir_e2e and not self.settings.chave_celular:
             return Health(False, "celular sem chave de criptografia; pareie o celular de novo")
         return Health(True, "", self.device_id)
+
+    def testar_acesso(self) -> Health:
+        """Confere o celular de verdade sem mandar nada: abre a conexao e fecha na hora.
+
+        Ensaiar um envio nao e possivel - se saisse, o cliente receberia um SMS. O que
+        da para provar sem efeito e que o aparelho esta do outro lado da porta que a
+        fila vai usar, que e exatamente o que costuma quebrar na loja (celular
+        desligado, trocado de endereco, app fechado).
+        """
+        saude = self.health()
+        if not saude.available:
+            return saude
+        enderecos = self._enderecos()
+        if not enderecos:
+            return Health(False, "o celular nao apareceu na rede da loja")
+        motivo = ""
+        for host, porta in enderecos:
+            rotulo = f"{host}:{porta}"
+            try:
+                soquete = self._abrir_soquete((host, porta), timeout=self.settings.timeout)
+            except Exception as exc:
+                detalhe = str(exc).strip()
+                motivo = f"o celular nao atendeu em {rotulo}" + (f" ({detalhe[:60]})" if detalhe else "")
+                continue
+            with _Fecho(soquete):
+                pass
+            return Health(True, "", rotulo)
+        return Health(False, motivo or "o celular nao atendeu na rede da loja")
 
     def describe(self) -> dict:
         dados: dict = {

@@ -115,6 +115,16 @@ class SmsTransportDriver(ABC):
         inclusive ao capturar excecao propria.
         """
 
+    def testar_acesso(self) -> Health:
+        """Prova de acesso de verdade, sem efeito colateral.
+
+        O padrao devolve o que a configuracao diz, porque ha meio que nao tem o que
+        conferir de fora (o ensaio de bancada) e meio que so saberia mentir: um envio
+        de prova chegaria ao cliente. Quem tem um teste honesto - abrir conexao e
+        fechar sem mandar nada - reimplementa este metodo.
+        """
+        return self.health()
+
     def poll_inbound(self) -> list[InboundReply]:
         """Mensagens recebidas desde a ultima chamada. Vazio quando nao ha recepcao."""
         return []

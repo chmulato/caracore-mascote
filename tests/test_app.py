@@ -6,6 +6,7 @@ Nada aqui abre porta fixa, toca no hosts real ou inicia a bandeja de verdade.
 
 from __future__ import annotations
 
+import gc
 import json
 import os
 import sys
@@ -19,8 +20,12 @@ from unittest import mock
 from gaspar import app as app_module
 from gaspar import updates
 from gaspar.messaging.config import MessagingConfig
+from gaspar.messaging.transport import Health
 from gaspar.messaging.transports.android_lan import NOME_MOTORISTA as MEIO_CELULAR
+from gaspar.messaging.transports.factory import construir
 from gaspar.messaging.transports.smtp_email import EmailBridgeDriver
+from gaspar.messaging.vault import KEY_FILENAME as MESSAGING_KEY_FILENAME, Vault
+from gaspar.paths import data_dir
 
 TEM_TELA = bool(os.environ.get("DISPLAY")) or sys.platform in ("win32", "darwin")
 
@@ -201,7 +206,12 @@ def servidor_falso(erro: Exception | None = None):
 
 
 class ServicoMensagensFalso:
-    """Imita ``MessagingService`` sem fila, sem cofre e sem porta: so conta os passos."""
+    """Imita ``MessagingService`` sem fila e sem porta: so conta os passos.
+
+    O cofre e o registro entram de mentira mas funcionando, porque a tela do lojista
+    (Onda B6-6) pergunta a saude por origem, sela senha com o cofre e reusa o
+    motorista vivo na hora de conferir o acesso.
+    """
 
     criados: list["ServicoMensagensFalso"] = []
 
@@ -212,6 +222,8 @@ class ServicoMensagensFalso:
         self.abriu_porta = None
         self.port = 8767
         self.comprovantes: list[str] = []
+        self.registry = RegistroFalso()
+        self.vault = Vault.load_or_create(data_dir() / MESSAGING_KEY_FILENAME)
 
     @classmethod
     def from_config(cls, path=None, **kwargs):
@@ -231,6 +243,50 @@ class ServicoMensagensFalso:
 
     def close(self):
         self.fechado += 1
+
+
+class RegistroFalso:
+    """O que a tela sabe perguntar ao motor: quem esta vivo e como cada origem esta."""
+
+    def __init__(self, motoristas=(), saude=None):
+        self._motoristas = list(motoristas)
+        self._saude = dict(saude or {})
+
+    def drivers(self):
+        return list(self._motoristas)
+
+    def health_for(self, origem: str) -> Health:
+        return self._saude.get(origem, Health(False, "o canal escolhido ainda nao respondeu"))
+
+
+class MotoristaSonda:
+    """Motorista que so sabe fazer a prova de acesso, sem rede nenhuma por traz."""
+
+    def __init__(self, nome: str, saude: Health | None = None, erro: Exception | None = None):
+        self.name = nome
+        self.saude = saude if saude is not None else Health(True, "", "sonda")
+        self.erro = erro
+        self.chamadas = 0
+
+    def testar_acesso(self) -> Health:
+        self.chamadas += 1
+        if self.erro is not None:
+            raise self.erro
+        return self.saude
+
+
+class ExecucaoDireta:
+    """Thread de mentira: roda o trabalho na hora, para o teste nao esperar agulha."""
+
+    def __init__(self, target=None, args=(), **_kw):
+        self._target = target
+        self._args = args
+
+    def start(self) -> None:
+        self._target(*self._args)
+
+    def join(self, timeout=None) -> None:
+        return None
 
 
 @unittest.skipUnless(TEM_TELA, "Tk precisa de tela (no Linux a esteira usa xvfb)")
@@ -263,6 +319,19 @@ class PainelBase(unittest.TestCase):
     def _destruir(self):
         try:
             self.app.closing = True
+        except Exception:
+            pass
+        # As janelas proprias do painel (Celular/SMS, QR, ajustes, registro) morrem
+        # com o Tk vivo, e o coletor de lixo passa aqui antes do root.destroy():
+        # variaveis e imagens huercas acordam depois da destruicao e derrubam o
+        # interpretador Tcl no meio da suite (medido em Windows).
+        try:
+            for filha in self.root.winfo_children():
+                filha.destroy()
+            # larga o app antes de recolher: as variaveis e imagens que ele segura
+            # tem de morrer com o Tk vivo, nao depois do root.destroy()
+            self.app = None
+            gc.collect()
         except Exception:
             pass
         try:
@@ -983,6 +1052,314 @@ class BarraMensagens20Tests(PainelBase):
         self.app._stop_messaging()
         self.assertEqual(1, servico.fechado)
         self.assertIsNone(self.app.messaging_service)
+
+
+class TelaDaBarraTests(PainelBase):
+    """A tela do lojista na aba Celular / SMS (Onda B6-6): escolher, guardar, conferir.
+
+    O que aqui se amarra: a tela repete o que o arquivo diz, troca um programa sem
+    tocar no outro, nao finge que salvou quando o disco recusou, sela a senha antes
+    de escrever e pergunta o acesso sem enviar nada a ninguem. Rede de verdade: zero.
+    """
+
+    def setUp(self):
+        super().setUp()
+        ServicoMensagensFalso.criados = []
+        for patch in (
+            mock.patch.object(app_module, "MessagingService", ServicoMensagensFalso),
+            # o endereco da casa sai de um soquete de verdade: aqui e uma constante
+            mock.patch.object(app_module, "lan_ip", return_value="192.168.0.5"),
+            # nem a barra desligada deixa a 1.7 abrir porta dentro de um teste
+            mock.patch.object(app_module, "SmsHttpServer", servidor_falso()),
+        ):
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.ponte = FakeBridge()
+        self.app.sms_bridge = self.ponte
+        self.app.sms_config = FakeSmsConfig(enabled=True)
+        self.arquivo = data_dir() / "messaging.json"
+        self.abrir_painel_sms()
+
+    def gravar_e_ler(self, **corpo) -> MessagingConfig:
+        """Escreve o arquivo da barra na pasta temporaria e faz o painel rele-lo."""
+        dados = {"enabled": False, "transports": {}, "transport_settings": {}}
+        dados.update(corpo)
+        self.arquivo.write_text(json.dumps(dados), encoding="utf-8")
+        self.app._init_messaging()
+        return self.app.messaging_config
+
+    def no_arquivo(self) -> dict:
+        return json.loads(self.arquivo.read_text(encoding="utf-8"))
+
+    def subir_a_1_7(self):
+        self.app._start_sms_services()
+
+    def abrir_ajustes(self) -> dict:
+        self.app._open_meios_window()
+        self.pump()
+        return self.app._meio_campos
+
+    def conferir_acesso(self) -> None:
+        """Aperta o botao com a thread rodando na hora: o teste nao espera agulha."""
+        with mock.patch.object(app_module, "threading", SimpleNamespace(Thread=ExecucaoDireta)):
+            self.app._on_testar_acesso()
+        self.pump()
+
+    # ------------------------------------------------------------- o que a tela diz
+
+    def test_a_tela_repete_o_que_o_arquivo_diz(self):
+        self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.assertTrue(self.app.msg_enabled_var.get())
+        self.assertEqual(app_module._rotulo_meio(MEIO_CELULAR), self.app.msg_meio_var["PDV"].get())
+        self.assertEqual(app_module._rotulo_meio(""), self.app.msg_meio_var["HUB"].get())
+        self.assertIn("CaraCore Hub nao envia mensagens", self.app.msg_status_var["HUB"].get())
+        self.assertIn("ainda nao esta pronto", self.app.msg_status_var["PDV"].get())
+        self.assertIn("a ponte antiga esta cedida", self.app.msg_status_var["PDV"].get())
+
+    def test_a_barra_desligada_avisa_que_nada_sai(self):
+        self.gravar_e_ler(enabled=False, transports={"PDV": MEIO_CELULAR})
+        self.assertIn("a barra esta desligada, nada sai", self.app.msg_status_var["PDV"].get())
+        self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR})
+        servico = self.app.messaging_service
+        servico.registry = RegistroFalso(saude={"PDV": Health(True, "", "android-lan")})
+        self.app._refresh_messaging_ui()
+        self.assertIn("pronto para enviar - android-lan", self.app.msg_status_var["PDV"].get())
+
+    def test_a_tela_nao_oferece_o_canal_que_nao_tem_codigo(self):
+        self.assertEqual(
+            ["", MEIO_CELULAR, "loopback", EmailBridgeDriver.name], app_module._canais_da_tela()
+        )
+        self.assertNotIn("usb_modem", app_module.MEIO_APELIDO)
+
+    def test_o_canal_que_a_tela_nao_conhece_nao_e_reescrito(self):
+        """Um nome tecnico no arquivo aparece sem maquiagem e sai intacto da troca."""
+        self.gravar_e_ler(enabled=False, transports={"PDV": "usb_modem"})
+        self.assertEqual("usb_modem", self.app.msg_meio_var["PDV"].get())
+        self.app._on_meio_change("PDV")
+        self.assertEqual({"PDV": "usb_modem"}, self.no_arquivo()["transports"])
+
+    def test_escolher_o_canal_grava_e_nao_mexe_no_vizinho(self):
+        config = self.gravar_e_ler(enabled=True, transports={"HUB": EmailBridgeDriver.name})
+        self.app.msg_meio_var["PDV"].set(app_module._rotulo_meio(MEIO_CELULAR))
+        self.app._on_meio_change("PDV")
+        self.assertEqual(MEIO_CELULAR, config.transport_for("PDV"))
+        self.assertEqual(EmailBridgeDriver.name, config.transport_for("HUB"))
+        self.assertEqual(
+            {"PDV": MEIO_CELULAR, "HUB": EmailBridgeDriver.name}, self.no_arquivo()["transports"]
+        )
+        eventos = self.app._events_backlog
+        self.assertTrue(any("CaraCore PDV passa a enviar por Celular pela rede da loja" in l for l in eventos))
+
+    def test_tirar_o_canal_de_um_programa_para_de_enviar_por_ele(self):
+        config = self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR, "HUB": MEIO_CELULAR})
+        self.app.msg_meio_var["PDV"].set(app_module._rotulo_meio(""))
+        self.app._on_meio_change("PDV")
+        self.assertEqual("", config.transport_for("PDV"))
+        self.assertEqual({"HUB": MEIO_CELULAR}, self.no_arquivo()["transports"])
+        self.assertIn("CaraCore PDV nao envia mensagens", self.app.msg_status_var["PDV"].get())
+        # o celular continua reservado: ainda ha um programa usando-o
+        self.assertIn("a ponte antiga esta cedida", self.app.msg_status_var["HUB"].get())
+
+    def test_ligar_a_barra_pelo_painel_sobe_o_motor_e_grava(self):
+        config = self.gravar_e_ler(enabled=False)
+        self.app.msg_enabled_var.set(True)
+        self.app._on_messaging_enabled()
+        self.assertTrue(config.enabled)
+        self.assertTrue(self.no_arquivo()["enabled"])
+        self.assertIsNotNone(self.app.messaging_service)
+        self.assertTrue(any("Barra de mensagens 2.0 ligada." in l for l in self.app._events_backlog))
+
+    def test_desligar_a_barra_devolve_o_celular_a_ponte_1_7(self):
+        self.subir_a_1_7()
+        self.assertEqual(1, self.ponte.started)
+        self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.assertEqual("", self.ponte.base_url, "com a barra em cima do celular, a 1.7 nao envia")
+        motor = self.app.messaging_service
+        self.app.msg_enabled_var.set(False)
+        self.app._on_messaging_enabled()
+        self.assertEqual(1, motor.fechado)
+        self.assertIsNone(self.app.messaging_service)
+        self.assertEqual(2, self.ponte.started, "a barra saiu de cima: o aparelho volta para a 1.7")
+        self.assertIn("http://192.168.0.5:", self.ponte.base_url)
+        self.assertFalse(self.no_arquivo()["enabled"])
+        self.assertIsNone(self.app.sms_server.on_receipt, "a volta do celular voltou a ser da 1.7")
+
+    def test_um_cambio_que_nao_e_o_celular_nao_reinicia_a_ponte_1_7(self):
+        self.subir_a_1_7()
+        self.gravar_e_ler(enabled=True, transports={"PDV": EmailBridgeDriver.name})
+        self.assertEqual(1, self.ponte.started, "a 1.7 ja estava de pe com o celular: ninguem a tocou")
+        self.app.msg_meio_var["HUB"].set(app_module._rotulo_meio("loopback"))
+        self.app._on_meio_change("HUB")
+        self.assertEqual(1, self.ponte.started)
+
+    def test_arquivo_que_nao_deixa_escrever_nao_finge_que_mudou(self):
+        config = self.gravar_e_ler(enabled=False, transports={"PDV": MEIO_CELULAR})
+        with mock.patch.object(MessagingConfig, "save", side_effect=OSError("disco cheio")):
+            self.app.msg_enabled_var.set(True)
+            self.app._on_messaging_enabled()
+        self.assertFalse(config.enabled, "o que nao foi para o disco nao pode ficar na memoria")
+        self.assertFalse(self.app.msg_enabled_var.get())
+        self.assertIsNone(self.app.messaging_service)
+        self.assertTrue(
+            any("Nao foi possivel salvar a barra de mensagens" in l for l in self.app._system_backlog)
+        )
+
+    def test_troca_que_nao_consegue_salvar_volta_atras(self):
+        config = self.gravar_e_ler(enabled=False, transports={"PDV": EmailBridgeDriver.name})
+        self.app.msg_meio_var["PDV"].set(app_module._rotulo_meio(MEIO_CELULAR))
+        with mock.patch.object(MessagingConfig, "save", side_effect=OSError("protegido")):
+            self.app._on_meio_change("PDV")
+        self.assertEqual(EmailBridgeDriver.name, config.transport_for("PDV"))
+        self.assertEqual(
+            app_module._rotulo_meio(EmailBridgeDriver.name), self.app.msg_meio_var["PDV"].get()
+        )
+
+    # ------------------------------------------------------- ajustes e segredo selado
+
+    def test_a_senha_digitada_vai_selada_para_o_arquivo(self):
+        config = self.gravar_e_ler(enabled=True, transports={"PDV": EmailBridgeDriver.name})
+        campos = self.abrir_ajustes()[EmailBridgeDriver.name]
+        self.assertEqual("", campos["password"].get(), "a senha nunca volta para a tela")
+        campos["user"].set("loja@loja.test.invalid")
+        campos["smtp_host"].set("smtp.test.invalid")
+        campos["password"].set("senha-de-app-de-verdade")
+        self.app._salvar_meios()
+        bruto = self.arquivo.read_text(encoding="utf-8")
+        self.assertNotIn("senha-de-app-de-verdade", bruto)
+        bloco = json.loads(bruto)["transport_settings"][EmailBridgeDriver.name]
+        cofre = self.app.messaging_service.vault
+        self.assertEqual("senha-de-app-de-verdade", cofre.open(bloco["password_sealed"]))
+        self.assertEqual("smtp.test.invalid", config.settings_for(EmailBridgeDriver.name)["smtp_host"])
+        self.assertIsNone(self.app._meios_window, "salvar fecha a janela dos ajustes")
+
+    def test_campo_em_branco_mantem_o_selo_e_o_arquivo_nao_perde_ajuste_fino(self):
+        selo = self.app._cofre_da_barra().seal("senha-de-antes")
+        guardado = {
+            "enabled": True,
+            "user": "loja@loja.test.invalid",
+            "password_sealed": selo,
+            "mailbox": "COMPRAS",
+            "max_poll_messages": 7,
+        }
+        self.gravar_e_ler(
+            enabled=True,
+            transports={"PDV": EmailBridgeDriver.name},
+            transport_settings={EmailBridgeDriver.name: dict(guardado)},
+        )
+        campos = self.abrir_ajustes()[EmailBridgeDriver.name]
+        self.assertEqual("loja@loja.test.invalid", campos["user"].get())
+        self.app._salvar_meios()
+        bloco = self.no_arquivo()["transport_settings"][EmailBridgeDriver.name]
+        self.assertEqual(selo, bloco["password_sealed"])
+        self.assertEqual("COMPRAS", bloco["mailbox"], "o que a tela nao mostra nao e apagado")
+        self.assertEqual(7, bloco["max_poll_messages"])
+
+    def test_a_janela_nao_escreve_um_selo_vazio_para_o_campo_que_nunca_teve_senha(self):
+        self.gravar_e_ler(enabled=True, transports={"PDV": EmailBridgeDriver.name})
+        self.abrir_ajustes()
+        self.app._salvar_meios()
+        bloco = self.no_arquivo()["transport_settings"][EmailBridgeDriver.name]
+        self.assertNotIn("password_sealed", bloco)
+        self.assertNotIn("bridge_key_sealed", bloco)
+
+    def test_a_porta_em_branco_monta_o_canal_na_porta_do_motorista(self):
+        """A janela escreve texto; o motorista converte. Porta em branco nao e porta quebrada."""
+        self.gravar_e_ler(enabled=True, transports={"PDV": EmailBridgeDriver.name})
+        campos = self.abrir_ajustes()[EmailBridgeDriver.name]
+        campos["user"].set("loja@loja.test.invalid")
+        campos["smtp_host"].set("smtp.test.invalid")
+        self.app._salvar_meios()
+        bloco = self.no_arquivo()["transport_settings"][EmailBridgeDriver.name]
+        self.assertEqual("", bloco["smtp_port"], "em branco vai para o arquivo como em branco")
+        cofre = Vault.load_or_create(data_dir() / MESSAGING_KEY_FILENAME)
+        motorista = construir(EmailBridgeDriver.name, bloco, vault=cofre, home=data_dir())
+        self.assertEqual(465, motorista.settings.smtp_port)
+
+    def test_a_janela_preserva_o_que_so_o_motorista_sabe_ler(self):
+        """Os padroes gravados pela janela sao os do proprio canal, nao os de uma caixa."""
+        self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.abrir_ajustes()
+        self.app._salvar_meios()
+        bloco = self.no_arquivo()["transport_settings"][MEIO_CELULAR]
+        self.assertIs(True, bloco["descobrir"], "procurar o celular nasce ligado")
+        self.assertIs(True, bloco["exigir_e2e"], "a exigencia de cifra nao se desliga sozinha")
+        self.assertIs(False, bloco["ligada"])
+
+    def test_a_janela_ajustes_reaproveita_a_que_ja_esta_aberta(self):
+        self.gravar_e_ler(enabled=True)
+        self.abrir_ajustes()
+        primeira = self.app._meios_window
+        self.abrir_ajustes()
+        self.assertIs(primeira, self.app._meios_window)
+        self.app._close_meios_window()
+        self.assertIsNone(self.app._meios_window)
+        self.assertEqual({}, self.app._meio_campos)
+
+    def test_sem_cofre_nao_se_gruda_a_senha_e_nada_muda(self):
+        config = self.gravar_e_ler(enabled=True, transports={"PDV": EmailBridgeDriver.name})
+        campos = self.abrir_ajustes()[EmailBridgeDriver.name]
+        campos["password"].set("senha-que-nao-tem-onde-guardar")
+        self.app.messaging_service.vault = None
+        with mock.patch.object(app_module.messagebox, "showerror") as erro:
+            self.app._salvar_meios()
+        self.assertIn("Nada foi alterado", erro.call_args[0][1])
+        self.assertEqual({}, config.settings_for(EmailBridgeDriver.name))
+        self.assertIsNotNone(self.app._meios_window, "a janela fica aberta para o lojista tentar de novo")
+
+    # ------------------------------------------------------------- testar o acesso
+
+    def test_a_tela_conferre_o_acesso_pelo_motorista_vivo(self):
+        celular = MotoristaSonda(MEIO_CELULAR, Health(True, "", "192.168.0.9:49998"))
+        self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR, "HUB": MEIO_CELULAR})
+        self.app.messaging_service.registry = RegistroFalso([celular])
+        self.conferir_acesso()
+        self.assertEqual(2, celular.chamadas, "as duas origens compartilham o mesmo celular")
+        self.assertIn("Ultimo teste de acesso", self.app.msg_verificado_var.get())
+        self.assertIn("acesso conferido (192.168.0.9:49998)", self.app.msg_verificado_var.get())
+        eventos = self.app._events_backlog
+        self.assertTrue(any("Teste de acesso PDV (Celular pela rede da loja)" in l for l in eventos))
+        self.assertTrue(any("Teste de acesso HUB" in l for l in eventos))
+
+    def test_a_tela_diz_quem_nao_atendeu(self):
+        celular = MotoristaSonda(MEIO_CELULAR, Health(False, "o celular nao atendeu em 192.168.0.50:49998"))
+        self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.app.messaging_service.registry = RegistroFalso([celular])
+        self.conferir_acesso()
+        self.assertIn("sem acesso: o celular nao atendeu", self.app.msg_verificado_var.get())
+
+    def test_a_sonda_que_estoura_nao_derruba_a_tela(self):
+        celular = MotoristaSonda(MEIO_CELULAR, erro=RuntimeError("o motorista esqueceu um passo"))
+        self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.app.messaging_service.registry = RegistroFalso([celular])
+        self.conferir_acesso()
+        self.assertIn("a verificacao nao terminou: o motorista esqueceu um passo", self.app.msg_verificado_var.get())
+
+    def test_a_sonda_monta_o_canal_do_arquivo_sem_ligar_o_motor(self):
+        self.gravar_e_ler(enabled=False, transports={"PDV": "loopback"})
+        self.conferir_acesso()
+        self.assertIn("Ensaio neste computador", self.app.msg_verificado_var.get())
+        self.assertIn("acesso conferido", self.app.msg_verificado_var.get())
+        self.assertIsNone(self.app.messaging_service, "conferir o acesso nao liga a barra")
+
+    def test_o_canal_que_nao_monta_diz_o_motivo_em_vez_de_sumir(self):
+        self.gravar_e_ler(enabled=False, transports={"PDV": "usb_modem"})
+        self.conferir_acesso()
+        self.assertIn("nao deu para preparar o canal com os ajustes salvos", self.app.msg_verificado_var.get())
+        self.assertTrue(
+            any("nao montou para o teste" in l for l in self.app._system_backlog),
+            "o motivo tecnico fica no registro, nao na tela do lojista",
+        )
+
+    def test_sem_canal_escolhido_a_tela_pede_escolha_primeiro(self):
+        self.gravar_e_ler(enabled=True)
+        with mock.patch.object(app_module.messagebox, "showinfo") as aviso:
+            self.conferir_acesso()
+        self.assertIn("Escolha primeiro", aviso.call_args[0][1])
+        self.assertEqual({}, self.app._msg_sondas, "nada foi perguntado a ninguem")
+
+    def test_o_primeiro_acesso_conferido_nao_aparece_antes_de_existir(self):
+        self.gravar_e_ler(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.assertIn("Nenhum teste de acesso ainda", self.app.msg_verificado_var.get())
 
 
 class AtualizacaoTests(PainelBase):

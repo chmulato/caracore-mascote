@@ -424,6 +424,66 @@ class EmailBridgeDriver(SmsTransportDriver):
             return Health(True, f"a ultima conversa com a caixa postal falhou: {self.ultimo_erro[:160]}")
         return Health(True, "", self.device_id)
 
+    def testar_acesso(self) -> Health:
+        """Entra na caixa postal e sai: nao le, nao escreve e nao apaga recado nenhum.
+
+        A saida (SMTP) e o caminho obrigatorio e por isso e sempre testada. A leitura
+        so e conferida quando a loja informou um servidor de entrada, e ai o veredito
+        diz qual das duas pontas falhou - trocar senha de app e meio facil de acertar
+        quando se sabe onde errou.
+        """
+        saude = self.health()
+        if not saude.available:
+            return saude
+        try:
+            cliente = self._conectar()
+        except _Queda as queda:
+            return Health(False, queda.motivo)
+        except (MessagingError, ValueError, OSError) as exc:
+            return Health(False, str(exc)[:200])
+        _fechar(cliente)
+        leitura = self.settings.protocolo_de_leitura
+        if not leitura:
+            return Health(
+                True,
+                "a saida confere; a leitura esta desligada (falta o servidor de entrada)",
+                self.device_id,
+            )
+        motivo = self._sondar_leitura(leitura)
+        if motivo:
+            return Health(True, f"a saida confere, mas a leitura falhou: {motivo}", self.device_id)
+        return Health(True, "", self.device_id)
+
+    def _sondar_leitura(self, protocolo: str) -> str:
+        """So o login de leitura, com saida imediata. Vazio quando conferiu."""
+        try:
+            senha = self._senha()
+        except MessagingError as exc:
+            return str(exc)[:180]
+        cliente = None
+        try:
+            if protocolo == "imap":
+                cliente = (self._imap_factory or _imap_ssl)(
+                    self.settings.imap_host, self.settings.imap_port
+                )
+                cliente.login(self.settings.user, senha)  # type: ignore[attr-defined]
+            else:
+                cliente = (self._pop3_factory or _pop3_ssl)(
+                    self.settings.pop3_host, self.settings.pop3_port
+                )
+                cliente.user(self.settings.user)  # type: ignore[attr-defined]
+                cliente.pass_(senha)  # type: ignore[attr-defined]
+        except Exception as exc:  # a sonda nao derruba o painel: o que falha vira texto
+            return f"{protocolo.upper()}: {str(exc)[:150]}"
+        finally:
+            # sair pelo verbo do proprio protocolo: IMAP nao tem quit, POP3 nao tem logout
+            try:
+                if cliente is not None:
+                    (cliente.logout if protocolo == "imap" else cliente.quit)()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        return ""
+
     @property
     def ligada(self) -> bool:
         return bool(self.settings.enabled) and not self.settings.faltando()
