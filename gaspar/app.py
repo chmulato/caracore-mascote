@@ -533,7 +533,10 @@ class GasparApp:
             return
         reservado = self._motivo_celular_reservado()
         if reservado:
+            # O celular envia pela barra 2.0, mas a porta por onde ele devolve o
+            # comprovante e esta aqui: continua de pe, agora entregando para a fila nova.
             self.log_event(reservado)
+            self._ligar_porta_de_comprovantes()
             self._update_sms_api()
             return
         self.sms_bridge.start()
@@ -575,6 +578,71 @@ class GasparApp:
             except Exception:
                 pass
         self._update_sms_api()
+
+    def _ligar_porta_de_comprovantes(self) -> None:
+        """Mantem de pe a porta que devolve o comprovante e entrega a volta para a 2.0.
+
+        A fila da 1.7 nao passa por aqui: quem envia passou a ser o motorista do celular.
+        A porta e a mesma que o aplicativo do celular conhece do pareamento, entao um
+        celular pareado ontem continua fechando a volta hoje sem refazer nada.
+        """
+        service = self.messaging_service
+        on_receipt = service.registrar_comprovante if service is not None else None
+        if self.sms_server is not None:
+            self.sms_server.on_receipt = on_receipt
+            self.sms_server.send_blocker = self._motivo_de_envio_cedido
+            return
+        if self.sms_bridge is None or self.sms_config is None:
+            return
+        server = None
+        try:
+            server = SmsHttpServer(
+                self.sms_bridge,
+                self.sms_config,
+                on_diagnostic=self._on_sms_diagnostic,
+                on_log=self._on_sms_log,
+                on_receipt=on_receipt,
+                send_blocker=self._motivo_de_envio_cedido,
+            )
+            server.start()
+        except OSError as exc:
+            if server is not None:
+                try:
+                    server.stop()
+                except Exception:
+                    pass
+            self.log_system(f"Nao foi possivel abrir a porta dos comprovantes: {exc}")
+        else:
+            self.sms_server = server
+            self.log_event(
+                f"Comprovantes do celular serao recebidos na porta {server.port} para a barra de mensagens."
+            )
+
+    def _parar_envio_da_ponte(self) -> None:
+        """Desliga a fila da 1.7 sem fechar a porta por onde o celular responde."""
+        if self.sms_bridge is None:
+            return
+        self.sms_bridge.base_url = ""
+        try:
+            self.sms_bridge.stop()
+        except Exception:
+            pass
+
+    def _motivo_de_envio_cedido(self) -> str:
+        """A frase que o produto ouve ao pedir um SMS pela porta antiga. Vazio quando pode."""
+        if not self._motivo_celular_reservado():
+            return ""
+        service = self.messaging_service
+        porta = service.port if service is not None else 0
+        destino = (
+            f" Envie para http://127.0.0.1:{porta}/v2/messages informando a origem."
+            if porta
+            else ""
+        )
+        return (
+            "O celular desta casa envia pela barra de mensagens 2.0 e a ponte antiga esta cedida."
+            + destino
+        )
 
     def _sms_api_url(self) -> str:
         if self.sms_server is not None:
@@ -629,10 +697,14 @@ class GasparApp:
             return
         self.messaging_service = service
         reservado = self._motivo_celular_reservado()
-        if reservado and (self.sms_bridge is not None or self.sms_server is not None):
-            # O motor subiu com o celular na mao: a 1.7 sai de cima da 49998.
-            self._stop_sms_services()
+        if reservado:
+            # O motor subiu com o celular na mao: a 1.7 sai de cima da 49998 e para de
+            # enviar, mas a porta dos comprovantes continua de pe - agora entregando
+            # a volta para a fila nova.
+            self._parar_envio_da_ponte()
+            self._ligar_porta_de_comprovantes()
             self.log_event(reservado)
+            self._update_sms_api()
 
     def _stop_messaging(self) -> None:
         service, self.messaging_service = self.messaging_service, None

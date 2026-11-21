@@ -57,6 +57,7 @@ hiddenimports += [
 hiddenimports += [
     "gaspar.messaging",
     "gaspar.messaging.config",
+    "gaspar.messaging.comprovantes",
     "gaspar.messaging.convivencia",
     "gaspar.messaging.credentials",
     "gaspar.messaging.dispatcher",

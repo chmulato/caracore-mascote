@@ -171,17 +171,28 @@ def servidor_falso(erro: Exception | None = None):
     class Servidor:
         instancias: list["Servidor"] = []
 
-        def __init__(self, bridge, config, on_diagnostic=None, on_log=None):
+        def __init__(
+            self,
+            bridge,
+            config,
+            on_diagnostic=None,
+            on_log=None,
+            on_receipt=None,
+            send_blocker=None,
+        ):
             self.port = 8788
             self.stopped = 0
+            self.iniciado = 0
             self.on_diagnostic = on_diagnostic
             self.on_log = on_log
+            self.on_receipt = on_receipt
+            self.send_blocker = send_blocker
             Servidor.instancias.append(self)
             if erro is not None:
                 raise erro
 
         def start(self):
-            pass
+            self.iniciado += 1
 
         def stop(self):
             self.stopped += 1
@@ -199,6 +210,8 @@ class ServicoMensagensFalso:
         self.iniciado = 0
         self.fechado = 0
         self.abriu_porta = None
+        self.port = 8767
+        self.comprovantes: list[str] = []
 
     @classmethod
     def from_config(cls, path=None, **kwargs):
@@ -210,6 +223,11 @@ class ServicoMensagensFalso:
         self.abriu_porta = open_port
         self.iniciado += 1
         return bool(self.config.enabled)
+
+    def registrar_comprovante(self, corpo: object) -> bool:
+        """A porta da 1.7 chama com o recibo cifrado; quem decide e a fila 2.0."""
+        self.comprovantes.append(str(corpo))
+        return bool(corpo)
 
     def close(self):
         self.fechado += 1
@@ -883,10 +901,42 @@ class BarraMensagens20Tests(PainelBase):
         self.app.messaging_config = MessagingConfig(enabled=True, transports={"HUB": MEIO_CELULAR})
         self.subir_a_1_7()
         self.assertEqual(0, ponte.started)
-        self.assertIsNone(self.app.sms_server)
         self.assertTrue(any("cede a porta 49998" in l for l in self.app._events_backlog))
         self.assertIn("cede a porta 49998", self.app.sms_api_var.get())
         self.assertIn("HUB", self.app.sms_api_var.get())
+
+    def test_a_porta_do_comprovante_fica_de_pe_com_o_celular_cedido(self):
+        """Ceder o celular nao e fechar a porta: e pela 8766 que o recibo volta para casa."""
+        _, ponte = self.usar_ponte()
+        self.app.messaging_config = MessagingConfig(enabled=True, transports={"HUB": MEIO_CELULAR})
+        self.subir_a_1_7()
+        self.assertEqual(0, ponte.started)
+        self.assertIsNotNone(self.app.sms_server)
+        self.assertEqual(1, self.app.sms_server.iniciado)
+        self.assertIsNotNone(self.app.sms_server.send_blocker)
+        self.assertIsNone(
+            self.app.sms_server.on_receipt, "sem barra 2.0 subida, ainda nao ha para quem entregar"
+        )
+
+    def test_a_volta_do_celular_entregue_pelo_painel_chega_na_barra_2_0(self):
+        _, ponte = self.usar_ponte()
+        self.subir_a_1_7()
+        with mock.patch.object(app_module, "MessagingService", ServicoMensagensFalso):
+            self.app.messaging_config = MessagingConfig(enabled=True, transports={"PDV": MEIO_CELULAR})
+            self.app._start_messaging()
+        self.app.sms_server.on_receipt("RECIBO-CIFRADO")
+        self.assertEqual(["RECIBO-CIFRADO"], self.app.messaging_service.comprovantes)
+
+    def test_a_reserva_aponta_o_produto_para_o_contrato_local(self):
+        self.usar_ponte()
+        self.subir_a_1_7()
+        self.assertEqual("", self.app._motivo_de_envio_cedido())
+        with mock.patch.object(app_module, "MessagingService", ServicoMensagensFalso):
+            self.app.messaging_config = MessagingConfig(enabled=True, transports={"PDV": MEIO_CELULAR})
+            self.app._start_messaging()
+        motivo = self.app._motivo_de_envio_cedido()
+        self.assertIn("barra de mensagens 2.0", motivo)
+        self.assertIn("http://127.0.0.1:8767/v2/messages", motivo)
 
     def test_o_token_do_pdv_continua_visivel_quando_a_1_7_cede_o_celular(self):
         self.usar_ponte()
@@ -903,7 +953,11 @@ class BarraMensagens20Tests(PainelBase):
             self.app.messaging_config = MessagingConfig(enabled=True, transports={"PDV": MEIO_CELULAR})
             self.app._start_messaging()
         self.assertEqual(1, ponte.stopped)
-        self.assertIsNone(self.app.sms_server)
+        # a porta nao caiu: passou a encaminhar o recibo para a fila nova
+        self.assertIsNotNone(self.app.sms_server)
+        self.assertEqual(
+            self.app.messaging_service.registrar_comprovante, self.app.sms_server.on_receipt
+        )
         self.assertTrue(any("cede a porta 49998" in l for l in self.app._events_backlog))
 
     def test_ligar_a_ponte_no_painel_com_celular_reservado_avisa_o_lojista(self):
@@ -916,11 +970,12 @@ class BarraMensagens20Tests(PainelBase):
         self.assertTrue(config.enabled)
         self.assertEqual(1, config.saved)
         self.assertEqual(0, ponte.started)
-        self.assertIsNone(self.app.sms_server)
-        self.assertEqual([], Servidor.instancias)
+        self.assertEqual(1, len(Servidor.instancias))
+        self.assertIsNotNone(self.app.sms_server)
+        self.assertIsNotNone(self.app.sms_server.send_blocker)
         eventos = self.app._events_backlog
         self.assertTrue(any("Ponte de SMS ligada." in l for l in eventos))
-        self.assertIn("cede a porta 49998", eventos[-1])
+        self.assertTrue(any("cede a porta 49998" in l for l in eventos))
 
     def test_fechar_a_barra_duas_vezes_nao_estoura(self):
         servico = self.ligar_o_motor(MessagingConfig(enabled=True))
