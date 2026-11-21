@@ -228,6 +228,21 @@ class LanSettings:
             "timeout": self.timeout,
         }
 
+    @classmethod
+    def from_dict(cls, dados: object) -> "LanSettings":
+        """Le o bloco do ``messaging.json``.
+
+        Campo que nao existe aqui fica de fora, sem pane: o arquivo pode carregar
+        ajustes de outra versao e o canal sobe com os proprios padroes. Segredo de
+        pareamento nunca aparece nesta forma - quem le o arquivo entrega o campo
+        ja aberto (``segredo``), e a fabrica e a unica que abre o selo.
+        """
+        itens = dados if isinstance(dados, dict) else {}
+        conhecidos = {
+            chave: valor for chave, valor in itens.items() if chave in cls.__dataclass_fields__
+        }
+        return cls(**conhecidos)
+
 
 # ------------------------------------------------------------------ motorista
 
