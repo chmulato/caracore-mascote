@@ -804,7 +804,7 @@ manifesto é provado com a mesma verificação que o aplicativo usa.
 Uma vez só, com o HD removível conectado, gere o par de chaves:
 
 ```bash
-python tools/gaspar_channel.py init-key --key E:/gaspar/gaspar-signing.pem
+python tools/gaspar_channel.py init-key --key C:/caminho/seguro/gaspar-signing.pem
 ```
 
 A chave privada fica fora do repositório e não pode ser recuperada: sem ela não
@@ -824,7 +824,7 @@ Em cada versão:
    PowerShell:
 
    ```powershell
-   $env:GASPAR_RELEASE_SIGNING_KEY = Get-Content E:\gaspar\gaspar-signing.pem -Raw
+   $env:GASPAR_RELEASE_SIGNING_KEY = Get-Content C:\caminho\seguro\gaspar-signing.pem -Raw
    python tools/gaspar_channel.py sign --tag gaspar-vX.Y.Z --publish
    Remove-Item Env:GASPAR_RELEASE_SIGNING_KEY
    ```
