@@ -18,6 +18,9 @@ from unittest import mock
 
 from gaspar import app as app_module
 from gaspar import updates
+from gaspar.messaging.config import MessagingConfig
+from gaspar.messaging.transports.android_lan import NOME_MOTORISTA as MEIO_CELULAR
+from gaspar.messaging.transports.smtp_email import EmailBridgeDriver
 
 TEM_TELA = bool(os.environ.get("DISPLAY")) or sys.platform in ("win32", "darwin")
 
@@ -184,6 +187,32 @@ def servidor_falso(erro: Exception | None = None):
             self.stopped += 1
 
     return Servidor
+
+
+class ServicoMensagensFalso:
+    """Imita ``MessagingService`` sem fila, sem cofre e sem porta: so conta os passos."""
+
+    criados: list["ServicoMensagensFalso"] = []
+
+    def __init__(self, config=None):
+        self.config = config if config is not None else MessagingConfig(enabled=True)
+        self.iniciado = 0
+        self.fechado = 0
+        self.abriu_porta = None
+
+    @classmethod
+    def from_config(cls, path=None, **kwargs):
+        objeto = cls()
+        cls.criados.append(objeto)
+        return objeto
+
+    def start(self, *, open_port=None, start_round=True):
+        self.abriu_porta = open_port
+        self.iniciado += 1
+        return bool(self.config.enabled)
+
+    def close(self):
+        self.fechado += 1
 
 
 @unittest.skipUnless(TEM_TELA, "Tk precisa de tela (no Linux a esteira usa xvfb)")
@@ -762,6 +791,145 @@ class CelularSmsTests(PainelBase):
         self.assertIn("sem modulo", self.app.sms_detail_var.get())
 
 
+class BarraMensagens20Tests(PainelBase):
+    """O painel so liga a barra 2.0 quando o arquivo manda - e ai o celular e dela.
+
+    A regra de convivencia (Onda B6-A, decisao do dono em 21/11/2026): com
+    ``messaging.enabled`` verdadeiro e alguma origem escolhendo ``android_lan``, a
+    ponte de SMS da 1.7 cede a porta 49998. Com o motor desligado - o padrao - a 1.7
+    faz exatamente o que sempre fez.
+    """
+
+    def setUp(self):
+        super().setUp()
+        ServicoMensagensFalso.criados = []
+        self.abrir_painel_sms()
+
+    def usar_ponte(self, enabled=True):
+        self.app.sms_config = FakeSmsConfig(enabled=enabled)
+        self.app.sms_bridge = FakeBridge()
+        return self.app.sms_config, self.app.sms_bridge
+
+    def ligar_o_motor(self, config):
+        """Rel o arquivo e liga, com o servico falso contando os passos."""
+        with mock.patch.object(app_module, "load_messaging_config", return_value=config), mock.patch.object(
+            app_module, "MessagingService", ServicoMensagensFalso
+        ):
+            self.app._init_messaging()
+        return self.app.messaging_service
+
+    def subir_a_1_7(self):
+        Servidor = servidor_falso()
+        with mock.patch.object(app_module, "SmsHttpServer", Servidor), mock.patch.object(
+            app_module, "lan_ip", return_value="192.168.0.5"
+        ):
+            self.app._start_sms_services()
+
+    def test_sem_arquivo_da_barra_o_gaspar_continua_a_17(self):
+        self.app._init_messaging()
+        self.assertIsNotNone(self.app.messaging_config)
+        self.assertFalse(self.app.messaging_config.enabled)
+        self.assertIsNone(self.app.messaging_service)
+        self.assertEqual("", self.app._motivo_celular_reservado())
+
+    def test_motor_desligado_no_arquivo_nem_constroi_o_servico(self):
+        servico = self.ligar_o_motor(MessagingConfig(enabled=False, transports={"PDV": MEIO_CELULAR}))
+        self.assertIsNone(servico)
+        self.assertEqual([], ServicoMensagensFalso.criados)
+
+    def test_motor_ligado_no_arquivo_sobe_a_barra(self):
+        servico = self.ligar_o_motor(MessagingConfig(enabled=True))
+        self.assertIsNotNone(servico)
+        self.assertEqual(1, servico.iniciado)
+        self.assertIs(servico, self.app.messaging_service)
+
+    def test_arquivo_quebrado_avisa_sem_derrubar_o_painel(self):
+        with mock.patch.object(app_module, "load_messaging_config", side_effect=RuntimeError("config quebrada")):
+            self.app._init_messaging()
+        self.assertIsNone(self.app.messaging_service)
+        self.assertTrue(
+            any("Barra de mensagens indisponivel: config quebrada" in l for l in self.app._system_backlog)
+        )
+
+    def test_dependencia_ausente_do_motor_avisa_e_nao_tenta_nada(self):
+        with mock.patch.object(app_module, "MESSAGING_AVAILABLE", False), mock.patch.object(
+            app_module, "MESSAGING_IMPORT_ERROR", "sem modulo"
+        ):
+            self.app._init_messaging()
+            self.assertEqual("", self.app._motivo_celular_reservado())
+        self.assertTrue(
+            any("Barra de mensagens indisponivel: sem modulo" in l for l in self.app._system_backlog)
+        )
+
+    def test_motor_desligado_deixa_a_ponte_1_7_usar_o_celular(self):
+        _, ponte = self.usar_ponte()
+        self.app.messaging_config = MessagingConfig(enabled=False, transports={"PDV": MEIO_CELULAR})
+        self.subir_a_1_7()
+        self.assertEqual(1, ponte.started)
+        self.assertIsNotNone(self.app.sms_server)
+        self.assertIn("/api/sms", self.app.sms_api_var.get())
+
+    def test_meio_de_email_nao_tira_o_celular_da_ponte_1_7(self):
+        _, ponte = self.usar_ponte()
+        self.app.messaging_config = MessagingConfig(
+            enabled=True, transports={"PDV": EmailBridgeDriver.name, "HUB": EmailBridgeDriver.name}
+        )
+        self.subir_a_1_7()
+        self.assertEqual(1, ponte.started)
+        self.assertIsNotNone(self.app.sms_server)
+
+    def test_motor_no_celular_segura_a_49998_e_a_1_7_cede(self):
+        _, ponte = self.usar_ponte()
+        self.app.messaging_config = MessagingConfig(enabled=True, transports={"HUB": MEIO_CELULAR})
+        self.subir_a_1_7()
+        self.assertEqual(0, ponte.started)
+        self.assertIsNone(self.app.sms_server)
+        self.assertTrue(any("cede a porta 49998" in l for l in self.app._events_backlog))
+        self.assertIn("cede a porta 49998", self.app.sms_api_var.get())
+        self.assertIn("HUB", self.app.sms_api_var.get())
+
+    def test_o_token_do_pdv_continua_visivel_quando_a_1_7_cede_o_celular(self):
+        self.usar_ponte()
+        self.app.messaging_config = MessagingConfig(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.subir_a_1_7()
+        self.assertEqual("token-fake", self.app.sms_token_var.get())
+
+    def test_motor_que_sobe_depois_pede_o_celular_de_volta(self):
+        _, ponte = self.usar_ponte()
+        self.subir_a_1_7()
+        self.assertEqual(1, ponte.started)
+        self.assertIsNotNone(self.app.sms_server)
+        with mock.patch.object(app_module, "MessagingService", ServicoMensagensFalso):
+            self.app.messaging_config = MessagingConfig(enabled=True, transports={"PDV": MEIO_CELULAR})
+            self.app._start_messaging()
+        self.assertEqual(1, ponte.stopped)
+        self.assertIsNone(self.app.sms_server)
+        self.assertTrue(any("cede a porta 49998" in l for l in self.app._events_backlog))
+
+    def test_ligar_a_ponte_no_painel_com_celular_reservado_avisa_o_lojista(self):
+        config, ponte = self.usar_ponte(enabled=False)
+        self.app.messaging_config = MessagingConfig(enabled=True, transports={"PDV": MEIO_CELULAR})
+        self.app.sms_enabled_var.set(True)
+        Servidor = servidor_falso()
+        with mock.patch.object(app_module, "SmsHttpServer", Servidor):
+            self.app._on_sms_enabled()
+        self.assertTrue(config.enabled)
+        self.assertEqual(1, config.saved)
+        self.assertEqual(0, ponte.started)
+        self.assertIsNone(self.app.sms_server)
+        self.assertEqual([], Servidor.instancias)
+        eventos = self.app._events_backlog
+        self.assertTrue(any("Ponte de SMS ligada." in l for l in eventos))
+        self.assertIn("cede a porta 49998", eventos[-1])
+
+    def test_fechar_a_barra_duas_vezes_nao_estoura(self):
+        servico = self.ligar_o_motor(MessagingConfig(enabled=True))
+        self.app._stop_messaging()
+        self.app._stop_messaging()
+        self.assertEqual(1, servico.fechado)
+        self.assertIsNone(self.app.messaging_service)
+
+
 class AtualizacaoTests(PainelBase):
     def info(self, **campos):
         base = dict(
@@ -1104,6 +1272,8 @@ class JanelasLogLongoTests(PainelBase):
         self.app._update_vigia = mock.Mock()
         self.app.sms_bridge = FakeBridge()
         self.app.sms_server = SimpleNamespace(stop=mock.Mock())
+        barra = ServicoMensagensFalso(MessagingConfig(enabled=True))
+        self.app.messaging_service = barra
         self.app.quit()
         self.assertTrue(self.app.closing)
         self.assertEqual(self.app.engine.stopped, 1)
@@ -1111,6 +1281,8 @@ class JanelasLogLongoTests(PainelBase):
         self.assertEqual(bandeja.stopped, 1)
         self.app._update_vigia.parar.assert_called_once()
         self.assertEqual(self.app.sms_bridge.stopped, 1)
+        self.assertEqual(1, barra.fechado)
+        self.assertIsNone(self.app.messaging_service)
         self.assertTrue(self.arquivo_config())
         self.app.quit()
 

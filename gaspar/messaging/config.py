@@ -90,6 +90,8 @@ class MessagingConfig:
     poll_interval_seconds: float = 2.0
     #: motorista escolhido por origem: {"PDV": "loopback", "HUB": ""}
     transports: dict[str, str] = field(default_factory=dict)
+    #: ajustes de cada motorista, pelo nome: {"smtp_email": {...}, "android_lan": {...}}
+    transport_settings: dict[str, dict] = field(default_factory=dict)
     #: de onde este objeto veio; nao vai para o arquivo
     source: str = ""
 
@@ -113,6 +115,7 @@ class MessagingConfig:
         self.max_attempts = _as_int(self.max_attempts, 2, low=1, high=5)
         self.poll_interval_seconds = _as_float(self.poll_interval_seconds, 2.0, low=0.2, high=600.0)
         self.transports = self._clean_transports(self.transports)
+        self.transport_settings = self._clean_settings(self.transport_settings)
 
     @staticmethod
     def _clean_transports(value: object) -> dict[str, str]:
@@ -124,6 +127,21 @@ class MessagingConfig:
             except ValueError:
                 continue
             result[origin] = str(item or "").strip()
+        return result
+
+    @staticmethod
+    def _clean_settings(value: object) -> dict[str, dict]:
+        """Guarda so blocos com nome de motorista e corpo de objeto.
+
+        Um bloco torto (lista, texto, numero) nao derruba a leitura do arquivo: ele
+        e descartado e o motorista correspondente sobe com os proprios padroes.
+        """
+        result: dict[str, dict] = {}
+        items = value if isinstance(value, dict) else {}
+        for chave, corpo in items.items():
+            nome = str(chave or "").strip()
+            if nome and isinstance(corpo, dict):
+                result[nome] = dict(corpo)
         return result
 
     # ------------------------------------------------------------------ meios
@@ -146,6 +164,30 @@ class MessagingConfig:
     def origins_with_transport(self) -> tuple[str, ...]:
         return tuple(origem for origem in ORIGENS if self.transports.get(origem))
 
+    @property
+    def meios_citados(self) -> tuple[str, ...]:
+        """Motoristas que alguem escolheu, sem repeticao e em ordem de nome.
+
+        E a lista que a fabrica percorre: ninguem monta uma caixa postal ou um
+        celular que nenhuma origem foi usar.
+        """
+        citados = {nome for nome in self.transports.values() if nome}
+        return tuple(sorted(citados))
+
+    def settings_for(self, nome: str) -> dict:
+        """Os ajustes gravados para um motorista. Ausente = objeto vazio."""
+        bloco = self.transport_settings.get(str(nome or "").strip())
+        return dict(bloco) if isinstance(bloco, dict) else {}
+
+    def set_settings(self, nome: str, ajustes: object) -> None:
+        key = str(nome or "").strip()
+        if not key:
+            return
+        if isinstance(ajustes, dict) and ajustes:
+            self.transport_settings[key] = dict(ajustes)
+        else:
+            self.transport_settings.pop(key, None)
+
     # -------------------------------------------------------------- arquivo
 
     def to_dict(self) -> dict:
@@ -162,6 +204,11 @@ class MessagingConfig:
             "max_attempts": self.max_attempts,
             "poll_interval_seconds": self.poll_interval_seconds,
             "transports": {origem: self.transports[origem] for origem in ORIGENS if origem in self.transports},
+            "transport_settings": {
+                nome: dict(self.transport_settings[nome])
+                for nome in sorted(self.transport_settings)
+                if isinstance(self.transport_settings.get(nome), dict)
+            },
         }
 
     def save(self, path: Path | None = None) -> Path:

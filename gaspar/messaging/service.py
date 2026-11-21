@@ -20,6 +20,7 @@ from .local_api import MessagingApi
 from .model import ORIGENS
 from .store import MessageStore
 from .transports import TransportRegistry, UnknownTransport
+from .transports.factory import montar_registry
 from .vault import KEY_FILENAME, Vault
 
 DB_FILENAME = "messaging.db"
@@ -46,8 +47,10 @@ class MessagingService:
             self.home / DB_FILENAME, self.vault, max_pending=self.config.max_pending
         )
         self.credentials = CredentialVault(self.store, self.vault)
+        self._registry_injetado = registry is not None
         self.registry = registry if registry is not None else TransportRegistry()
         self.audit = audit if audit is not None else AuditLog(self.home / AUDIT_FILENAME)
+        self.montar_meios()
         self.dispatcher = Dispatcher(
             self.store,
             self.registry,
@@ -87,6 +90,7 @@ class MessagingService:
                 f"{self.uncertain_after_restart} envio(s) pararam no meio do caminho: "
                 "ficam em duvida, nada foi reenviado"
             )
+        self.montar_meios()
         self.bind_transports()
         if open_port is not False:
             self.api = MessagingApi(self)
@@ -121,6 +125,23 @@ class MessagingService:
         self.store.close()
 
     # ---------------------------------------------------------------- apoio
+
+    def montar_meios(self) -> list[str]:
+        """Constroi os motoristas que a configuracao cita. Devolve os nomes montados.
+
+        Com o motor desligado - o padrao de fabrica - nada se monta: nenhum arquivo
+        de estado e criado e nenhuma caixa postal ou celular e tocado. Quem injeta um
+        registro pronto (os testes e qualquer integrador) manda no que esta ligado.
+        """
+        if self._registry_injetado or not self.config.enabled:
+            return []
+        return montar_registry(
+            self.registry,
+            self.config,
+            vault=self.vault,
+            home=self.home,
+            log=self._log,
+        )
 
     def bind_transports(self) -> dict[str, str]:
         """Aplica a escolha de meio por origem. Meio inexistente deixa a origem desligada."""

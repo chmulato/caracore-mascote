@@ -57,6 +57,7 @@ hiddenimports += [
 hiddenimports += [
     "gaspar.messaging",
     "gaspar.messaging.config",
+    "gaspar.messaging.convivencia",
     "gaspar.messaging.credentials",
     "gaspar.messaging.dispatcher",
     "gaspar.messaging.errors",
@@ -67,6 +68,7 @@ hiddenimports += [
     "gaspar.messaging.transport",
     "gaspar.messaging.transports",
     "gaspar.messaging.transports.android_lan",
+    "gaspar.messaging.transports.factory",
     "gaspar.messaging.transports.loopback",
     "gaspar.messaging.transports.smtp_email",
     "gaspar.messaging.vault",

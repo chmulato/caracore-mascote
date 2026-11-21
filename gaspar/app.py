@@ -44,6 +44,17 @@ except Exception as _sms_import_error:
     SMS_AVAILABLE = False
     SMS_IMPORT_ERROR = str(_sms_import_error)
 
+try:
+    from .messaging.config import load_config as load_messaging_config
+    from .messaging.convivencia import celular_reservado, motivo_celular_reservado
+    from .messaging.service import MessagingService
+
+    MESSAGING_AVAILABLE = True
+    MESSAGING_IMPORT_ERROR = ""
+except Exception as _messaging_import_error:
+    MESSAGING_AVAILABLE = False
+    MESSAGING_IMPORT_ERROR = str(_messaging_import_error)
+
 KEY_LABELS = list(KEY_CHOICES.values())
 LABEL_TO_KEY = {label: key for key, label in KEY_CHOICES.items()}
 
@@ -65,6 +76,8 @@ class GasparApp:
         self.sms_store = None
         self.sms_bridge = None
         self.sms_server = None
+        self.messaging_config = None
+        self.messaging_service = None
         self._sms_qr_photo = None
         self._sms_poll_job = None
         self._sms_signature = None
@@ -95,6 +108,7 @@ class GasparApp:
         self.root.after(700, self._maybe_auto_start)
         self.root.after(500, self._tick)
         self.root.after(450, self._init_sms)
+        self.root.after(900, self._init_messaging)
         self.root.after(1200, self._init_updates)
 
         self.log_event("Aplicacao iniciada.")
@@ -517,6 +531,11 @@ class GasparApp:
     def _start_sms_services(self) -> None:
         if self.sms_bridge is None or self.sms_config is None:
             return
+        reservado = self._motivo_celular_reservado()
+        if reservado:
+            self.log_event(reservado)
+            self._update_sms_api()
+            return
         self.sms_bridge.start()
         if self.sms_server is None:
             server = None
@@ -574,10 +593,64 @@ class GasparApp:
             self.sms_token_var.set("")
             return
         self.sms_token_var.set(self.sms_config.api_token)
+        reservado = self._motivo_celular_reservado()
+        if reservado:
+            self.sms_api_var.set(reservado)
+            return
         if self.sms_server is None or not self.sms_config.enabled:
             self.sms_api_var.set("Servidor local desligado")
             return
         self.sms_api_var.set(f"Endereco para o PDV (somente este computador): {self._sms_api_url()}/api/sms")
+
+    # --- Barra de mensagens 2.0 ----------------------------------------------
+
+    def _init_messaging(self) -> None:
+        """Le o arquivo da barra 2.0 e liga o motor quando o arquivo manda.
+
+        O padrao e ``enabled: false``: neste caso nada monta, nenhuma porta abre e o
+        Gaspar segue sendo a 1.7 que o lojista ja usa.
+        """
+        if not MESSAGING_AVAILABLE:
+            self.log_system(f"Barra de mensagens indisponivel: {MESSAGING_IMPORT_ERROR}")
+            return
+        try:
+            self.messaging_config = load_messaging_config()
+            if self.messaging_config.enabled:
+                self._start_messaging()
+        except Exception as exc:
+            self.messaging_service = None
+            self.log_system(f"Barra de mensagens indisponivel: {exc}")
+
+    def _start_messaging(self) -> None:
+        service = MessagingService.from_config(on_log=self._on_messaging_log)
+        if not service.start():
+            service.close()
+            self.messaging_service = None
+            return
+        self.messaging_service = service
+        reservado = self._motivo_celular_reservado()
+        if reservado and (self.sms_bridge is not None or self.sms_server is not None):
+            # O motor subiu com o celular na mao: a 1.7 sai de cima da 49998.
+            self._stop_sms_services()
+            self.log_event(reservado)
+
+    def _stop_messaging(self) -> None:
+        service, self.messaging_service = self.messaging_service, None
+        if service is None:
+            return
+        try:
+            service.close()
+        except Exception as exc:
+            self.log_system(f"Fechando a barra de mensagens: {exc}")
+
+    def _on_messaging_log(self, message: str) -> None:
+        self.log_event(f"Mensagens 2.0: {message}")
+
+    def _motivo_celular_reservado(self) -> str:
+        """Por que a ponte 1.7 nao deve tocar no celular agora. Vazio quando pode."""
+        if not MESSAGING_AVAILABLE:
+            return ""
+        return motivo_celular_reservado(self.messaging_config)
 
     def _on_sms_enabled(self) -> None:
         if self.sms_config is None:
@@ -586,8 +659,9 @@ class GasparApp:
         self.sms_config.enabled = enabled
         self.sms_config.save()
         if enabled:
-            self._start_sms_services()
+            # Se o celular estiver reservado, o aviso de que a 1.7 cedeu vem depois desta linha.
             self.log_event("Ponte de SMS ligada.")
+            self._start_sms_services()
         else:
             self._stop_sms_services()
             self.log_event("Ponte de SMS desligada.")
@@ -1408,6 +1482,7 @@ class GasparApp:
         self._close_sms_window()
         self._close_logs_window()
         self._stop_sms_services()
+        self._stop_messaging()
         if self._update_vigia is not None:
             self._update_vigia.parar()
         try:
