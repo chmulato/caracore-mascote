@@ -3,7 +3,7 @@ setlocal EnableDelayedExpansion
 REM ============================================================================
 REM Instala o APK pdv-sms-enviar no celular via ADB.
 REM Antes, valida: ADB, dispositivo unico conectado e autorizado, Android API>=24.
-REM Requer: ANDROID_HOME (platform-tools com adb). Veja README-PDV-SMS.md.
+REM Requer: ANDROID_HOME (platform-tools com adb). Veja BUILD.md.
 REM Se o APK nao existir, executa build.bat.
 REM Log: publicar-celular.log na pasta do script.
 REM ============================================================================
@@ -19,7 +19,7 @@ if not defined ANDROID_HOME (
     if not defined ANDROID_HOME (
         call :log "[ERRO] ANDROID_HOME nao definido"
         call :log "Defina ANDROID_HOME. Ex.: set ANDROID_HOME=%%LOCALAPPDATA%%\Android\Sdk"
-        call :log "Veja README-PDV-SMS.md. Instale: sdkmanager platform-tools"
+        call :log "Veja BUILD.md. Instale: sdkmanager platform-tools"
         call :log "=== Fim (ERRO) ==="
         exit /b 1
     )
