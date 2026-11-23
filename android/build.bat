@@ -10,7 +10,7 @@ REM   build.bat clean release  -> clean + APK release
 REM   build.bat clean bundle   -> clean + AAB
 REM   Requer keystore.properties (storeFile, storePassword, keyAlias, keyPassword) para release/bundle.
 REM Requer: JDK 17+, Android SDK (ANDROID_HOME ou %LOCALAPPDATA%\Android\Sdk, plataforma 35).
-REM Veja README-PDV-SMS.md para instalar as dependencias.
+REM Veja BUILD.md para instalar as dependencias.
 REM ============================================================================
 
 cd /d "%~dp0"
@@ -30,7 +30,7 @@ if not defined ANDROID_HOME (
     if not defined ANDROID_HOME (
         echo [ERRO] ANDROID_HOME nao definido.
         echo Defina apontando para o Android SDK (ex: C:\Users\...\AppData\Local\Android\Sdk^)
-        echo ou instale em %LOCALAPPDATA%\Android\Sdk. Veja README-PDV-SMS.md
+        echo ou instale em %LOCALAPPDATA%\Android\Sdk. Veja BUILD.md
         exit /b 1
     )
 )
@@ -38,7 +38,7 @@ if "%ANDROID_HOME:~-1%"=="\" set "ANDROID_HOME=%ANDROID_HOME:~0,-1%"
 
 where java >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [ERRO] Java nao esta no PATH. Veja README-PDV-SMS.md
+    echo [ERRO] Java nao esta no PATH. Veja BUILD.md
     exit /b 1
 )
 

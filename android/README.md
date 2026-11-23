@@ -1,108 +1,93 @@
-# App Android - Enviar SMS
+# App do celular - Enviar SMS
 
-Este diretório guarda o aplicativo que roda no celular Android e dispara os SMS
-pedidos pelo Gaspar. Ele é a outra metade da ponte local de SMS descrita em
-[wiki.caracore.com.br/gaspar/sms.html](https://wiki.caracore.com.br/gaspar/sms.html).
+Este é o aplicativo que roda no celular Android da loja. Ele é a outra metade da
+ponte de SMS: o computador pede, o celular dispara pelo chip e avisa o resultado.
+O guia de uso no dia a dia está em
+[SMS no dia a dia](https://wiki.caracore.com.br/gaspar/sms.html).
 
-> **O que está publicado hoje é a 1.7 (código 8)**, de 15/11/2026, na
+> **Publicado hoje:** a versão **1.7**, de 15/11/2026, na
 > [Release Android 1.7](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.7).
-> Ela mantém o envelope cifrado, a trava do provedor de licença, o ícone e o skin
-> do Gaspar, o painel da senha do Wi‑Fi da loja e a confirmação de operações do
-> PDV no celular. Ao mesmo tempo, reduz o que faz os verificadores de segurança
-> desconfiarem do app: a licença é digitada na tela (o app não lê SMS), não pede
-> isenção da economia de bateria, exige um token do PDV para aceitar aviso de
-> backup, mostra a confirmação de operações só depois que o dono toca na
-> notificação e compila para o Android 15 (alvo 35). A **1.6** e a **1.5**
-> continuam disponíveis; o **1.4** não tem a trava do provedor. O Gaspar **1.7.1**
-> ou mais novo usa a 1.7; o aplicativo **1.2** só atende o Gaspar **1.7.0**.
+> Ela traz o visual do Gaspar no aparelho, o painel da rede Wi-Fi da loja e a
+> confirmação de operações do PDV na tela do celular. Nessa versão a licença é
+> **digitada** — o aplicativo não lê suas mensagens —, ele **não** pede
+> liberação da economia de bateria, o aviso de fim de backup do PDV só é aceito
+> quando traz a chave do próprio aparelho e a tela de confirmação só abre depois
+> que você toca no aviso.
+
+> **Qual versão combina com qual:** o aplicativo **1.7** acompanha o Gaspar
+> **1.7.1** ou mais novo no computador. Quem ainda usa o Gaspar **1.7.0** fica
+> com o aplicativo **1.2**. As versões **1.6** e **1.5** continuam publicadas, e
+> a **1.4** é a única sem a trava que impede outros aplicativos de ler o estado
+> da licença.
 
 ## Para que serve
 
-- Recebe um pedido **cifrado de ponta a ponta** vindo do computador na mesma
-  rede Wi-Fi e abre com a chave que só ele tem.
-- Envia o SMS diretamente pelo chip do celular, sem abrir a tela de mensagens.
-- Devolve ao Gaspar o "aceito" do chip e o "entregue" da operadora.
-- Responde na rede local para o Gaspar encontrar o aparelho automaticamente.
-- Lê o QR de pareamento gerado pelo Gaspar para guardar a chave e o endereço.
-- Guarda a senha do Wi‑Fi da loja, mostra/copia/gera QR depois da confirmação do
-  dono e testa se o computador responde.
-- Pede aprovação de desconto, cancelamento e sangria no celular, com digital,
-  rosto ou PIN, prazo e histórico.
+- Recebe o pedido de mensagem do computador da loja, pela rede Wi-Fi, e só ele
+  consegue abrir o pedido: a chave fica guardada no próprio aparelho.
+- Dispara o SMS pelo chip sem abrir a tela de mensagens.
+- Devolve ao computador o "o chip aceitou" e o "a operadora entregou".
+- Deixa o computador encontrar o celular sozinho na rede da loja.
+- Pareia lendo o QR code que aparece no Gaspar.
+- Guarda a senha do Wi-Fi da loja e gera um QR para outro aparelho entrar na
+  rede, depois de você confirmar com digital, rosto ou PIN.
+- Mostra na tela do celular os pedidos de aprovação de desconto, cancelamento e
+  sangria, com prazo e histórico.
 
-O envio por cabo USB (ADB) foi **retirado**: a activity de envio não é mais
-exportada e exige permissão interna de assinatura. O teste manual é feito pela
-janela **Celular / SMS** do Gaspar.
+## Preparar o celular
 
-## Como preparar o celular
-
-1. Compile e instale o APK no aparelho (Android 7.0 ou superior).
-2. Abra o aplicativo e conceda a permissão de **Enviar SMS** e, no Android 13
-   ou superior, a de **notificações** (é por ela que o pedido de confirmação
-   aparece).
-3. Mantenha o celular e o computador na mesma rede Wi-Fi.
-4. No Gaspar, abra a janela **Celular / SMS**, clique em **Parear celular** e leia o
-   código com o aplicativo.
+1. Instale o aplicativo no aparelho (Android 7.0 ou mais novo).
+2. Abra o aplicativo e toque em **Permitir** quando ele pedir para enviar SMS e,
+   no Android 13 ou mais novo, para mostrar notificações.
+3. Deixe celular e computador na mesma rede Wi-Fi, com o Gaspar aberto.
+4. No Gaspar, abra **Celular / SMS**, clique em **Parear celular** e leia o QR
+   com o aplicativo.
 5. Se a licença não vier no QR, digite a chave na tela de configuração do app.
 
-A 1.7 **não pede** isenção da economia de bateria. Deixar o app como "Sem
-restrições" nas configurações do aparelho continua recomendado para o serviço
-não ser encerrado em segundo plano, mas a escolha é do dono, nas configurações
-do Android.
+A versão 1.7 **não** pede liberação da economia de bateria. Deixar o aplicativo
+como "Sem restrições" nos ajustes do Android continua recomendado para o serviço
+não ser fechado em segundo plano, mas a escolha é sua.
 
-## Como compilar
+## O que ele não faz
 
-O projeto usa Android Gradle Plugin 8.7.3, Gradle 8.9, compileSdk/targetSdk 35 e
-exige JDK 17 ou superior. As instruções detalhadas de ambiente, assinatura e
-instalação estão em [README-PDV-SMS.md](README-PDV-SMS.md). Os atalhos:
-
-```bat
-build.bat                :: gera o APK de depuração
-build.bat release        :: gera o APK assinado (exige keystore.properties)
-verificar-app.bat        :: confere dispositivo, app instalado e permissão de SMS
-publicar-celular.bat     :: instala o APK no celular conectado por USB
-criar-keystore.bat       :: cria o keystore da assinatura release
-verificar-keystore.bat   :: confere a senha do keystore
-```
-
-## Segurança
-
-- Nenhum keystore, senha ou arquivo `keystore.properties` faz parte deste
-  repositório. Gere os seus com `criar-keystore.bat` e mantenha fora do Git.
-- A chave de pareamento e o token da API ficam na pasta de dados do Gaspar, no
-  perfil do usuário do Windows (ou em `~/.config/caracore/gaspar` no Linux).
-- O celular cria o próprio par de chaves: a privada fica protegida pelo Android
-  Keystore e nunca sai do aparelho; a pública vai ao Gaspar no pareamento. Cada
-  pedido é fechado com a chave do celular (AES-256-GCM) e só vale para o `id`
-  daquele pedido.
-- Por cima, o tráfego na rede local vai cifrado com AES-256-GCM usando o segredo
-  do pareamento. A rede ainda precisa ser confiável: o Gaspar só aceita pedidos
-  da própria máquina e aplica limites de volume.
-- O app não aceita acionamento por outros aplicativos e limita o envio a 300 SMS
-  por dia no próprio aparelho.
-- A partir da 1.7, o app **não lê SMS**: a licença Premium é digitada na tela ou
-  vem no QR de configuração. O aviso de backup só é aceito quando traz o token
-  gerado no próprio painel do celular (ver [README-PDV-SMS.md](README-PDV-SMS.md)).
-- No código deste repositório, o Gaspar não guarda o número nem o texto: a
-  auditoria e o histórico registram só metadados. O Gaspar **1.7.1** publicado
-  já funciona assim. O **1.7.0** ainda grava o número completo e o texto no
-  histórico local; o **1.7.1** é a versão recomendada.
-  O termo completo está em
-  [wiki.caracore.com.br/gaspar/privacidade.html](https://wiki.caracore.com.br/gaspar/privacidade.html).
+| Compromisso | O que isso significa no dia a dia |
+| --- | --- |
+| Não lê mensagens | Desde a 1.7 ele não tem acesso às suas conversas: a licença é digitada ou vem do QR. |
+| Não deixa outros aplicativos enviarem | Nada instalado no celular consegue usar o seu chip pelas costas. |
+| Não manda SMS direto do computador | O antigo disparo por cabo USB foi desligado de propósito, para o celular não virar máquina de mensagem. |
+| Tem teto de envio | São até 300 mensagens por dia no aparelho, e um pedido repetido é recusado. |
+| Não guarda número nem texto | O histórico do app registra o que aconteceu, sem o conteúdo das mensagens. |
+| Não envia nada para a internet | O caminho é a rede da loja, entre o seu computador e o seu celular. |
 
 ## Limitações conhecidas
 
-- O "entregue" depende da operadora devolver o recibo; quando ela não devolve,
-  o pedido fica em "enviado", que já confirma que o SMS saiu do celular.
-- A licença digitada confere formato e mês, sem assinatura digital.
-- A confirmação de operações aparece como notificação normal: o celular precisa
-  estar desbloqueado e o dono precisa tocar na notificação para abrir a tela.
-  Não há mais tela cheia sobre a tela de bloqueio.
-- O aviso de backup enviado pelo PDV só é aceito quando é endereçado ao app
-  (`-p br.com.caracore.pdv.sms`) e traz o token mostrado no painel; sem isso o
-  Android bloqueia o aviso ou o app o recusa. PDVs que ainda não enviam o token
-  têm o aviso recusado até serem atualizados.
-- O pareamento usa HTTP na rede local para o diagnóstico inicial; não há TLS.
-- O SMS enviado fica na caixa **Enviadas** do aplicativo de mensagens, como
-  qualquer SMS; o Gaspar não controla essa cópia.
-- A 1.6 e a 1.7 foram exercitadas em emulador Android, mas ainda não em celular
-  físico; o lado do computador da confirmação ainda não existe.
+- O "entregue" depende da operadora devolver o recibo. Quando ela não devolve, o
+  pedido fica marcado como **enviado**, o que já confirma que a mensagem saiu do
+  celular.
+- A licença digitada confere o formato e o mês, sem carimbo digital.
+- O pedido de confirmação chega como notificação comum: o celular precisa estar
+  desbloqueado e você precisa tocar no aviso para abrir a tela.
+- O aviso de fim de backup do PDV só é aceito quando vem endereçado ao app e com
+  a chave do aparelho. Um PDV que ainda não manda essa chave tem o aviso recusado
+  até ser atualizado.
+- O pareamento conversa com o computador pela rede local sem cifra de site: é a
+  rede da loja, e o pedido em si viaja fechado.
+- O SMS enviado fica na caixa **Enviadas** do aplicativo de mensagens do celular,
+  como qualquer SMS. O Gaspar não controla essa cópia.
+- As versões 1.6 e 1.7 foram exercitadas em aparelho de teste (emulador), ainda
+  não em celular físico, e o lado do computador na confirmação de operações ainda
+  não existe.
+
+## Seus dados
+
+O que o aplicativo guarda, onde guarda e por quanto tempo está em
+[Segurança e privacidade](https://wiki.caracore.com.br/gaspar/privacidade.html).
+Quem tem o QR de pareamento pode ligar um aparelho à sua ponte: não fotografe nem
+compartilhe esse código.
+
+## Para quem compila
+
+O aplicativo é um projeto Android normal. O ambiente, os atalhos de build, a
+assinatura de release, a instalação por cabo e os erros conhecidos estão em
+[BUILD.md](BUILD.md). O que a versão faz está em
+[README-PDV-SMS.md](README-PDV-SMS.md), e o estado de cada versão em
+[STATUS_ATUAL.md](STATUS_ATUAL.md).
