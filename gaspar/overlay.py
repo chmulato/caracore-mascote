@@ -153,16 +153,43 @@ class GasparOverlay:
         self._x, self._y = self._current
         self._place(self._x, self._y)
 
+    def _work_area(self) -> tuple[int, int, int, int]:
+        """Area util da tela como (x0, y0, x1, y1): o retangulo livre de barra de tarefas.
+
+        Em Windows a consulta e do proprio sistema (SPI_GETWORKAREA), sem dependencia
+        nova. Nos demais sistemas, e sempre que a consulta falha ou devolve um
+        retangulo absurdo, a tela inteira continua valendo como antes.
+        """
+        inteira = (0, 0, self._screen_width, self._screen_height)
+        if sys.platform != "win32":
+            return inteira
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            rect = wintypes.RECT()
+            if not ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0):
+                return inteira
+            area = (int(rect.left), int(rect.top), int(rect.right), int(rect.bottom))
+        except Exception:
+            return inteira
+        if area[2] <= area[0] or area[3] <= area[1]:
+            return inteira
+        return area
+
     def _corner_positions(self) -> list[tuple[int, int]]:
         margin = 18
         bottom_margin = 64
-        max_x = max(margin, self._screen_width - SIDE - margin)
-        max_y = max(margin, self._screen_height - SIDE - bottom_margin)
+        x0, y0, x1, y1 = self._work_area()
+        min_x = x0 + margin
+        min_y = y0 + margin
+        max_x = max(min_x, x1 - SIDE - margin)
+        max_y = max(min_y, y1 - SIDE - bottom_margin)
         return [
-            (margin, margin),
-            (max_x, margin),
+            (min_x, min_y),
+            (max_x, min_y),
             (max_x, max_y),
-            (margin, max_y),
+            (min_x, max_y),
         ]
 
     def _place(self, x: int, y: int) -> None:
