@@ -260,8 +260,12 @@ jobs:
               exit 1
             fi
           else
+            # O selo "Latest" é um por repositório e o GitHub entrega a quem
+            # publicar por último. Aqui há duas linhas (gaspar-v* e android-v*):
+            # o celular nunca deve tirar o selo do Gaspar do computador.
             gh release create "$TAG" "${ASSETS[@]}" \
               --draft \
+              --latest=false \
               --generate-notes \
               --title "App Android ${TAG#android-v}"
           fi

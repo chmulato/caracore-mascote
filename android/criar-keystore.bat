@@ -18,7 +18,9 @@ if not exist "%JAVA_HOME%\bin\keytool.exe" (
 
 set "KEYSTORE=pdv-sms-release.keystore"
 if exist "%KEYSTORE%" (
-    echo [AVISO] %KEYSTORE% ja existe. Apague se quiser criar outro.
+    echo [AVISO] %KEYSTORE% ja existe. Nao apague para criar outro: um keystore novo tem outra
+    echo         assinatura, e quem ja instalou o app nao consegue atualizar por cima.
+    echo         Quem precisa publicar de novo usa o MESMO keystore da casa.
     exit /b 0
 )
 

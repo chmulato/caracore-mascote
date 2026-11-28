@@ -2,6 +2,39 @@
 
 Documento de acompanhamento do estado da aplicação e da evolução. Atualizado conforme mudanças relevantes.
 
+> **Medido em 20/11/2026 (árvore de trabalho, NADA commitado):** a versão em
+> desenvolvimento é a **2.0 (código 9)** e **não está publicada** — o que está no
+> ar continua sendo a 1.7 (código 8). Gate local verde: build, **109 testes
+> unitários** (12 classes, 0 falhas, 0 erros, 0 pulados) e lint sem erros.
+> APK debug `build\outputs\apk\debug\pdv-sms-enviar-2.0.apk`, 2.948.982 B,
+> SHA-256 `4fe511ad…59fc2c3`; manifesto medido no APK: versionCode 9, versão
+> 2.0, minSdk 24, targetSdk 35, 9 permissões (nenhuma nova em relação à 1.7).
+> **Exercitado em emulador Android 13 (API 33), APK 2.0 instalado** — a tela do
+> lojista e as duas portas de pareamento: painel inicial sem jargão (Licença,
+> Gateway e Backup escondidos atrás de **Mais opções**, que vira **Menos
+> opções**), a linha de pareamento mudando de fato ("Nenhum computador está
+> ligado a este celular ainda" → "Este celular atende: HUB" → "Este celular
+> atende: PDV e HUB"), o par de chaves **por programa** gravado em sítios
+> separados (`gateway_shared_secret_pdv` e `gateway_shared_secret_hub`) e o
+> campo da chave mostrando a chave do programa escolhido no botão de opção,
+> serviço de rede iniciado com a porta TCP 49998 escutando, os pedidos de
+> permissão de SMS e de notificações **um depois do outro** em instalação nova,
+> e o painel do e-mail: recusa ligar sem dados, gravação dos servidores e da
+> caixa, senha do aplicativo guardada no Keystore (o campo volta mascarado e
+> vazio, e a senha **sobrevive à reinstalação do APK**), "Testar agora"
+> respondendo "Não consegui entrar na caixa de entrada
+> (imap.exemplo.invalid:993)…" **sem mandar nada ao rádio**, aviso em
+> primeiro plano "Gaspar está escutando o computador / Pedidos por e-mail:
+> ligado", o laço da ponte tentando de novo com espera dobrada (duas tentativas
+> a 60 s de intervalo, nenhuma mensagem enviada) e o desligar tirando o serviço
+> da lista.
+> Ficam **não exercitados** nesta versão: caixa de e-mail real (o teste foi
+> contra endereço que não existe, de propósito), envio real de SMS com chip,
+> biometria de digital, notificação com a tela bloqueada, QR lido pela câmera e
+> o lado do computador (a ponte de e-mail do Gaspar está escrita e testada com
+> dublês, mas nada na configuração do computador a escolhe, então nenhum pedido
+> real sai dele para a caixa; `confirmar_operacao` também não é enviado).
+>
 > **Medido em 15/11/2026:** a **1.7 (código 8)** está **publicada** na
 > [Release Android 1.7](https://github.com/chmulato/caracore-mascote/releases/tag/android-v1.7):
 > APK assinado de 2.094.869 B (SHA-256 `aa67eba6…602a`) e AAB de 1.909.267 B
@@ -39,6 +72,13 @@ O mesmo celular também guarda a senha do Wi‑Fi da loja e serve como
 **confirmação de operações sensíveis** do PDV (desconto, cancelamento e sangria),
 com digital, rosto ou senha do aparelho.
 
+A partir da 2.0 o celular tem **duas portas** para escutar o computador — a rede
+Wi‑Fi da loja e a **caixa de e-mail da loja** (quando o celular está no 4G, em
+casa, ou fora da rede) — e atende **dois programas**, o PDV e o Hub, cada um com
+a sua chave. As duas portas entram pelo mesmo portão de regras, e o aviso do
+rádio volta pelo caminho por onde o pedido chegou — regra que fica escrita na
+trilha do pedido (`TrilhaDoPedido`), não na boa vontade de quem atende.
+
 ---
 
 ## Funcionalidades atuais
@@ -55,6 +95,23 @@ com digital, rosto ou senha do aparelho.
   `SmsManager`.
 - **Comprovante**: `SmsStatusReceiver` devolve "aceito" e "entregue" e
   `SmsReceiptSender` envia ao Gaspar cifrado com o segredo do pareamento.
+- **Ponte de e-mail** (`EmailBridge` + `ImapClient`/`SmtpClient` +
+  `EmailPonteServico`): para a loja funcionar quando o celular sai da rede do
+  Wi‑Fi (4G, casa). O computador escreve o pedido cifrado na caixa de e-mail da
+  loja e o celular lê de lá a cada 30 s, em qualquer rede; o pedido entra pelo
+  **mesmo portão** do pedido do Wi‑Fi (`EmailDespacho` → `SmsDispatch`): mesma
+  licença, mesmo teto de 300 SMS do dia, mesma conferência de repetição. O
+  aviso do rádio volta cifrado para o mesmo servidor de saída e fica em fila no
+  aparelho até o computador responder (`EmailMemoria`, teto de 200). Nada é
+  lido fora da caixa que o dono indicar, a senha do aplicativo mora no Android
+  Keystore e o serviço é de primeiro plano, reaberto pelo `BootReceiver`.
+- **Uma chave por programa** (`PareamentoPorOrigem`): o celular guarda o
+  segredo do PDV e o do Hub em sítios separados (`gateway_shared_secret_pdv` /
+  `_hub`), abertos um a um — a chave que abre o recado é a autora, e a origem
+  declarada dentro do pedido ainda tem de bater com ela. O pareamento antigo,
+  de chave única, continua aceito (limitação declarada: nesse caso a origem é
+  a que o comando diz). A mesma chave vale para as duas portas, Wi‑Fi e e-mail,
+  então parear uma vez não cria duas verdades.
 - **Painel Wi‑Fi da loja** (`WifiActivity`): guarda nome e senha da rede da loja
   cifrados por chave do Android Keystore (`WifiCredentialStore`); mostra e copia
   a senha somente depois da confirmação do dono (digital/rosto ou PIN do
@@ -74,11 +131,15 @@ com digital, rosto ou senha do aparelho.
   responder. O switch "Receber pedidos de confirmação" liga/desliga o recurso; o
   botão **Pedido de teste** exercita a tela sem o computador.
 - Painel de controle (launcher): `ConfigActivity` com cabeçalho do mascote
-  Gaspar e verde da marca, texto em linguagem simples, switch para ativar/pausar
-  o envio, cartões de Wi‑Fi, de confirmação e de **backup do banco de dados**,
-  status da licença (vermelho/verde), campo para digitar a chave da licença com
-  o botão "Salvar chave", token do backup com o botão "Copiar token do backup" e
-  o botão "Verificar Conexão USB".
+  Gaspar e verde da marca, texto em linguagem simples, a linha de quem está
+  pareado ("Este celular atende: PDV e HUB", sem nunca mostrar a chave), switch
+  para ativar/pausar o envio, cartões de **Wi‑Fi da loja**, de **pedidos por
+  e-mail** e de **confirmação pelo celular** e, escondidos atrás de
+  **Mais opções**, o que só quem configura mexe: status da licença
+  (vermelho/verde) com campo para digitar a chave e botão "Salvar chave",
+  "Verificar Conexão USB", o gateway com o par de botões PDV/Hub para a chave de
+  pareamento e o QR, e o cartão de backup do banco de dados com o token. A tela
+  principal não tem jargão.
 - Licença Premium **digitada no painel**: a chave é colada ou digitada no campo
   e salva pelo botão; `LicenseSms.chaveDe` normaliza e confere o formato
   CC-AAAAmm-{hex8} e `isLicencaValida()` exige mês atual ou futuro. O app **não
@@ -121,25 +182,33 @@ com digital, rosto ou senha do aparelho.
 
 ## Pilha técnica
 
-- Android: minSdk 24, targetSdk 35, compileSdk 35. Versão 1.7 (código 8).
+- Android: minSdk 24, targetSdk 35, compileSdk 35. Versão 2.0 (código 9) na
+  árvore; a 1.7 (código 8) é a publicada.
 - Java 8 (source/target). JDK 17 para o build (AGP 8.7.3).
 - Gradle 8.9, Android Gradle Plugin 8.7.3.
 - Janela normal (não ocupa as bordas da tela) mesmo com alvo 35
   (`tools:targetApi="35"` no tema).
 - Dependências: `androidx.core:core:1.6.0`,
   `androidx.biometric:biometric:1.1.0`,
-  `com.journeyapps:zxing-android-embedded:4.3.0` e `junit:junit:4.13.2` (teste).
+  `com.journeyapps:zxing-android-embedded:4.3.0`, `junit:junit:4.13.2` (teste) e
+  `org.json:json:20240303` (só teste: o `android.jar` dos testes traz esqueletos
+  que estouram, e a leitura do envelope da ponte precisa do `org.json` de
+  verdade). Nenhuma biblioteca entra no APK que não entrasse na 1.7, e nada de
+  Play Services/Firebase.
 - Declara que precisa de telefonia (`android.hardware.telephony`,
   `required=true`), então aparelhos sem chip não veem o app nas lojas.
-- Atividades: `ConfigActivity` (MAIN/LAUNCHER), `WifiActivity`,
-  `ConfirmationActivity`, `ScanSetupActivity` (QR), `SendSmsActivity` (interna,
-  não exportada). `PdvSmsApp` como Application.
+- Atividades: `ConfigActivity` (MAIN/LAUNCHER), `WifiActivity`, `EmailActivity`
+  (painel da ponte de e-mail), `ConfirmationActivity`, `ScanSetupActivity` (QR),
+  `SendSmsActivity` (interna, não exportada). `PdvSmsApp` como Application.
 - Componentes: `GatewayListenerService` (UDP 49999 + TCP 49998),
+  `EmailPonteServico` (IMAP/SMTP em primeiro plano, 30 s com dobra até 300 s),
   `SmsStatusReceiver` (aceito/entregue), `BootReceiver`,
   `BackupUpdateReceiver`, `LicencaContentProvider`.
 - Criptografia: `GatewayCrypto` (canal AES-GCM com o segredo do pareamento),
-  `E2ECrypto` (envelope por pedido) e `WifiCredentialStore` (AES-GCM com chave
-  do Android Keystore para a senha do Wi‑Fi).
+  `PareamentoPorOrigem` (uma chave por programa, PDV e HUB, com o pareamento
+  único antigo ainda aceito), `E2ECrypto` (envelope por pedido),
+  `WifiCredentialStore` e `EmailKeystore` (AES-GCM com chave do Android Keystore
+  para a senha do Wi‑Fi e para a senha do aplicativo).
 - Permissões: SEND_SMS, INTERNET, CAMERA, FOREGROUND_SERVICE,
   FOREGROUND_SERVICE_REMOTE_MESSAGING, POST_NOTIFICATIONS,
   RECEIVE_BOOT_COMPLETED, USE_BIOMETRIC, USE_FINGERPRINT.
@@ -149,7 +218,8 @@ com digital, rosto ou senha do aparelho.
 ## Build e implantação
 
 - Desenvolvimento: `build.bat` (debug), `build.bat release` (com keystore.properties). `build.bat bundle` ou `build.bat aab` (AAB para Play Store). `build.bat clean` para limpar e evitar AccessDenied em .dex. Combinações: `build.bat clean release`, `build.bat clean bundle`.
-- APK debug: `build\outputs\apk\debug\pdv-sms-enviar-1.7.apk`. APK release: `build\outputs\apk\release\pdv-sms-enviar-1.7-release.apk`. AAB: `build\outputs\bundle\release\pdv-sms-enviar-release.aab`.
+- APK debug: `build\outputs\apk\debug\pdv-sms-enviar-2.0.apk`. APK release: `build\outputs\apk\release\pdv-sms-enviar-2.0-release.apk`. O nome acompanha a
+  `versionName`, então o pacote da 1.7 publicada continua com o nome antigo. AAB: `build\outputs\bundle\release\pdv-sms-enviar-release.aab`.
 - Instalação em dispositivo: `publicar-celular.bat`. Requer ANDROID_HOME, adb, dispositivo em state=device, API >= 24. Na primeira execução, aceitar as permissões de SMS e, no Android 13+, as de notificações.
 - Assinatura release e AAB: `criar-keystore.bat` gera `pdv-sms-release.keystore` e alias `pdv-sms`. `keystore.properties` (storeFile, storePassword, keyAlias, keyPassword). `verificar-keystore.bat` valida a senha com keytool -list. `recriar-keystore.bat` renomeia o keystore antigo para .bak e chama `criar-keystore.bat`; usar apenas para app novo, não para atualização na loja.
 - Android SDK: `sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"`.
@@ -164,10 +234,22 @@ com digital, rosto ou senha do aparelho.
   unitários, lint e inspeção do APK. Ficam pendentes de aparelho físico: envio
   real de SMS com chip, biometria de digital, notificação com a tela bloqueada e
   leitura do QR pela câmera.
-- **Lado do computador pendente**: o Gaspar/PDV ainda não envia
-  `confirmar_operacao` nem recebe `/api/mobile/confirmacao`. Enquanto isso, a
-  confirmação pratica só o fluxo local pelo botão **Pedido de teste**; o teste
-  de ligação do painel Wi‑Fi só mede alcance TCP até o endereço do pareamento.
+- **Ponte de e-mail provada contra caixa que não existe**: a tela, o serviço em
+  segundo plano, a dobra de espera, a senha no Keystore, a recusa de ligar sem
+  dados e o botão "Testar agora" foram exercitados no emulador com host
+  propositadamente inválido (`imap.exemplo.invalid` / `smtp.exemplo.invalid`).
+  Nenhuma caixa real foi aberta e nenhum recado de provedor de verdade foi lido.
+  Os dois lados combinam no papel (o mesmo marcador de assunto `GASPAR` e o
+  mesmo envelope cifrado), mas isso é leitura de código: **nunca um recado
+  atravessou uma caixa real entre o computador e o celular**. TLS do provedor,
+  senha de app, tempo de resposta e limites da caixa seguem por conhecer.
+- **O QR de pareamento não carrega a origem**: o código que o computador gera
+  traz uma chave só, sem dizer se é do PDV ou do Hub. A separação por origem no
+  celular depende de quem configura digitar as duas chaves em **Mais opções**.
+  Enquanto o QR for a porta de entrada, a chave única (que atende as duas
+  origens) continua sendo o caminho mais curto — e é ela que o pareamento antigo
+  já tem.
+- **Do lado do computador a escolha passou a existir no arquivo, não na tela.** Até a Onda B5, `smtp_email` e `android_lan` existiam com testes e o `TransportRegistry` sabia ligar cada origem a um motorista, mas ele nasce vazio e nada fora do pacote `gaspar/messaging` o construía: o `state_path` da ponte vinha vazio de fábrica e `MessagingService` não era iniciado por nada do app do mascote. **Corrigido em 2026-11-21 (Onda B6-A):** `gaspar/messaging/transports/factory.py` monta o motorista que o `messaging.json` escolher por origem (`transports`), com os ajustes do motorista em `transport_settings`; sem `state_path` no bloco, o estado da ponte de e-mail vai para `<pasta de dados>/bridge-smtp.state`; e `gaspar/app.py` lê o arquivo e liga a barra quando `enabled: true`. Continua valendo desta nota: o segredo de pareamento não migra sozinho do `sms_config.json` da 1.7, o Gaspar/PDV ainda não envia `confirmar_operacao` nem recebe `/api/mobile/confirmacao`, e enquanto o QR for a porta de entrada a chave única (que atende as duas origens) continua sendo o caminho mais curto. **Deixou de valer nesta parte:** «nenhuma tela faz isso ainda» — desde a **Onda B6-6 (21/11/2026)** a aba **Celular / SMS** do mascote tem o seletor por origem, a janela que sela a senha com o cofre da fila e o botão **Testar acesso**; o lojista não precisa mais editar `messaging.json` (ver «A tela do lojista — Onda B6-6» no guia técnico). Enquanto isso, a confirmação pratica só o fluxo local pelo botão **Pedido de teste**; o teste de ligação do painel Wi‑Fi só mede alcance TCP até o endereço do pareamento. Regra de convivência gravada: com o motor 2.0 ligado e uma origem em `android_lan`, a ponte 1.7 cede o celular — ver «Convivência com o motor 2.0 (a porta 49998)» no [guia técnico](../manual-tecnico/tecnico.md).
 - **PDV precisa mandar o token do backup**: o aviso de backup da 1.7 só é
   aceito quando chega endereçado ao app (`-p br.com.caracore.pdv.sms`) e com o
   token do painel. Um PDV antigo continua funcionando com a 1.6 publicada, mas
@@ -206,6 +288,28 @@ com digital, rosto ou senha do aparelho.
 ---
 
 ## Histórico de alterações (resumo)
+
+- **2.0 (código 9, em desenvolvimento — NÃO publicada):** o celular passa a
+  escutar o computador por duas portas. **Ponte de e-mail**
+  (`EmailBridge` + `ImapClient`/`SmtpClient` + `EmailPonteServico`): a loja
+  funciona com o celular fora do Wi‑Fi, o pedido entra pelo mesmo portão do
+  pedido do Wi‑Fi (`EmailDespacho` → `SmsDispatch`) com a mesma licença, o mesmo
+  teto de 300 SMS e a mesma conferência de repetição, e o aviso do rádio volta
+  cifrado e fica em fila no aparelho (`EmailMemoria`, teto de 200). **Uma chave
+  por programa** (`PareamentoPorOrigem`): o segredo do PDV e o do Hub em sítios
+  separados, abertos um a um, com a origem declarada conferida contra a chave que
+  abriu; o pareamento antigo de chave única continua aceito. **Senha do
+  aplicativo no Android Keystore** (`EmailKeystore`), sobrevivendo à
+  reinstalação do APK, e **tela do lojista sem jargão**: o painel conta o que o
+  celular está fazendo em linguagem de loja, esconde licença/gateway/backup
+  atrás de **Mais opções** e tem em "Testar agora" uma prova de ligação que abre
+  a caixa, fala com a saída e fecha sem ler recado nenhum nem mandar nada ao
+  rádio. Nenhuma biblioteca nova no APK (Java 8 puro, sem Play Services/
+  Firebase; só os testes ganharam `org.json`), nenhuma permissão nova. Gate
+  local: build, **109 testes unitários** (12 classes, 0 falhas) e lint verdes;
+  APK debug 2.948.982 B (SHA-256
+  `4fe511ad…59fc2c3`) exercitado em emulador Android 13. Nada commitado, nem
+  etiqueta, nem release: a publicação espera a palavra do dono.
 
 - **1.7 (código 8, publicada em 15/11/2026):** licença digitada
   no painel em vez de lida por SMS (permissão e receptor de SMS removidos);

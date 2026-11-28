@@ -9,8 +9,8 @@ chave publica versionada.
 
 Fluxo:
 
-    python tools/gaspar_channel.py init-key --key E:/gaspar/gaspar-signing.pem
-    export GASPAR_RELEASE_SIGNING_KEY="$(cat E:/gaspar/gaspar-signing.pem)"
+    python tools/gaspar_channel.py init-key --key C:/caminho/seguro/gaspar-signing.pem
+    export GASPAR_RELEASE_SIGNING_KEY="$(cat C:/caminho/seguro/gaspar-signing.pem)"
     python tools/gaspar_channel.py sign --tag gaspar-v1.7.1
     python tools/gaspar_channel.py sign --tag gaspar-v1.7.1 --publish
     python tools/gaspar_channel.py prova --tag gaspar-v1.7.1

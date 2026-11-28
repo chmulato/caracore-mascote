@@ -22,8 +22,8 @@ android {
         applicationId 'br.com.caracore.pdv.sms'
         minSdk 24
         targetSdk 35
-        versionCode 8
-        versionName '1.7'
+        versionCode 9
+        versionName '2.0'
         multiDexEnabled true
     }
 
@@ -79,6 +79,9 @@ dependencies {
     implementation 'androidx.biometric:biometric:1.1.0'
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     testImplementation 'junit:junit:4.13.2'
+    // O android.jar dos testes so tem esqueletos que estouram; a leitura do envelope
+    // precisa do org.json de verdade para os testes da ponte rodarem na maquina.
+    testImplementation 'org.json:json:20240303'
 }
 
 // Renomeia app-release.aab -> pdv-sms-enviar-release.aab para o build.bat validar

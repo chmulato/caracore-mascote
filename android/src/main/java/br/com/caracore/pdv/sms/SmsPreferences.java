@@ -6,6 +6,7 @@ import android.text.TextUtils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +24,8 @@ public final class SmsPreferences {
     private static final String KEY_BACKUP_TOKEN = "backup_token";
     /** Chave compartilhada (Base64) para criptografia PDV ↔ APK — mesma do PDV (mobile.gateway.shared.secret). */
     private static final String KEY_GATEWAY_SHARED_SECRET = "gateway_shared_secret";
+    /** Chave de pareamento de uma só origem: gateway_shared_secret_pdv / _hub. */
+    private static final String KEY_GATEWAY_POR_ORIGEM = "gateway_shared_secret_";
     /** URL base do PDV (ex.: http://192.168.1.10:8080) para setup/diagnóstico. */
     private static final String KEY_PDV_BASE_URL = "pdv_base_url";
     private static final String KEY_QUOTA_DAY = "quota_day";
@@ -144,6 +147,62 @@ public final class SmsPreferences {
             prefs.edit().remove(KEY_LAST_SEQUENCE).remove(KEY_SEEN_JOBS).apply();
         }
         prefs.edit().putString(KEY_GATEWAY_SHARED_SECRET, novo).apply();
+    }
+
+    /** A chave daquela origem; na falta dela vale o pareamento unico de antes. */
+    public String getGatewaySecretFor(String origem) {
+        String porOrigem = getGatewaySecretOf(origem);
+        return porOrigem != null ? porOrigem : getGatewaySharedSecret();
+    }
+
+    /** A gravada so para aquela origem, ou null quando a loja nao tem chave propria. */
+    public String getGatewaySecretOf(String origem) {
+        String chave = chaveDeOrigem(origem);
+        if (chave == null) {
+            return null;
+        }
+        String valor = prefs.getString(chave, null);
+        if (valor == null || (valor = valor.trim()).isEmpty()) {
+            return null;
+        }
+        return valor;
+    }
+
+    public void setGatewaySecretFor(String origem, String secret) {
+        String chave = chaveDeOrigem(origem);
+        if (chave == null) {
+            return;
+        }
+        String novo = secret == null ? null : secret.trim();
+        if (novo != null && novo.isEmpty()) {
+            novo = null;
+        }
+        String atual = prefs.getString(chave, null);
+        boolean mudou = novo == null ? atual != null : !novo.equals(atual);
+        SharedPreferences.Editor editor = prefs.edit();
+        if (novo == null) {
+            editor.remove(chave);
+        } else {
+            editor.putString(chave, novo);
+        }
+        if (mudou) {
+            editor.remove(KEY_LAST_SEQUENCE).remove(KEY_SEEN_JOBS);
+        }
+        editor.apply();
+    }
+
+    /** O nome da preferencia daquela origem; null para o que nao e origem conhecida. */
+    private static String chaveDeOrigem(String origem) {
+        if (origem == null) {
+            return null;
+        }
+        String nome = origem.trim().toUpperCase(Locale.US);
+        for (String conhecida : PareamentoPorOrigem.ORIGENS) {
+            if (conhecida.equals(nome)) {
+                return KEY_GATEWAY_POR_ORIGEM + nome.toLowerCase(Locale.US);
+            }
+        }
+        return null;
     }
 
     public String getE2ePrivateKey() {

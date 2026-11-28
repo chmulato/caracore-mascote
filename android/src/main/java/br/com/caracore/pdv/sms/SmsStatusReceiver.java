@@ -16,6 +16,11 @@ public class SmsStatusReceiver extends BroadcastReceiver {
     public static final String ACTION_DELIVERED = "br.com.caracore.pdv.sms.SMS_DELIVERED";
     public static final String EXTRA_ID = "id";
 
+    /** O que o radio conta: saiu, chegou ao cliente ou nao saiu. */
+    public static final String ESTADO_SENT = "sent";
+    public static final String ESTADO_DELIVERED = "delivered";
+    public static final String ESTADO_FAILED = "failed";
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null) {
@@ -36,17 +41,17 @@ public class SmsStatusReceiver extends BroadcastReceiver {
         final String detail;
         if (isSent) {
             if (getResultCode() == Activity.RESULT_OK) {
-                status = "sent";
+                status = ESTADO_SENT;
                 detail = "aceito pela operadora";
             } else {
-                status = "failed";
+                status = ESTADO_FAILED;
                 detail = describe(getResultCode());
             }
         } else if (getResultCode() == Activity.RESULT_OK) {
-            status = "delivered";
+            status = ESTADO_DELIVERED;
             detail = "entregue ao cliente";
         } else {
-            status = "sent";
+            status = ESTADO_SENT;
             detail = "operadora nao confirmou a entrega";
         }
 
@@ -54,7 +59,7 @@ public class SmsStatusReceiver extends BroadcastReceiver {
         final Context app = context.getApplicationContext();
         new Thread(() -> {
             try {
-                SmsReceiptSender.send(app, id, status, detail);
+                Comprovantes.devolver(app, id, status, detail);
             } finally {
                 pending.finish();
             }
