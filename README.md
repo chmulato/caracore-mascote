@@ -5,8 +5,8 @@
 # Gaspar - Mascote Cara Core
 
 O mascote oficial da **Cara Core Informática**: um fantasminha verde-limão que
-flutua no canto da tela, mantém o seu status ativo no Teams e no Slack e leva
-até o celular os SMS pedidos pelo PDV.
+flutua no canto da tela, pode manter o seu status ativo no Teams e no Slack quando
+você liga a simulação, e leva até o celular os SMS pedidos pelo PDV.
 
 Ele foi feito para ser **discreto**. Não abre janelas por cima do seu trabalho,
 não rouba o foco do teclado, não bloqueia cliques e não mexe no mouse enquanto
@@ -93,11 +93,12 @@ não atravessar.
 ## O que ele faz por você
 
 - **Dá vida à tela:** o mascote flutua e se movimenta suavemente entre os cantos.
-- **Mantém seu status ativo:** Teams e Slack param de mostrar você como ausente.
+- **Mantém seu status ativo, quando você liga a simulação:** Teams e Slack param
+  de mostrar você como ausente.
 - **Respeita sua ausência:** só age depois de 60 segundos sem mouse ou teclado.
 - **Registra o que aconteceu:** você abre os registros pelo botão **Abrir logs**.
-- **Envia SMS pelo celular:** o PDV pede, o Gaspar entrega ao celular e o
-  aparelho dispara a mensagem.
+- **Envia SMS pelo celular, quando você liga a ponte:** o PDV pede, o Gaspar
+  entrega ao celular e o aparelho dispara a mensagem.
 - **Bloqueia telemetria (opcional):** o BlackBox desliga e religa um conjunto
   de endereços de rastreamento, sem estragar nada do sistema.
 
@@ -138,8 +139,10 @@ Para usar, são três coisas:
 3. **Celular e computador na mesma rede Wi-Fi**, com o Gaspar aberto.
 
 Depois disso: abra **Celular / SMS**, marque **Ponte ativa**, clique em
-**Parear celular** e leia o QR com o aplicativo do celular. O pedido só é aceito
-quando vem do próprio computador, e há limite de mensagens por número e por dia.
+**Parear celular** e leia o QR com o aplicativo do celular. A ponte começa
+desligada: a porta do computador só abre depois que você marca **Ponte ativa**.
+O pedido só é aceito quando vem do próprio computador, e há limite de mensagens
+por número e por dia.
 
 O uso no dia a dia e os limites estão em
 [SMS no dia a dia](https://wiki.caracore.com.br/gaspar/sms.html), e o cuidado com
@@ -153,12 +156,12 @@ O painel é rolável e se ajusta à altura da tela.
 
 | Controle | O que faz |
 | --- | --- |
-| **Ativar** / **Parar** | Começa ou interrompe as ações do mascote. |
-| **Iniciar simulação ao abrir** | Começa automaticamente quando o app abre. |
-| **Movimentar o mouse** | Liga ou desliga o deslocamento suave do cursor. |
+| **Ativar** / **Parar** | Começa ou interrompe as ações do mascote. Vem desligado, e **Ativar** só funciona depois que você escolhe ao menos uma ação (mouse, tecla ou Teams/Slack). |
+| **Iniciar simulação ao abrir** | Começa automaticamente quando o app abre. Vem desligado. |
+| **Movimentar o mouse** | Liga ou desliga o deslocamento suave do cursor. Vem desligado. |
 | **Sinal sonoro** | Toca um som ao final de cada ciclo. Vem desligado. |
 | **Gaspar flutuante** | Mostra ou esconde o mascote. |
-| **Manter Teams/Slack ativo** | Além da tecla, manda um pequeno sinal de atividade. |
+| **Manter Teams/Slack ativo** | Além da tecla, manda um pequeno sinal de atividade. Vem desligado. |
 | **Iniciar com o sistema** | Abre o Gaspar junto com o Windows ou com a sessão Linux, já minimizado. |
 
 ### Discrição
@@ -168,7 +171,7 @@ O painel é rolável e se ajusta à altura da tela.
 | **Agir somente quando eu estiver ausente** | Recomendado. Espera 60 segundos sem mouse ou teclado. |
 | **Pausar em tela cheia** | Esconde o mascote e pausa as ações em vídeos, jogos e apresentações. |
 | **Intervalo** | Tempo entre uma ação e outra. Vai de 10 segundos a 1 hora. |
-| **Tecla** | F15 (recomendada), Shift, Espaço ou Nenhuma. |
+| **Tecla** | Nenhuma (padrão), F15 (recomendada), Shift ou Espaço. Escolha uma tecla ou o mouse para o **Ativar** ter o que fazer. |
 | **Opacidade do Gaspar** | De 50% a 100%. O padrão dá o efeito translúcido. |
 
 ### Botões
@@ -176,7 +179,7 @@ O painel é rolável e se ajusta à altura da tela.
 | Botão | O que faz |
 | --- | --- |
 | **Ocultar** | Esconde o painel e deixa o app perto do relógio. |
-| **Tirar o Gaspar da tela** | Remove o mascote da tela. As ações e a ponte de SMS continuam funcionando. O botão vira **Trazer o Gaspar de volta**. |
+| **Tirar o Gaspar da tela** | Remove o mascote da tela. O que estiver ligado continua funcionando. O botão vira **Trazer o Gaspar de volta**. |
 | **Celular / SMS** | Abre a ponte de SMS: pareamento, teste e acompanhamento. |
 | **BlackBox** | Abre a ferramenta opcional de bloqueio de telemetria. |
 | **Abrir logs** | Abre os registros do Gaspar e a pasta onde eles ficam. |
@@ -226,7 +229,7 @@ enquanto a tela cheia estiver ativa.
 
 **Como faço para ele sumir da tela?**
 Clique em **Tirar o Gaspar da tela**. O mascote some, mas o app continua
-funcionando e a ponte de SMS segue ativa. Para voltar, clique em **Trazer o
+funcionando e o que estiver ligado segue ativo. Para voltar, clique em **Trazer o
 Gaspar de volta**.
 
 **O Gaspar usa a internet?**
@@ -239,9 +242,9 @@ internet e não altera as configurações de rede do computador.
 
 **O que é o BlackBox? Preciso ser administrador para usar o Gaspar?**
 O BlackBox é uma ferramenta opcional que bloqueia endereços de rastreamento da
-Microsoft, do VS Code/Cursor e do Application Insights. O bloqueio é reversível,
-mas pode impedir login na Microsoft e instalação de extensões enquanto estiver
-ativo. Só ele pede permissão de administrador; o mascote e a ponte de SMS não.
+Microsoft e do Application Insights. O bloqueio é reversível e fica só nesses
+destinos: não inclui login da Microsoft, marketplace de extensões nem os sistemas
+do PDV. Só ele pede permissão de administrador; o mascote e a ponte de SMS não.
 Detalhes em [BlackBox](https://wiki.caracore.com.br/gaspar/blackbox.html).
 
 **Por que o antivírus ou o Windows reclamam?**

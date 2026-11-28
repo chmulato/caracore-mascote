@@ -92,7 +92,7 @@ class ConfigTests(unittest.TestCase):
                 encoding="utf-8",
             )
             settings = load_settings(target)
-            self.assertEqual(settings.press_key, "f15")
+            self.assertEqual(settings.press_key, "none")
             self.assertTrue(settings.sound)
             self.assertFalse(settings.overlay)
 

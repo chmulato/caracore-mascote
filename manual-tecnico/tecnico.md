@@ -320,7 +320,7 @@ O BlackBox grava um bloco delimitado no arquivo `hosts`:
 # BLOCK TELEMETRIA - FIM
 ```
 
-- 34 domínios de telemetria (Microsoft, VS Code/Cursor, Azure e Application Insights).
+- 29 domínios de telemetria (Microsoft e Application Insights). Login, marketplace de extensões e os sistemas do PDV ficam de fora.
 - Aplicação idempotente: reaplicar não duplica o bloco.
 - Remoção restaura o conteúdo original e preserva o estilo de quebra de linha.
 - Atualização do cache DNS por `ipconfig`, `resolvectl`, `systemd-resolve` ou `nscd`, conforme disponível.
@@ -349,7 +349,7 @@ O Gaspar não abre conexão com o Mercado Pago (`api.mercadopago.com`) nem com o
 
 O BlackBox altera somente o arquivo `hosts`, com domínios exatos de telemetria da Microsoft. Nenhum endereço de pagamento ou nota está na lista, e não há regra de proxy, DNS ou firewall. O teste `tests/test_isolamento.py` falha se um domínio protegido aparecer na lista de bloqueio ou no código do pacote.
 
-Atenção: o bloqueio inclui domínios de login e marketplace da Microsoft (`login.microsoftonline.com`, `vscode.dev`, `marketplace.visualstudio.com`). Isso pode impedir autenticação ou instalação de extensões enquanto o bloqueio estiver ativo. O guia completo, com configurações de telemetria do VS Code/Cursor, extensões e firewall, está em [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html).
+A lista exclui de propósito os endereços de login e de marketplace (`login.microsoftonline.com`, `vscode.dev`, `marketplace.visualstudio.com`): o bloqueio não impede autenticação nem instalação de extensões. O guia completo, com configurações de telemetria do VS Code/Cursor, extensões e firewall, está em [wiki.caracore.com.br/gaspar/blackbox.html](https://wiki.caracore.com.br/gaspar/blackbox.html).
 
 ## Ponte local de SMS
 
@@ -365,7 +365,7 @@ Nada sai para a internet: a API escuta na rede local, o PDV pode chamar por `127
 
 ### Janela Celular / SMS
 
-O botão **Celular / SMS** abre uma janela separada (o painel principal não foi alterado). Ela mostra o estado do celular, a caixa **Ponte ativa**, **Procurar celular**, **Parear celular**, envio de teste, endereço/token da API e os últimos envios. A ponte só sobe quando **Ponte ativa** está marcada e o app é iniciado; no teste de fumaça ela fica desligada para não abrir porta nem disparar aviso do firewall.
+O botão **Celular / SMS** abre uma janela separada (o painel principal não foi alterado). Ela mostra o estado do celular, a caixa **Ponte ativa** (desmarcada por padrão), **Procurar celular**, **Parear celular**, envio de teste, endereço/token da API e os últimos envios. A ponte só sobe quando **Ponte ativa** está marcada e o app é iniciado; no teste de fumaça ela fica desligada para não abrir porta nem disparar aviso do firewall.
 
 ### Pareamento
 
@@ -861,6 +861,18 @@ Aberta pelo dono em 21/11/2026, no fechamento da Fase Beta na `master` (`e314969
 **O que a bancada gasta de verdade.** SMS cobrado pelo chip (o app tem teto de 300 por dia e a barra tem cota por origem e por minuto), e-mails reais entrando na caixa do Gmail, e uma autenticação real no Google a cada **Testar agora** — se o campo for preenchido com a senha da conta em vez da senha de app, o bloqueio vem do provedor, não do Gaspar. Recomendação medida pelo desenho: usar o número do próprio operador como destinatário.
 
 **A regra do portão, repetida de propósito:** nada acima se executa antes da palavra do dono, e nada se adianta depois desta tabela sem que a bancada tenha sido feita e reportada.
+
+### Padrões desligados: a trava de 28/11/2026
+
+- **Tronco do dia:** `77ea5547` (PR #18, laudo da bancada na fila de polimento acima). Publicado continua `gaspar-v1.7.4` no computador e `android-v1.7` no celular — nada se moveu neste dia.
+- **PR #5 reaberta:** a branch dos padrões seguros (`fix/padroes-seguros`) voltou contra o tronco de hoje no SHA `c4b575a`, com os conflitos resolvidos só em `README.md` e `docs/index.html`. Portão verde no mesmo SHA: **718 testes em 47,8 s**, `OK (skipped=2)`, `TOTAL 7245 1170 84%`, com os três empacotadores em `skipping`. **Nada mesclado** — o mesclado é decisão do dono.
+- **O que ela move no código:** `gaspar/config.py:31,32,33,36` (`simulate_mouse`, `press_key`, `keep_teams`, `auto_start`) e `gaspar/config.py:77` (tecla que não existe cai para `none`), `gaspar/sms/config.py:44` (a ponte 1.x nasce fechada) e cinco endereços fora de `gaspar/telemetry_hosts.py` — **34 → 29**, o número da seção do BlackBox.
+- **A trava (18 casos novos, suíte 718 → 736):** `tests/test_padroes_desligados.py` (16 casos: painel, ponte 1.x e barra 2.0, cada um com o arquivo que não cita o acionamento e com a escolha gravada que prevalece), `tests/test_isolamento.py:60` (login, marketplace e gestão de nuvem fora da lista, e a contagem de 29 amarrada a este arquivo) e `tests/test_app.py:397` (com o padrão desligado, **Ativar** avisa e não inicia). Medido na árvore, passada isolada: **19/19 em 0,09 s** (arquivo da trava + isolamento) e **6/6 em 2,5 s** na classe do painel (`ConstrucaoTests`), com `GASPAR_HOME` em pasta de passagem.
+- **A prova de que a trava morder (medida nesta árvore):** religar `simulate_mouse`, `press_key`, `keep_teams`, `auto_start` e `SmsConfig.enabled`, e reinserir `login.microsoftonline.com` na lista do BlackBox deu **5 falhas** nos arquivos de trava (`test_padroes_desligados` + `test_isolamento`, 19 casos) e **2 falhas** na classe do painel (`ConstrucaoTests`, 6 casos). Os três arquivos de código voltaram por cópia da pasta de passagem com o SHA-256 conferido (`037a2894…`, `af2d72f8…`, `375d40fc…`) e as duas passadas voltaram verdes: **19/19 em 0,13 s** e **6/6 em 2,9 s**. Sem essa medida a trava é só texto.
+- **Achado medido ao escrever a trava e corrigido na mesma branch:** `gaspar/sms/config.py` convertia `enabled` com `bool(valor)`, então texto que nega (`"false"`, `"0"`, `"nao"`, `"off"`) **ligava** a ponte 1.x; a barra 2.0 já acertava — `_as_bool` em `gaspar/messaging/config.py:45` devolve desligado para texto que não entende. Corrigido com a mesma regra no lado da ponte: `_as_bool` em `gaspar/sms/config.py:176` chamado por `_coerce` em `:199` — sim claro liga, negação clara desliga, o resto deixa o valor de antes. Medido antes e depois: **vermelho** `Ran 16 tests … FAILED (failures=2)` (`AssertionError: True is not false` em `tests/test_padroes_desligados.py:103`), **verde** `Ran 104 tests in 12,0 s OK` na família de SMS/mensageria e `Ran 134 tests in 69,8 s OK` em `tests/test_app.py`. Os três casos que amarram isso são `tests/test_padroes_desligados.py:88`, `:95` e `:106`.
+- **Gate completo na árvore (28/11/2026 às 11:02Z):** `Ran 736 tests in 129,6 s`, `OK (skipped=1)`, `TOTAL 7258 1157 84%` — os 718 versionados mais os 18 casos novos fecham exatamente em 736, e o piso do Portão (70%) está folgado. Rodado com `GASPAR_HOME` em pasta de passagem; a pasta real de dados seguiu sem arquivo alterado, e o flaky conhecido de soquete (`WinError 10053`, fila #169) não apareceu nesta passada. **O Portão no Linux ainda precisa reexecitar no SHA novo** — o verde de 718 é do `c4b575a`, que não tem esta trava.
+- **O que a trava não prova:** a metade de aparelho. A linha **Padrão de fábrica** da tabela de provas da bancada continua de pé — perfil limpo em pasta de passagem, `messaging.json` nascendo com `enabled: false` e nenhuma porta abrindo — e quem fecha isso é a bancada.
+- **Fora deste lote:** nada de etiqueta (`gaspar-v*` / `android-v*`), release, canal ou motorista `usb_modem`. O lote local `1188702` (cantos do overlay pela área útil e a frase do número vazio) continua só nesta máquina, **não** entra nesta branch e não foi empurrado.
 
 ## Canal de atualização
 

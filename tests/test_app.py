@@ -385,12 +385,22 @@ class ConstrucaoTests(PainelBase):
     def test_painel_monta_com_os_valores_salvos(self):
         self.assertIn("Gaspar", self.root.title())
         self.assertEqual(self.app.interval_var.get(), "300")
-        self.assertEqual(self.app.key_var.get(), "F15")
-        self.assertTrue(self.app.var_mouse.get())
+        self.assertEqual(self.app.key_var.get(), "Nenhuma")
+        self.assertFalse(self.app.var_mouse.get())
+        self.assertFalse(self.app.var_keep.get())
+        self.assertFalse(self.app.var_auto.get())
         self.assertTrue(self.app.var_idle.get())
         self.assertTrue(self.app.var_fullscreen.get())
         self.assertFalse(self.app.var_startup.get())
         self.assertIsNotNone(self.app._logo)
+
+    def test_com_o_padrao_desligado_o_botao_ativar_nao_inicia_nada(self):
+        self.app.engine = FakeEngine()
+        with mock.patch.object(app_module.messagebox, "showwarning") as aviso:
+            self.app.toggle_simulation()
+        aviso.assert_called_once()
+        self.assertEqual(self.app.engine.started, 0)
+        self.assertEqual(self.app.sim_var.get(), "Parada")
 
     def test_sobreposicao_nasce_ligada_e_botao_avisa(self):
         self.assertEqual(len(FakeOverlay.instances), 1)
@@ -548,6 +558,7 @@ class SimulacaoTests(PainelBase):
         super().setUp()
         self.engine = FakeEngine()
         self.app.engine = self.engine
+        self.app.settings.press_key = "f15"
 
     def test_ativar_e_desativar(self):
         self.engine.remaining = 42

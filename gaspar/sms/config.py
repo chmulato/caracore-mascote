@@ -41,7 +41,7 @@ _SAVE_LOCK = threading.Lock()
 
 @dataclass
 class SmsConfig:
-    enabled: bool = True
+    enabled: bool = False
     http_port: int = DEFAULT_HTTP_PORT
     api_token: str = ""
     shared_secret_b64: str = ""
@@ -173,6 +173,22 @@ class SmsConfig:
         return target
 
 
+def _as_bool(value: object, atual: bool) -> bool:
+    """Mesma regra da barra 2.0: o que nao e um sim claro deixa o valor de antes."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        texto = value.strip().lower()
+        if texto in ("1", "true", "sim", "on"):
+            return True
+        if texto in ("0", "false", "nao", "off", ""):
+            return False
+        return atual
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return atual
+
+
 def _coerce(config: SmsConfig, raw: dict) -> None:
     for item in fields(SmsConfig):
         if item.name == "path" or item.name not in raw:
@@ -180,7 +196,7 @@ def _coerce(config: SmsConfig, raw: dict) -> None:
         value = raw[item.name]
         current = getattr(config, item.name)
         if isinstance(current, bool):
-            setattr(config, item.name, bool(value))
+            setattr(config, item.name, _as_bool(value, current))
         elif isinstance(current, int):
             try:
                 setattr(config, item.name, int(value))
