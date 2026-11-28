@@ -515,6 +515,7 @@ class OverlayHelpersTests(unittest.TestCase):
         overlay = object.__new__(GasparOverlay)
         overlay._screen_width = 1920
         overlay._screen_height = 1080
+        overlay._work_area = lambda: (0, 0, 1920, 1080)
         cantos = overlay._corner_positions()
         self.assertEqual(len(cantos), 4)
         self.assertEqual(cantos[0], (18, 18))
@@ -523,6 +524,72 @@ class OverlayHelpersTests(unittest.TestCase):
             self.assertGreaterEqual(y, 18)
             self.assertLessEqual(x, 1920 - 220 - 18)
             self.assertLessEqual(y, 1080 - 220 - 64)
+
+    def test_corner_positions_descontam_a_barra_de_tarefas(self):
+        """O mascote nao nasce atras da barra: os cantos obedecem a area util (D6 do laudo)."""
+        overlay = object.__new__(GasparOverlay)
+        overlay._screen_width = 1366
+        overlay._screen_height = 768
+        overlay._work_area = lambda: (0, 48, 1366, 768)
+        cantos = overlay._corner_positions()
+        self.assertEqual(len(cantos), 4)
+        self.assertEqual(cantos[0], (18, 66))
+        for x, y in cantos:
+            self.assertGreaterEqual(y, 48 + 18, "um canto nasceu sob a barra de tarefas")
+            self.assertGreaterEqual(x, 18)
+            self.assertLessEqual(x + 220, 1366 - 18)
+            self.assertLessEqual(y + 220, 768 - 64)
+
+    def test_work_area_recaiu_na_tela_inteira_fora_de_windows(self):
+        overlay = object.__new__(GasparOverlay)
+        overlay._screen_width = 1600
+        overlay._screen_height = 900
+        with mock.patch.object(sys, "platform", "linux"):
+            self.assertEqual(overlay._work_area(), (0, 0, 1600, 900))
+
+    def test_work_area_nao_quebra_quando_o_sistema_recusa_a_consulta(self):
+        overlay = object.__new__(GasparOverlay)
+        overlay._screen_width = 1600
+        overlay._screen_height = 900
+
+        class WindllQueRecusa:
+            def __getattr__(self, _nome):
+                raise OSError("sem estacao")
+
+        with mock.patch.object(sys, "platform", "win32"), mock.patch.object(
+            ctypes, "windll", WindllQueRecusa(), create=True
+        ):
+            self.assertEqual(overlay._work_area(), (0, 0, 1600, 900))
+
+    def test_work_area_usa_o_retangulo_devolvido_pelo_sistema(self):
+        overlay = object.__new__(GasparOverlay)
+        overlay._screen_width = 1366
+        overlay._screen_height = 768
+        codigos = []
+
+        class Rect:
+            def __init__(self):
+                self.left = self.top = self.right = self.bottom = 0
+
+        def system_parameters_info(codigo, _ui, ponteiro, _flags):
+            codigos.append(codigo)
+            alvo = ponteiro.alvo
+            alvo.left, alvo.top, alvo.right, alvo.bottom = 0, 48, 1366, 768
+            return 1
+
+        class User32:
+            SystemParametersInfoW = staticmethod(system_parameters_info)
+
+        class Windll:
+            user32 = User32()
+
+        with mock.patch.object(sys, "platform", "win32"), mock.patch.object(
+            ctypes, "windll", Windll(), create=True
+        ), mock.patch.object(ctypes, "byref", lambda alvo: types.SimpleNamespace(alvo=alvo)), mock.patch.object(
+            ctypes.wintypes, "RECT", Rect
+        ):
+            self.assertEqual(overlay._work_area(), (0, 48, 1366, 768))
+        self.assertEqual(codigos, [0x0030])
 
     def test_alpha_is_clamped_and_effective(self):
         overlay = object.__new__(GasparOverlay)

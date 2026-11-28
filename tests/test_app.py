@@ -804,6 +804,25 @@ class CelularSmsTests(PainelBase):
         self.assertEqual([("11999999999", self.app.sms_message_var.get(), True)], bridge.enviados)
         self.assertTrue(any("Teste de SMS enfileirado" in l for l in self.app._events_backlog))
 
+    def test_pedido_de_teste_com_campo_celular_vazio_diz_onde_digitar(self):
+        """D1 do laudo: "numero ausente" e palavra de programa, nao de balcao.
+
+        A frase tem de nomear o campo que existe na tela ("Celular") e dizer que nada
+        entrou na fila. O contrato da ponte nao se mexe: quem chamar o enqueue com o
+        campo vazio continua recebendo o InvalidMessage de sempre.
+        """
+        _, bridge = self.usar_fakes()
+        self.app.sms_number_var.set("   ")
+        with mock.patch.object(app_module.messagebox, "showwarning") as aviso:
+            self.app._on_test_send()
+        aviso.assert_called_once()
+        texto = aviso.call_args[0][1]
+        self.assertIn("Celular", texto, "a frase aponta o campo da tela")
+        self.assertIn("numero", texto.lower())
+        self.assertEqual([], bridge.enviados)
+        self.assertTrue(any("nenhum numero digitado" in l for l in self.app._events_backlog))
+        self.assertFalse(any("enfileirado" in l for l in self.app._events_backlog))
+
     def test_apagar_historico_pede_confirmacao(self):
         _, bridge = self.usar_fakes()
         with mock.patch.object(app_module.messagebox, "askyesno", return_value=False):

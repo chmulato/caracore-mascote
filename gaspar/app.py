@@ -1427,6 +1427,19 @@ class GasparApp:
                 parent=self.root,
             )
             return
+        if not self.sms_number_var.get().strip():
+            # o validador da ponte devolve "numero ausente", que e palavra de programa:
+            # quem esta no balcao precisa saber o que digitar e em que campo.
+            self.log_event("Teste de SMS nao enviado: nenhum numero digitado.")
+            messagebox.showwarning(
+                "Envio de teste",
+                (
+                    'Digite um numero de celular no campo "Celular" antes de enviar o teste.\n\n'
+                    "Nada foi enviado, e nenhum pedido entrou na fila."
+                ),
+                parent=self.root,
+            )
+            return
         try:
             job = self.sms_bridge.enqueue(self.sms_number_var.get(), self.sms_message_var.get(), manual=True)
         except (InvalidMessage, RateLimited, QueueFull) as exc:
