@@ -130,9 +130,11 @@ class MessagingService:
     def montar_meios(self) -> list[str]:
         """Constroi os motoristas que a configuracao cita. Devolve os nomes montados.
 
-        Com o motor desligado - o padrao de fabrica - nada se monta: nenhum arquivo
-        de estado e criado e nenhuma caixa postal ou celular e tocado. Quem injeta um
-        registro pronto (os testes e qualquer integrador) manda no que esta ligado.
+        Com o motor desligado - o padrao de fabrica - nada se monta: nenhuma caixa
+        postal e lida, nenhum celular e procurado e nenhuma porta abre. Nao se confunda
+        com a pasta vazia: a chave do cofre e o arquivo da fila ja foram criados no
+        construtor, ligada ou nao a barra. Quem injeta um registro pronto (os testes e
+        qualquer integrador) manda no que esta ligado.
         """
         if self._registry_injetado or not self.config.enabled:
             return []
