@@ -17,6 +17,15 @@ HOSTS_PROTEGIDOS = (
     "api.tecnospeed.com.br",
 )
 
+#: sairam da lista em 17/11/2026: bloque-los derruba o login da Microsoft e a loja de extensoes
+FORA_DA_LISTA = (
+    "login.microsoftonline.com",
+    "marketplace.visualstudio.com",
+    "vscode.dev",
+    "management.azure.com",
+    "global.azure.microsoft.com",
+)
+
 
 def _alcanca(bloqueado: str, alvo: str) -> bool:
     bloqueado = bloqueado.lower().rstrip(".")
@@ -47,6 +56,17 @@ class IsolamentoTest(unittest.TestCase):
                     texto,
                     f"{arquivo.name} cita {protegido}",
                 )
+
+    def test_login_marketplace_e_gestao_de_nuvem_fora_da_lista_de_bloqueio(self):
+        # Enderecos que o BlackBox passou a evitar de proposito: bloque-los
+        # derruba o login da Microsoft e a loja de extensoes do VS Code.
+        for fora in FORA_DA_LISTA:
+            self.assertNotIn(fora, DOMAINS, f"{fora} voltou para a lista do BlackBox")
+        self.assertEqual(
+            len(DOMAINS),
+            29,
+            "a quantidade de dominios esta escrita em manual-tecnico/tecnico.md",
+        )
 
 
 if __name__ == "__main__":

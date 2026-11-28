@@ -394,6 +394,14 @@ class ConstrucaoTests(PainelBase):
         self.assertFalse(self.app.var_startup.get())
         self.assertIsNotNone(self.app._logo)
 
+    def test_com_o_padrao_desligado_o_botao_ativar_nao_inicia_nada(self):
+        self.app.engine = FakeEngine()
+        with mock.patch.object(app_module.messagebox, "showwarning") as aviso:
+            self.app.toggle_simulation()
+        aviso.assert_called_once()
+        self.assertEqual(self.app.engine.started, 0)
+        self.assertEqual(self.app.sim_var.get(), "Parada")
+
     def test_sobreposicao_nasce_ligada_e_botao_avisa(self):
         self.assertEqual(len(FakeOverlay.instances), 1)
         sobreposicao = FakeOverlay.instances[0]
